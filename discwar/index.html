@@ -5,21 +5,39 @@
     <title>Donut Tron Arena</title>
     <style>
         body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; }
-        #menu { position: absolute; top: 50px; background: rgba(20,20,20,0.95); padding: 30px; border: 3px solid #444; border-radius: 15px; z-index: 10; width: 400px; }
+        #menu { position: absolute; top: 50px; background: rgba(20,20,20,0.95); padding: 30px; border: 3px solid #444; border-radius: 15px; z-index: 10; width: 650px; }
         canvas { background: #000; border: 4px solid #333; margin-top: 20px; box-shadow: 0 0 30px rgba(0,255,255,0.1); }
-        .p-config { display: grid; grid-template-columns: 80px 1fr 100px; gap: 10px; margin-bottom: 15px; align-items: center; background: #222; padding: 10px; border-radius: 8px; }
-        button { width: 100%; padding: 15px; font-weight: bold; background: #0088ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; }
+        .p-config { display: grid; grid-template-columns: 30px 40px 80px 1fr; gap: 10px; margin-bottom: 10px; align-items: center; background: #222; padding: 10px; border-radius: 8px; }
+        button { width: 100%; padding: 15px; font-weight: bold; background: #0088ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; margin-top: 15px; }
         button:hover { background: #00aaff; }
         .hidden { display: none !important; }
-        kbd { background: #444; padding: 2px 5px; border-radius: 4px; font-size: 0.8em; }
+        select, input[type="number"] { background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; }
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .keybindings { display: flex; gap: 5px; justify-content: flex-end; }
+        .key-btn { width: 45px; padding: 5px; margin: 0; font-size: 0.8em; background: #444; font-family: monospace; }
+        .key-btn:hover { background: #666; }
+        .key-btn.active { background: #ff3333; }
+        .key-label { font-size: 0.7em; color: #888; text-align: center; display: flex; flex-direction: column; }
     </style>
 </head>
 <body>
 
 <div id="menu">
-    <h2 style="text-align:center">Donut Arena</h2>
+    <h2 style="text-align:center; margin-top:0;">Donut Arena</h2>
+    <div class="controls">
+        <label>Počet hráčů:</label>
+        <select id="playerCount" onchange="renderMenu()">
+            <option value="2">2 Hráči</option>
+            <option value="3">3 Hráči</option>
+            <option value="4" selected>4 Hráči</option>
+        </select>
+    </div>
+    <div class="controls">
+        <label>Počet vítězných kol:</label>
+        <input type="number" id="targetScore" value="5" min="1" max="50" style="width: 60px;">
+    </div>
     <div id="players-configs"></div>
-    <button onclick="startGame()">START</button>
+    <button onclick="startGame()">START ARÉNY</button>
 </div>
 
 <canvas id="gameCanvas" width="1100" height="500"></canvas>
@@ -29,104 +47,211 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const menu = document.getElementById('menu');
 
-const players = [
-    { id: 1, x: 100, y: 100, color: '#ff3333', up: 'w', down: 's', left: 'a', right: 'd', fire: 'q', lastDx: 1, lastDy: 0, hasDonut: true },
-    { id: 2, x: 1000, y: 100, color: '#33ff33', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', fire: 'm', lastDx: -1, lastDy: 0, hasDonut: true },
-    { id: 3, x: 100, y: 400, color: '#3333ff', up: 't', down: 'g', left: 'f', right: 'h', fire: 'r', lastDx: 1, lastDy: 0, hasDonut: true },
-    { id: 4, x: 1000, y: 400, color: '#ffff33', up: 'i', down: 'k', left: 'j', right: 'l', fire: 'u', lastDx: -1, lastDy: 0, hasDonut: true }
+let allPlayers = [
+    { id: 1, startX: 100, startY: 100, color: '#ff3333', team: 'A', up: 'w', down: 's', left: 'a', right: 'd', fire: 'q', lastDx: 1, lastDy: 0, hasDonut: true, isAlive: true },
+    { id: 2, startX: 1000, startY: 400, color: '#33ff33', team: 'B', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', fire: 'm', lastDx: -1, lastDy: 0, hasDonut: true, isAlive: true },
+    { id: 3, startX: 100, startY: 400, color: '#3333ff', team: 'A', up: 't', down: 'g', left: 'f', right: 'h', fire: 'r', lastDx: 1, lastDy: 0, hasDonut: true, isAlive: true },
+    { id: 4, startX: 1000, startY: 100, color: '#ffff33', team: 'B', up: 'i', down: 'k', left: 'j', right: 'l', fire: 'u', lastDx: -1, lastDy: 0, hasDonut: true, isAlive: true }
 ];
 
+let activePlayers = [];
 let donuts = [];
 let gameRunning = false;
-const keys = {};
+let roundOver = false;
+let gameOver = false;
+let winnerText = "";
+let teamScores = {};
+let targetScore = 5;
+let keys = {};
 
-function initMenu() {
+const obstacles = [
+    { x: 550, y: 250, r: 70 },
+    { x: 300, y: 100, r: 40 },
+    { x: 300, y: 400, r: 40 },
+    { x: 800, y: 100, r: 40 },
+    { x: 800, y: 400, r: 40 }
+];
+
+function formatKey(k) {
+    if (k === ' ') return 'SPC';
+    return k.replace('Arrow', '').toUpperCase().substring(0, 3);
+}
+
+function assignKey(pIndex, action, btn) {
+    btn.classList.add('active');
+    btn.innerText = '?';
+    
+    const listener = (e) => {
+        e.preventDefault();
+        allPlayers[pIndex][action] = e.key;
+        btn.innerText = formatKey(e.key);
+        btn.classList.remove('active');
+        window.removeEventListener('keydown', listener);
+    };
+    
+    window.addEventListener('keydown', listener);
+}
+
+function renderMenu() {
     const container = document.getElementById('players-configs');
-    players.forEach((p, i) => {
+    const count = parseInt(document.getElementById('playerCount').value);
+    container.innerHTML = '';
+    
+    for(let i = 0; i < count; i++) {
+        let p = allPlayers[i];
         container.innerHTML += `
             <div class="p-config">
-                <strong>Hráč ${p.id}</strong>
-                <input type="color" value="${p.color}" onchange="players[${i}].color = this.value">
-                <span><kbd>${p.fire.toUpperCase()}</kbd> = Hod</span>
+                <strong>H${p.id}</strong>
+                <input type="color" value="${p.color}" onchange="allPlayers[${i}].color = this.value">
+                <select onchange="allPlayers[${i}].team = this.value">
+                    <option value="A" ${p.team === 'A' ? 'selected' : ''}>Tým A</option>
+                    <option value="B" ${p.team === 'B' ? 'selected' : ''}>Tým B</option>
+                    <option value="C" ${p.team === 'C' ? 'selected' : ''}>Tým C</option>
+                    <option value="D" ${p.team === 'D' ? 'selected' : ''}>Tým D</option>
+                </select>
+                <div class="keybindings">
+                    <div class="key-label"><span>Hore</span><button class="key-btn" onclick="assignKey(${i}, 'up', this)">${formatKey(p.up)}</button></div>
+                    <div class="key-label"><span>Dole</span><button class="key-btn" onclick="assignKey(${i}, 'down', this)">${formatKey(p.down)}</button></div>
+                    <div class="key-label"><span>Levo</span><button class="key-btn" onclick="assignKey(${i}, 'left', this)">${formatKey(p.left)}</button></div>
+                    <div class="key-label"><span>Pravo</span><button class="key-btn" onclick="assignKey(${i}, 'right', this)">${formatKey(p.right)}</button></div>
+                    <div class="key-label"><span>Hod</span><button class="key-btn" onclick="assignKey(${i}, 'fire', this)">${formatKey(p.fire)}</button></div>
+                </div>
             </div>`;
-    });
+    }
 }
 
 window.addEventListener('keydown', e => {
     keys[e.key] = true;
-    players.forEach(p => {
-        if (e.key.toLowerCase() === p.fire.toLowerCase()) shootDonut(p);
-    });
+    if (gameRunning && !roundOver) {
+        activePlayers.forEach(p => {
+            if (p.isAlive && e.key === p.fire) shootDonut(p);
+        });
+    }
 });
 window.addEventListener('keyup', e => keys[e.key] = false);
 
 function shootDonut(p) {
     if (!p.hasDonut) return;
     p.hasDonut = false;
-    
-    donuts.push({
-        owner: p,
-        x: p.x,
-        y: p.y,
-        vx: p.lastDx * 12,
-        vy: p.lastDy * 12,
-        age: 0
+    donuts.push({ owner: p, x: p.x, y: p.y, vx: p.lastDx * 12, vy: p.lastDy * 12, age: 0 });
+}
+
+function checkRoundEnd() {
+    let aliveTeams = new Set();
+    activePlayers.forEach(p => {
+        if (p.isAlive) aliveTeams.add(p.team);
     });
+
+    if (aliveTeams.size <= 1) {
+        roundOver = true;
+        if (aliveTeams.size === 1) {
+            let winningTeam = [...aliveTeams][0];
+            teamScores[winningTeam] = (teamScores[winningTeam] || 0) + 1;
+            winnerText = `Kolo vyhrál Tým ${winningTeam}`;
+            
+            if (teamScores[winningTeam] >= targetScore) {
+                gameOver = true;
+                winnerText = `Konec hry! Vítěz: Tým ${winningTeam}`;
+            }
+        } else {
+            winnerText = "Remíza v tomto kole!";
+        }
+
+        setTimeout(() => {
+            if (gameOver) {
+                gameRunning = false;
+                menu.classList.remove('hidden');
+            } else {
+                startRound();
+            }
+        }, 2500);
+    }
 }
 
 function update() {
     if (!gameRunning) return;
 
-    players.forEach(p => {
-        let dx = 0;
-        let dy = 0;
+    if (!roundOver) {
+        activePlayers.forEach(p => {
+            if (!p.isAlive) return;
 
-        if (keys[p.up]) dy = -5;
-        if (keys[p.down]) dy = 5;
-        if (keys[p.left]) dx = -5;
-        if (keys[p.right]) dx = 5;
+            let dx = 0, dy = 0;
+            if (keys[p.up]) dy = -5;
+            if (keys[p.down]) dy = 5;
+            if (keys[p.left]) dx = -5;
+            if (keys[p.right]) dx = 5;
 
-        p.x += dx;
-        p.y += dy;
+            p.x += dx; p.y += dy;
 
-        if (dx !== 0 || dy !== 0) {
-            let length = Math.hypot(dx, dy);
-            p.lastDx = dx / length;
-            p.lastDy = dy / length;
-        }
-
-        p.x = Math.max(15, Math.min(canvas.width - 15, p.x));
-        p.y = Math.max(15, Math.min(canvas.height - 15, p.y));
-    });
-
-    for (let i = donuts.length - 1; i >= 0; i--) {
-        let d = donuts[i];
-        d.x += d.vx;
-        d.y += d.vy;
-        d.age++;
-
-        if (d.x <= 10 || d.x >= canvas.width - 10) d.vx *= -1;
-        if (d.y <= 10 || d.y >= canvas.height - 10) d.vy *= -1;
-
-        const distToOwner = Math.hypot(d.x - d.owner.x, d.y - d.owner.y);
-        if (d.age > 15 && distToOwner < 25) {
-            d.owner.hasDonut = true;
-            donuts.splice(i, 1);
-            continue;
-        }
-
-        players.forEach(p => {
-            if (p !== d.owner) {
-                if (Math.hypot(d.x - p.x, d.y - p.y) < 20) {
-                    p.x = Math.random() * (canvas.width - 100) + 50;
-                    p.y = Math.random() * (canvas.height - 100) + 50;
-                }
+            if (dx !== 0 || dy !== 0) {
+                let len = Math.hypot(dx, dy);
+                p.lastDx = dx / len; p.lastDy = dy / len;
             }
+
+            p.x = Math.max(15, Math.min(canvas.width - 15, p.x));
+            p.y = Math.max(15, Math.min(canvas.height - 15, p.y));
+
+            obstacles.forEach(obs => {
+                let distX = p.x - obs.x;
+                let distY = p.y - obs.y;
+                let dist = Math.hypot(distX, distY);
+                if (dist < obs.r + 15) {
+                    let overlap = (obs.r + 15) - dist;
+                    p.x += (distX / dist) * overlap;
+                    p.y += (distY / dist) * overlap;
+                }
+            });
         });
+
+        for (let i = donuts.length - 1; i >= 0; i--) {
+            let d = donuts[i];
+            d.x += d.vx; d.y += d.vy; d.age++;
+
+            if (d.x <= 10 || d.x >= canvas.width - 10) d.vx *= -1;
+            if (d.y <= 10 || d.y >= canvas.height - 10) d.vy *= -1;
+
+            obstacles.forEach(obs => {
+                let distX = d.x - obs.x;
+                let distY = d.y - obs.y;
+                let dist = Math.hypot(distX, distY);
+                
+                if (dist < obs.r + 10) {
+                    let overlap = (obs.r + 10) - dist;
+                    let nx = distX / dist;
+                    let ny = distY / dist;
+                    
+                    d.x += nx * overlap;
+                    d.y += ny * overlap;
+                    
+                    let dotProduct = d.vx * nx + d.vy * ny;
+                    d.vx -= 2 * dotProduct * nx;
+                    d.vy -= 2 * dotProduct * ny;
+                }
+            });
+
+            const distToOwner = Math.hypot(d.x - d.owner.x, d.y - d.owner.y);
+            if (d.age > 15 && distToOwner < 25 && d.owner.isAlive) {
+                d.owner.hasDonut = true;
+                donuts.splice(i, 1);
+                continue;
+            }
+
+            activePlayers.forEach(p => {
+                if (!p.isAlive) return;
+                if (p !== d.owner && p.team !== d.owner.team) {
+                    if (Math.hypot(d.x - p.x, d.y - p.y) < 20) {
+                        p.isAlive = false;
+                        d.owner.hasDonut = true; 
+                        donuts.splice(i, 1);
+                        checkRoundEnd();
+                    }
+                }
+            });
+        }
     }
 
     draw();
-    requestAnimationFrame(update);
+    if (gameRunning) requestAnimationFrame(update);
 }
 
 function draw() {
@@ -137,11 +262,28 @@ function draw() {
     for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
     for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
 
-    players.forEach(p => {
+    obstacles.forEach(obs => {
+        ctx.fillStyle = '#222';
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(obs.x, obs.y, obs.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    });
+
+    activePlayers.forEach(p => {
+        if (!p.isAlive) return;
+        
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.fillStyle = 'white';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.team, p.x, p.y - 20);
 
         if (p.hasDonut) {
             ctx.strokeStyle = 'white';
@@ -166,15 +308,63 @@ function draw() {
         ctx.arc(d.x, d.y, 3, 0, Math.PI * 2);
         ctx.stroke();
     });
+
+    // Vykreslení skóre
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, 40);
+    ctx.fillStyle = 'white';
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'center';
+    let scoreText = `Cíl: ${targetScore} | Skóre: `;
+    let scoreParts = [];
+    for (let team in teamScores) {
+        scoreParts.push(`Tým ${team}: ${teamScores[team]}`);
+    }
+    ctx.fillText(scoreText + (scoreParts.length > 0 ? scoreParts.join(' - ') : '0 - 0'), canvas.width / 2, 28);
+
+    if (roundOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(0, canvas.height/2 - 60, canvas.width, 120);
+        ctx.fillStyle = 'white';
+        ctx.font = '40px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(winnerText, canvas.width / 2, canvas.height / 2 + 15);
+    }
+}
+
+function startRound() {
+    roundOver = false;
+    winnerText = "";
+    donuts = [];
+    
+    activePlayers.forEach(p => {
+        p.x = p.startX;
+        p.y = p.startY;
+        p.isAlive = true;
+        p.hasDonut = true;
+    });
 }
 
 function startGame() {
+    keys = {}; 
+    const count = parseInt(document.getElementById('playerCount').value);
+    targetScore = parseInt(document.getElementById('targetScore').value) || 5;
+    activePlayers = allPlayers.slice(0, count);
+    
+    teamScores = {};
+    activePlayers.forEach(p => {
+        teamScores[p.team] = 0;
+    });
+    
+    gameOver = false;
+    startRound();
+    
     menu.classList.add('hidden');
     gameRunning = true;
     update();
 }
 
-initMenu();
+renderMenu();
 </script>
 </body>
 </html>
