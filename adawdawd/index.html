@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Můj Herní Svět</title>
+    <style>
+        body { margin: 0; font-family: 'Poppins', sans-serif; background: #0f172a; color: white; }
+        header { text-align: center; padding: 50px 20px; background: linear-gradient(to bottom, #1e293b, #0f172a); }
+        h1 { font-size: 3rem; margin: 0; color: #38bdf8; text-transform: uppercase; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; padding: 40px; max-width: 1200px; margin: 0 auto; }
+        
+        /* Karta hry */
+        .game-card { background: #1e293b; border-radius: 15px; overflow: hidden; border: 1px solid #334155; transition: transform 0.3s, border-color 0.3s; cursor: pointer; text-decoration: none; color: white; }
+        .game-card:hover { transform: translateY(-10px); border-color: #38bdf8; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2); }
+        
+        .thumbnail { width: 100%; height: 160px; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+        .info { padding: 20px; }
+        .info h3 { margin: 0 0 10px 0; color: #38bdf8; }
+        .info p { font-size: 0.9rem; color: #94a3b8; line-height: 1.5; }
+        
+        .badge { display: inline-block; padding: 4px 10px; background: #0ea5e9; border-radius: 5px; font-size: 0.7rem; font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>MY GAMES HUB</h1>
+        <p>Moje sbírka HTML5 her vytvořených pro GitHub</p>
+    </header>
+
+    <div class="container">
+        <a href="worms/index.html" class="game-card">
+            <div class="thumbnail">🪱</div>
+            <div class="info">
+                <span class="badge">AKČNÍ</span>
+                <h3>Worms Deluxe</h3>
+                <p>Znič nepřítele dřív, než on zničí tebe. Destruktivní terén a fyzika v prohlížeči.</p>
+            </div>
+        </a>
+
+        <a href="#" class="game-card" style="opacity: 0.6; cursor: default;">
+            <div class="thumbnail">🕹️</div>
+            <div class="info">
+                <span class="badge">PŘIPRAVUJEME</span>
+                <h3>Další pecka...</h3>
+                <p>Pracuji na další hře. Už brzy zde najdeš něco nového!</p>
+            </div>
+        </a>
+    </div>
+
+</body>
+</html>
