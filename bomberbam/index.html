@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Bomberman Web</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #f1f1f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        #menu-container, #game-container {
+            background-color: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+            max-width: 800px;
+            position: relative;
+        }
+
+        #game-container {
+            display: none;
+            text-align: center;
+        }
+
+        h1, h2 { margin-top: 0; color: #e74c3c; text-align: center; }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .player-setup {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+        
+        .player-setup h3 { grid-column: span 2; margin: 0 0 10px 0; color: #fff; font-size: 1em; }
+
+        .setting-group { display: flex; flex-direction: column; }
+        .setting-group label { margin-bottom: 2px; font-size: 0.85em; color: #ccc;}
+        .setting-group input {
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background: #222;
+            color: white;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .legend {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        .legend ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .legend li { display: flex; align-items: center; }
+        .legend .dot { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid #fff; }
+
+        button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover { background-color: #c0392b; }
+        canvas { background-color: #4a752c; border: 4px solid #333; margin-top: 15px; }
+
+        #game-over-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            border-radius: 10px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="menu-container">
+        <h1>BOMBERMAN</h1>
+        
+        <div class="legend">
+            <h3 style="margin-top:0; color:#fff;">Legenda Upgradů:</h3>
+            <ul>
+                <li><span class="dot" style="background:#000;"></span> +1 Bomba navíc</li>
+                <li><span class="dot" style="background:#ff4500;"></span> +1 Dosah výbuchu</li>
+                <li><span class="dot" style="background:#1e90ff;"></span> + Rychlost pohybu</li>
+                <li><span class="dot" style="background:#00ced1;"></span> Štít (absorbuje 1 hit)</li>
+            </ul>
+        </div>
+
+        <div class="settings-grid" style="margin-bottom: 10px;">
+            <div class="setting-group">
+                <label for="mapSize">Velikost mapy (např. 15):</label>
+                <input type="number" id="mapSize" value="15" min="9" max="64" step="2">
+            </div>
+            <div class="setting-group">
+                <label for="playerCount">Počet hráčů (1-4):</label>
+                <input type="number" id="playerCount" value="4" min="1" max="4" onchange="updatePlayerVisibility()">
+            </div>
+        </div>
+
+        <div class="settings-grid" id="players-grid">
+            <div class="player-setup" id="p1-setup">
+                <h3>Hráč 1</h3>
+                <div class="setting-group"><label>Barva</label><input type="color" id="p1-color" value="#ff0000"></div>
+                <div class="setting-group"><label>Nahoru</label><input type="text" id="p1-up" value="w" maxlength="10"></div>
+                <div class="setting-group"><label>Dolu</label><input type="text" id="p1-down" value="s" maxlength="10"></div>
+                <div class="setting-group"><label>Doleva</label><input type="text" id="p1-left" value="a" maxlength="10"></div>
+                <div class="setting-group"><label>Doprava</label><input type="text" id="p1-right" value="d" maxlength="10"></div>
+                <div class="setting-group"><label>Bomba</label><input type="text" id="p1-bomb" value=" " maxlength="10"></div>
+            </div>
+            <div class="player-setup" id="p2-setup">
+                <h3>Hráč 2</h3>
+                <div class="setting-group"><label>Barva</label><input type="color" id="p2-color" value="#0000ff"></div>
+                <div class="setting-group"><label>Nahoru</label><input type="text" id="p2-up" value="arrowup" maxlength="10"></div>
+                <div class="setting-group"><label>Dolu</label><input type="text" id="p2-down" value="arrowdown" maxlength="10"></div>
+                <div class="setting-group"><label>Doleva</label><input type="text" id="p2-left" value="arrowleft" maxlength="10"></div>
+                <div class="setting-group"><label>Doprava</label><input type="text" id="p2-right" value="arrowright" maxlength="10"></div>
+                <div class="setting-group"><label>Bomba</label><input type="text" id="p2-bomb" value="enter" maxlength="10"></div>
+            </div>
+            <div class="player-setup" id="p3-setup">
+                <h3>Hráč 3</h3>
+                <div class="setting-group"><label>Barva</label><input type="color" id="p3-color" value="#2ecc71"></div>
+                <div class="setting-group"><label>Nahoru</label><input type="text" id="p3-up" value="i" maxlength="10"></div>
+                <div class="setting-group"><label>Dolu</label><input type="text" id="p3-down" value="k" maxlength="10"></div>
+                <div class="setting-group"><label>Doleva</label><input type="text" id="p3-left" value="j" maxlength="10"></div>
+                <div class="setting-group"><label>Doprava</label><input type="text" id="p3-right" value="l" maxlength="10"></div>
+                <div class="setting-group"><label>Bomba</label><input type="text" id="p3-bomb" value="o" maxlength="10"></div>
+            </div>
+            <div class="player-setup" id="p4-setup">
+                <h3>Hráč 4</h3>
+                <div class="setting-group"><label>Barva</label><input type="color" id="p4-color" value="#f1c40f"></div>
+                <div class="setting-group"><label>Nahoru</label><input type="text" id="p4-up" value="numpad8" maxlength="10"></div>
+                <div class="setting-group"><label>Dolu</label><input type="text" id="p4-down" value="numpad5" maxlength="10"></div>
+                <div class="setting-group"><label>Doleva</label><input type="text" id="p4-left" value="numpad4" maxlength="10"></div>
+                <div class="setting-group"><label>Doprava</label><input type="text" id="p4-right" value="numpad6" maxlength="10"></div>
+                <div class="setting-group"><label>Bomba</label><input type="text" id="p4-bomb" value="numpad0" maxlength="10"></div>
+            </div>
+        </div>
+
+        <button onclick="startGame()">Spustit Hru</button>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="game-over-overlay">
+            <h1 id="winner-text" style="font-size: 3em; margin-bottom: 20px;"></h1>
+            <button onclick="returnToMenu()" style="width: 200px;">Zpět do menu</button>
+        </div>
+    </div>
+
+    <script>
+        let canvas, ctx;
+        let mapSize, tileSize, playerCount;
+        let map = [];
+        let players = [];
+        let bombs = [];
+        let explosions = [];
+        let items = [];
+        let animationId;
+        let gameOver = false;
+        const activeKeys = {};
+
+        const ITEM_TYPES = ['bomb', 'range', 'speed', 'shield'];
+
+        window.addEventListener('keydown', e => {
+            let key = e.key.toLowerCase();
+            activeKeys[key] = true;
+            if([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) e.preventDefault();
+
+            if (!gameOver) {
+                players.forEach(p => {
+                    if (key === p.controls.bomb && !e.repeat && !p.dead) {
+                        p.placeBomb();
+                    }
+                });
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            activeKeys[e.key.toLowerCase()] = false;
+        });
+
+        function updatePlayerVisibility() {
+            let count = parseInt(document.getElementById('playerCount').value);
+            for(let i = 1; i <= 4; i++) {
+                document.getElementById(`p${i}-setup`).style.display = i <= count ? 'grid' : 'none';
+            }
+        }
+        updatePlayerVisibility();
+
+        class Bomb {
+            constructor(x, y, player) {
+                this.x = x;
+                this.y = y;
+                this.player = player;
+                this.timer = 150; 
+                this.exploded = false;
+                this.damage = player.damage;
+            }
+
+            update() {
+                this.timer--;
+                if (explosions.some(e => e.x === this.x && e.y === this.y)) {
+                    this.timer = 0;
+                }
+                
+                if (this.timer <= 0 && !this.exploded) {
+                    this.explode();
+                }
+            }
+
+            explode() {
+                this.exploded = true;
+                this.player.activeBombs--;
+                createExplosion(this.x, this.y, this.player.bombRange, this.damage);
+            }
+
+            draw(ctx) {
+                let px = this.x * tileSize;
+                let py = this.y * tileSize;
+                
+                let scale = 1 + Math.sin(this.timer * 0.1) * 0.1;
+                let size = (tileSize * 0.8) * scale;
+                let offset = (tileSize - size) / 2;
+
+                ctx.fillStyle = '#111';
+                ctx.beginPath();
+                ctx.arc(px + tileSize/2, py + tileSize/2, size/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = this.timer % 20 < 10 ? '#ff0000' : '#ffff00';
+                ctx.fillRect(px + tileSize/2 - 2, py + tileSize/2 - 2, 4, 4);
+            }
+        }
+
+        class Explosion {
+            constructor(x, y, damage) {
+                this.x = x;
+                this.y = y;
+                this.timer = 30;
+                this.damage = damage;
+            }
+            update() { this.timer--; }
+            draw(ctx) {
+                ctx.fillStyle = `rgba(255, ${Math.random() * 150 + 50}, 0, ${this.timer / 30})`;
+                ctx.fillRect(this.x * tileSize, this.y * tileSize, tileSize, tileSize);
+            }
+        }
+
+        function createExplosion(startX, startY, range, damage) {
+            explosions.push(new Explosion(startX, startY, damage));
+            checkItemDestruction(startX, startY);
+            
+            const dirs = [{x:1,y:0}, {x:-1,y:0}, {x:0,y:1}, {x:0,y:-1}];
+            
+            dirs.forEach(dir => {
+                for (let i = 1; i <= range; i++) {
+                    let ex = startX + (dir.x * i);
+                    let ey = startY + (dir.y * i);
+
+                    if (ex < 0 || ex >= mapSize || ey < 0 || ey >= mapSize) break;
+                    if (map[ey][ex] === 1) break;
+
+                    if (map[ey][ex] === 2) {
+                        map[ey][ex] = 0; 
+                        
+                        if (Math.random() < 0.4) { 
+                            let type = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
+                            items.push({x: ex, y: ey, type: type});
+                        }
+                        
+                        explosions.push(new Explosion(ex, ey, damage));
+                        break; 
+                    }
+
+                    checkItemDestruction(ex, ey);
+                    explosions.push(new Explosion(ex, ey, damage));
+                }
+            });
+        }
+
+        function checkItemDestruction(x, y) {
+            let itemIdx = items.findIndex(i => i.x === x && i.y === y);
+            if (itemIdx !== -1) items.splice(itemIdx, 1);
+        }
+
+        function drawItems(ctx) {
+            items.forEach(item => {
+                let px = item.x * tileSize;
+                let py = item.y * tileSize;
+                let cx = px + tileSize / 2;
+                let cy = py + tileSize / 2;
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, tileSize / 3, 0, Math.PI * 2);
+                
+                if (item.type === 'bomb') ctx.fillStyle = '#000';
+                else if (item.type === 'range') ctx.fillStyle = '#ff4500';
+                else if (item.type === 'speed') ctx.fillStyle = '#1e90ff';
+                else if (item.type === 'shield') ctx.fillStyle = '#00ced1';
+                
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+
+        class Player {
+            constructor(id, startX, startY, color, controls) {
+                this.id = id;
+                this.color = color;
+                this.controls = controls;
+                
+                this.pixelX = startX * tileSize;
+                this.pixelY = startY * tileSize;
+                this.size = tileSize - 8;
+                this.offset = 4;
+                
+                this.speed = 3;
+                this.maxBombs = 1;
+                this.activeBombs = 0;
+                this.bombRange = 1; 
+                this.damage = 1; 
+                this.lives = 3; 
+                
+                this.hasShield = false;
+                this.dead = false;
+                this.invulnerable = 0;
+            }
+
+            update() {
+                if (this.dead) return;
+
+                if (this.invulnerable > 0) this.invulnerable--;
+
+                let dx = 0;
+                let dy = 0;
+
+                if (activeKeys[this.controls.up]) dy -= this.speed;
+                if (activeKeys[this.controls.down]) dy += this.speed;
+                if (activeKeys[this.controls.left]) dx -= this.speed;
+                if (activeKeys[this.controls.right]) dx += this.speed;
+
+                if (dx !== 0 || dy !== 0) this.move(dx, dy);
+
+                let centerX = this.pixelX + tileSize / 2;
+                let centerY = this.pixelY + tileSize / 2;
+                let gridX = Math.floor(centerX / tileSize);
+                let gridY = Math.floor(centerY / tileSize);
+
+                let itemIdx = items.findIndex(i => i.x === gridX && i.y === gridY);
+                if (itemIdx !== -1) {
+                    let type = items[itemIdx].type;
+                    if (type === 'bomb') this.maxBombs++;
+                    else if (type === 'range') this.bombRange++;
+                    else if (type === 'speed') this.speed = Math.min(this.speed + 1, 6);
+                    else if (type === 'shield') this.hasShield = true;
+                    
+                    items.splice(itemIdx, 1);
+                }
+
+                if (this.invulnerable === 0) {
+                    let hitExplosion = explosions.find(e => e.x === gridX && e.y === gridY);
+                    if (hitExplosion) {
+                        if (this.hasShield) {
+                            this.hasShield = false;
+                            this.invulnerable = 60; 
+                        } else {
+                            this.lives -= hitExplosion.damage;
+                            this.invulnerable = 60;
+                            if (this.lives <= 0) {
+                                this.dead = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            move(dx, dy) {
+                if (dx !== 0) {
+                    let newX = this.pixelX + dx;
+                    if (!this.checkCollision(newX, this.pixelY)) this.pixelX = newX;
+                }
+                if (dy !== 0) {
+                    let newY = this.pixelY + dy;
+                    if (!this.checkCollision(this.pixelX, newY)) this.pixelY = newY;
+                }
+            }
+
+            checkCollision(newX, newY) {
+                let left = Math.floor((newX + this.offset) / tileSize);
+                let right = Math.floor((newX + this.offset + this.size - 0.1) / tileSize);
+                let top = Math.floor((newY + this.offset) / tileSize);
+                let bottom = Math.floor((newY + this.offset + this.size - 0.1) / tileSize);
+
+                if (left < 0 || right >= mapSize || top < 0 || bottom >= mapSize) return true;
+
+                if (map[top][left] !== 0 || map[top][right] !== 0 || 
+                    map[bottom][left] !== 0 || map[bottom][right] !== 0) {
+                    return true;
+                }
+                return false;
+            }
+
+            placeBomb() {
+                let centerX = this.pixelX + (tileSize / 2);
+                let centerY = this.pixelY + (tileSize / 2);
+                let gridX = Math.floor(centerX / tileSize);
+                let gridY = Math.floor(centerY / tileSize);
+
+                if (this.activeBombs < this.maxBombs) {
+                    let hasBomb = bombs.some(b => b.x === gridX && b.y === gridY);
+                    if (!hasBomb) {
+                        bombs.push(new Bomb(gridX, gridY, this));
+                        this.activeBombs++;
+                    }
+                }
+            }
+
+            draw(ctx) {
+                if (this.dead) return;
+                
+                if (this.invulnerable > 0 && Math.floor(Date.now() / 100) % 2 === 0) return;
+
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.pixelX + this.offset, this.pixelY + this.offset, this.size, this.size);
+
+                if (this.hasShield) {
+                    ctx.strokeStyle = '#00ced1';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(this.pixelX + this.offset - 2, this.pixelY + this.offset - 2, this.size + 4, this.size + 4);
+                }
+
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 14px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("❤️ " + this.lives, this.pixelX + tileSize/2, this.pixelY - 2);
+            }
+        }
+
+        function startGame() {
+            mapSize = parseInt(document.getElementById('mapSize').value);
+            if (mapSize % 2 === 0) mapSize++; 
+            playerCount = parseInt(document.getElementById('playerCount').value);
+            
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            tileSize = Math.floor(800 / mapSize); 
+            canvas.width = mapSize * tileSize;
+            canvas.height = mapSize * tileSize;
+
+            document.getElementById('menu-container').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+            document.getElementById('game-over-overlay').style.display = 'none';
+
+            gameOver = false;
+            bombs = [];
+            explosions = [];
+            items = [];
+            generateMap();
+            spawnPlayers();
+            gameLoop();
+        }
+
+        function returnToMenu() {
+            cancelAnimationFrame(animationId);
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('menu-container').style.display = 'block';
+        }
+
+        function generateMap() {
+            map = [];
+            for (let y = 0; y < mapSize; y++) {
+                let row = [];
+                for (let x = 0; x < mapSize; x++) {
+                    if (x % 2 !== 0 && y % 2 !== 0) {
+                        row.push(1);
+                    } else {
+                        row.push(Math.random() < 0.6 ? 2 : 0);
+                    }
+                }
+                map.push(row);
+            }
+            clearSpawnAreas();
+        }
+
+        function clearSpawnAreas() {
+            const spawns = [
+                [{x:0,y:0}, {x:1,y:0}, {x:0,y:1}],
+                [{x:mapSize-1,y:mapSize-1}, {x:mapSize-2,y:mapSize-1}, {x:mapSize-1,y:mapSize-2}],
+                [{x:0,y:mapSize-1}, {x:1,y:mapSize-1}, {x:0,y:mapSize-2}],
+                [{x:mapSize-1,y:0}, {x:mapSize-2,y:0}, {x:mapSize-1,y:1}]
+            ];
+
+            for(let i = 0; i < playerCount; i++) {
+                spawns[i].forEach(pos => {
+                    map[pos.y][pos.x] = 0;
+                });
+            }
+        }
+
+        function spawnPlayers() {
+            players = [];
+            const startPositions = [
+                {x: 0, y: 0},
+                {x: mapSize-1, y: mapSize-1},
+                {x: 0, y: mapSize-1},
+                {x: mapSize-1, y: 0}
+            ];
+
+            for (let i = 1; i <= playerCount; i++) {
+                let color = document.getElementById(`p${i}-color`).value;
+                let controls = {
+                    up: document.getElementById(`p${i}-up`).value.toLowerCase(),
+                    down: document.getElementById(`p${i}-down`).value.toLowerCase(),
+                    left: document.getElementById(`p${i}-left`).value.toLowerCase(),
+                    right: document.getElementById(`p${i}-right`).value.toLowerCase(),
+                    bomb: document.getElementById(`p${i}-bomb`).value.toLowerCase()
+                };
+                players.push(new Player(i, startPositions[i-1].x, startPositions[i-1].y, color, controls));
+            }
+        }
+
+        function drawMap() {
+            for (let y = 0; y < mapSize; y++) {
+                for (let x = 0; x < mapSize; x++) {
+                    if (map[y][x] === 1) {
+                        ctx.fillStyle = '#666';
+                        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                    } else if (map[y][x] === 2) {
+                        ctx.fillStyle = '#8B4513';
+                        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                        ctx.strokeStyle = '#5c2e0b';
+                        ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                    }
+                }
+            }
+        }
+
+        function checkWinCondition() {
+            if (playerCount > 1) {
+                let alivePlayers = players.filter(p => !p.dead);
+                if (alivePlayers.length <= 1) {
+                    gameOver = true;
+                    let title = document.getElementById('winner-text');
+                    if (alivePlayers.length === 1) {
+                        title.innerText = `Vyhrál Hráč ${alivePlayers[0].id}!`;
+                        title.style.color = alivePlayers[0].color;
+                    } else {
+                        title.innerText = "Remíza!";
+                        title.style.color = "#fff";
+                    }
+                    document.getElementById('game-over-overlay').style.display = 'flex';
+                }
+            }
+        }
+
+        function gameLoop() {
+            if (gameOver) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            players.forEach(player => player.update());
+            
+            bombs.forEach(bomb => bomb.update());
+            bombs = bombs.filter(bomb => !bomb.exploded);
+
+            explosions.forEach(exp => exp.update());
+            explosions = explosions.filter(exp => exp.timer > 0);
+
+            drawMap();
+            drawItems(ctx);
+            
+            bombs.forEach(bomb => bomb.draw(ctx));
+            explosions.forEach(exp => exp.draw(ctx));
+            players.forEach(player => player.draw(ctx));
+
+            checkWinCondition();
+
+            if (!gameOver) {
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>
