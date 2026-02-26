@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Worms Deluxe Edition</title>
+    <style>
+        body { margin: 0; background: #0f172a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        #menu { background: #1e293b; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; border: 1px solid #334155; }
+        h1 { margin-top: 0; color: #38bdf8; text-transform: uppercase; letter-spacing: 2px; }
+        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        button { padding: 12px 24px; font-size: 14px; cursor: pointer; background: #38bdf8; border: none; border-radius: 8px; font-weight: bold; color: #0f172a; transition: all 0.2s; }
+        button:hover { background: #7dd3fc; transform: translateY(-2px); }
+        
+        #gameContainer { display: none; position: relative; }
+        canvas { border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); cursor: crosshair; }
+        
+        .hud { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; }
+        .stat-box { background: rgba(15, 23, 42, 0.8); padding: 10px 20px; border-radius: 10px; border: 1px solid #38bdf8; backdrop-filter: blur(5px); }
+        .power-wrapper { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 300px; text-align: center; }
+        .power-bg { width: 100%; height: 12px; background: rgba(0,0,0,0.5); border-radius: 6px; border: 2px solid #fff; overflow: hidden; }
+        #powerBar { height: 100%; width: 0%; background: linear-gradient(90deg, #22c55e, #eab308, #ef4444); }
+    </style>
+</head>
+<body>
+
+    <div id="menu">
+        <h1>WORMS HTML5</h1>
+        <p>Znič nepřítele dřív, než on zničí tebe!</p>
+        <div class="btn-group">
+            <button onclick="startGame(800, 500)">MALÁ MAPA</button>
+            <button onclick="startGame(1200, 700)">VELKÁ MAPA</button>
+        </div>
+    </div>
+
+    <div id="gameContainer">
+        <div class="hud">
+            <div class="stat-box">HRÁČ: <span id="turnDisplay" style="color: #38bdf8">1</span></div>
+            <div class="stat-box">PALIVO: <span id="moveDisplay" style="color: #fbbf24">50</span>m</div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="power-wrapper" id="powerUI" style="display:none">
+            <div style="margin-bottom: 5px; font-size: 12px; font-weight: bold;">SÍLA VÝSTŘELU</div>
+            <div class="power-bg"><div id="powerBar"></div></div>
+        </div>
+    </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const powerBar = document.getElementById('powerBar');
+const moveDisplay = document.getElementById('moveDisplay');
+const turnDisplay = document.getElementById('turnDisplay');
+
+let terrain = [];
+let worms = [];
+let particles = [];
+let projectile = null;
+let currentPlayer = 0;
+let isCharging = false;
+let chargePower = 0;
+let moveLeft = 50;
+let keys = {};
+let mousePos = { x: 0, y: 0 };
+
+window.onkeydown = (e) => keys[e.code] = true;
+window.onkeyup = (e) => keys[e.code] = false;
+canvas.onmousemove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mousePos.x = e.clientX - rect.left;
+    mousePos.y = e.clientY - rect.top;
+};
+
+function startGame(w, h) {
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'block';
+    document.getElementById('powerUI').style.display = 'block';
+    canvas.width = w;
+    canvas.height = h;
+    initGame();
+    draw();
+}
+
+function initGame() {
+    let height = canvas.height * 0.7;
+    for (let x = 0; x < canvas.width; x++) {
+        height += (Math.random() - 0.5) * 6;
+        terrain[x] = Math.min(Math.max(height, canvas.height * 0.4), canvas.height * 0.85);
+    }
+    worms = [
+        { x: 100, y: 0, color: '#ff5e57', hp: 100, name: "Hráč 1" },
+        { x: canvas.width - 100, y: 0, color: '#1dd1a1', hp: 100, name: "Hráč 2" }
+    ];
+}
+
+function createExplosion(x, y) {
+    for (let i = 0; i < 20; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+            life: 1.0,
+            color: Math.random() > 0.5 ? '#ff9f43' : '#ff5e57'
+        });
+    }
+}
+
+function update() {
+    if (projectile) return;
+    let worm = worms[currentPlayer];
+    if (moveLeft > 0) {
+        if (keys['KeyA'] && worm.x > 15) { worm.x -= 1.5; moveLeft -= 1.5; }
+        if (keys['KeyD'] && worm.x < canvas.width - 15) { worm.x += 1.5; moveLeft -= 1.5; }
+        moveDisplay.innerText = Math.max(0, Math.floor(moveLeft));
+    }
+    worms.forEach(w => {
+        let tx = Math.floor(w.x);
+        if (w.y < terrain[tx] - 8) w.y += 3;
+        else w.y = terrain[tx] - 8;
+    });
+}
+
+function explode(ex, ey, radius) {
+    createExplosion(ex, ey);
+    for (let x = Math.floor(ex - radius); x < ex + radius; x++) {
+        if (x >= 0 && x < canvas.width) {
+            let dist = Math.abs(x - ex);
+            let depth = Math.sqrt(Math.max(0, Math.pow(radius, 2) - Math.pow(dist, 2)));
+            if (ey + depth > terrain[x]) terrain[x] = Math.max(terrain[x], ey + depth);
+        }
+    }
+    worms.forEach(w => {
+        let d = Math.hypot(w.x - ex, w.y - ey);
+        if (d < radius + 15) w.hp -= (radius - d + 20);
+    });
+    nextTurn();
+}
+
+function nextTurn() {
+    currentPlayer = (currentPlayer + 1) % 2;
+    moveLeft = 50;
+    turnDisplay.innerText = currentPlayer + 1;
+}
+
+canvas.onmousedown = () => { if (!projectile) isCharging = true; };
+canvas.onmouseup = () => {
+    if (!isCharging) return;
+    isCharging = false;
+    const worm = worms[currentPlayer];
+    const angle = Math.atan2(mousePos.y - worm.y, mousePos.x - worm.x);
+    projectile = {
+        x: worm.x, y: worm.y - 10,
+        vx: Math.cos(angle) * (chargePower / 5),
+        vy: Math.sin(angle) * (chargePower / 5)
+    };
+    chargePower = 0;
+    powerBar.style.width = '0%';
+};
+
+function draw() {
+    // 1. Obloha
+    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, '#0c4a6e');
+    skyGrad.addColorStop(1, '#38bdf8');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    update();
+
+    // 2. Terén s trávou
+    ctx.fillStyle = '#1e293b'; // Barva hlíny
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height);
+    for (let x = 0; x < canvas.width; x++) ctx.lineTo(x, terrain[x]);
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.fill();
+
+    // Travnatý okraj
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let x = 0; x < canvas.width; x++) ctx.lineTo(x, terrain[x] + 2);
+    ctx.stroke();
+
+    // 3. Červi
+    worms.forEach((w, i) => {
+        if (w.hp <= 0) return;
+        
+        // Tělo červa (zakulacené)
+        ctx.fillStyle = w.color;
+        ctx.beginPath();
+        ctx.ellipse(w.x, w.y - 5, 10, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Oči
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(w.x + (i===0?4:-4), w.y - 8, 3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(w.x + (i===0?5:-3), w.y - 8, 1.5, 0, Math.PI*2);
+        ctx.fill();
+
+        // HP Bar nad červem
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(w.x - 15, w.y - 25, 30, 4);
+        ctx.fillStyle = w.hp > 30 ? "#22c55e" : "#ef4444";
+        ctx.fillRect(w.x - 15, w.y - 25, (w.hp/100) * 30, 4);
+
+        if (i === currentPlayer && !projectile) {
+            ctx.strokeStyle = "rgba(255,255,255,0.5)";
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(w.x - 15, w.y - 35, 30, 40);
+            ctx.setLineDash([]);
+        }
+    });
+
+    // 4. Predikce trajektorie
+    if (isCharging && !projectile) {
+        const worm = worms[currentPlayer];
+        const angle = Math.atan2(mousePos.y - worm.y, mousePos.x - worm.x);
+        let sx = worm.x, sy = worm.y - 10, svx = Math.cos(angle) * (chargePower / 5), svy = Math.sin(angle) * (chargePower / 5);
+        ctx.fillStyle = "white";
+        for (let i = 0; i < 12; i++) {
+            sx += svx * 2; sy += svy * 2; svy += 0.2;
+            ctx.beginPath(); ctx.arc(sx, sy, 1.5 + (i/10), 0, Math.PI*2); ctx.fill();
+        }
+    }
+
+    // 5. Projektil (Bomba)
+    if (projectile) {
+        projectile.x += projectile.vx;
+        projectile.y += projectile.vy;
+        projectile.vy += 0.2;
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(projectile.x, projectile.y, 5, 0, Math.PI*2); ctx.fill();
+        // Záblesk na bombě
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(projectile.x - 1, projectile.y - 1, 1.5, 0, Math.PI*2); ctx.fill();
+
+        let tx = Math.floor(projectile.x);
+        if (tx < 0 || tx >= canvas.width || projectile.y > canvas.height) {
+            projectile = null; nextTurn();
+        } else if (projectile.y >= terrain[tx]) {
+            explode(projectile.x, projectile.y, 40);
+            projectile = null;
+        }
+    }
+
+    // 6. Částice výbuchu
+    particles.forEach((p, index) => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.02;
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 3, 3);
+        if (p.life <= 0) particles.splice(index, 1);
+    });
+    ctx.globalAlpha = 1;
+
+    if (isCharging) {
+        chargePower = Math.min(chargePower + 1.2, 100);
+        powerBar.style.width = chargePower + '%';
+    }
+
+    requestAnimationFrame(draw);
+}
+</script>
+</body>
+</html>

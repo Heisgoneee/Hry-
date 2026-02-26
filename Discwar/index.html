@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Donut Tron Arena</title>
+    <style>
+        body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        #menu { position: absolute; top: 50px; background: rgba(20,20,20,0.95); padding: 30px; border: 3px solid #444; border-radius: 15px; z-index: 10; width: 400px; }
+        canvas { background: #000; border: 4px solid #333; margin-top: 20px; box-shadow: 0 0 30px rgba(0,255,255,0.1); }
+        .p-config { display: grid; grid-template-columns: 80px 1fr 100px; gap: 10px; margin-bottom: 15px; align-items: center; background: #222; padding: 10px; border-radius: 8px; }
+        button { width: 100%; padding: 15px; font-weight: bold; background: #0088ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; }
+        button:hover { background: #00aaff; }
+        .hidden { display: none !important; }
+        kbd { background: #444; padding: 2px 5px; border-radius: 4px; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+<div id="menu">
+    <h2 style="text-align:center">Donut Arena</h2>
+    <div id="players-configs"></div>
+    <button onclick="startGame()">START</button>
+</div>
+
+<canvas id="gameCanvas" width="1100" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const menu = document.getElementById('menu');
+
+const players = [
+    { id: 1, x: 100, y: 100, color: '#ff3333', up: 'w', down: 's', left: 'a', right: 'd', fire: 'q', lastDx: 1, lastDy: 0, hasDonut: true },
+    { id: 2, x: 1000, y: 100, color: '#33ff33', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', fire: 'm', lastDx: -1, lastDy: 0, hasDonut: true },
+    { id: 3, x: 100, y: 400, color: '#3333ff', up: 't', down: 'g', left: 'f', right: 'h', fire: 'r', lastDx: 1, lastDy: 0, hasDonut: true },
+    { id: 4, x: 1000, y: 400, color: '#ffff33', up: 'i', down: 'k', left: 'j', right: 'l', fire: 'u', lastDx: -1, lastDy: 0, hasDonut: true }
+];
+
+let donuts = [];
+let gameRunning = false;
+const keys = {};
+
+function initMenu() {
+    const container = document.getElementById('players-configs');
+    players.forEach((p, i) => {
+        container.innerHTML += `
+            <div class="p-config">
+                <strong>Hráč ${p.id}</strong>
+                <input type="color" value="${p.color}" onchange="players[${i}].color = this.value">
+                <span><kbd>${p.fire.toUpperCase()}</kbd> = Hod</span>
+            </div>`;
+    });
+}
+
+window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    players.forEach(p => {
+        if (e.key.toLowerCase() === p.fire.toLowerCase()) shootDonut(p);
+    });
+});
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+function shootDonut(p) {
+    if (!p.hasDonut) return;
+    p.hasDonut = false;
+    
+    donuts.push({
+        owner: p,
+        x: p.x,
+        y: p.y,
+        vx: p.lastDx * 12,
+        vy: p.lastDy * 12,
+        age: 0
+    });
+}
+
+function update() {
+    if (!gameRunning) return;
+
+    players.forEach(p => {
+        let dx = 0;
+        let dy = 0;
+
+        if (keys[p.up]) dy = -5;
+        if (keys[p.down]) dy = 5;
+        if (keys[p.left]) dx = -5;
+        if (keys[p.right]) dx = 5;
+
+        p.x += dx;
+        p.y += dy;
+
+        if (dx !== 0 || dy !== 0) {
+            let length = Math.hypot(dx, dy);
+            p.lastDx = dx / length;
+            p.lastDy = dy / length;
+        }
+
+        p.x = Math.max(15, Math.min(canvas.width - 15, p.x));
+        p.y = Math.max(15, Math.min(canvas.height - 15, p.y));
+    });
+
+    for (let i = donuts.length - 1; i >= 0; i--) {
+        let d = donuts[i];
+        d.x += d.vx;
+        d.y += d.vy;
+        d.age++;
+
+        if (d.x <= 10 || d.x >= canvas.width - 10) d.vx *= -1;
+        if (d.y <= 10 || d.y >= canvas.height - 10) d.vy *= -1;
+
+        const distToOwner = Math.hypot(d.x - d.owner.x, d.y - d.owner.y);
+        if (d.age > 15 && distToOwner < 25) {
+            d.owner.hasDonut = true;
+            donuts.splice(i, 1);
+            continue;
+        }
+
+        players.forEach(p => {
+            if (p !== d.owner) {
+                if (Math.hypot(d.x - p.x, d.y - p.y) < 20) {
+                    p.x = Math.random() * (canvas.width - 100) + 50;
+                    p.y = Math.random() * (canvas.height - 100) + 50;
+                }
+            }
+        });
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+function draw() {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#111';
+    for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+    for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+    players.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (p.hasDonut) {
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 19, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    });
+
+    donuts.forEach(d => {
+        ctx.strokeStyle = d.owner.color;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, 3, 0, Math.PI * 2);
+        ctx.stroke();
+    });
+}
+
+function startGame() {
+    menu.classList.add('hidden');
+    gameRunning = true;
+    update();
+}
+
+initMenu();
+</script>
+</body>
+</html>
