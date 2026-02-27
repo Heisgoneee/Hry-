@@ -2,101 +2,115 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Donut Tron Arena</title>
+    <title>Donut Tron Arena - Countdown Edition</title>
     <style>
-        body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; }
-        #menu { position: absolute; top: 50px; background: rgba(20,20,20,0.95); padding: 30px; border: 3px solid #444; border-radius: 15px; z-index: 10; width: 650px; }
-        canvas { background: #000; border: 4px solid #333; margin-top: 20px; box-shadow: 0 0 30px rgba(0,255,255,0.1); }
-        .p-config { display: grid; grid-template-columns: 30px 40px 80px 1fr; gap: 10px; margin-bottom: 10px; align-items: center; background: #222; padding: 10px; border-radius: 8px; }
-        button { width: 100%; padding: 15px; font-weight: bold; background: #0088ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; margin-top: 15px; }
-        button:hover { background: #00aaff; }
+        body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; overflow: hidden; }
+        #menu { position: absolute; top: 15px; background: rgba(20,20,20,0.95); padding: 25px; border: 3px solid #0088ff; border-radius: 15px; z-index: 10; width: 720px; box-shadow: 0 0 50px rgba(0,136,255,0.3); max-height: 90vh; overflow-y: auto; }
+        canvas { background: #000; border: none; margin-top: 10px; border-radius: 40px; }
+        .p-config { display: grid; grid-template-columns: 30px 40px 80px 1fr; gap: 10px; margin-bottom: 8px; align-items: center; background: #222; padding: 8px; border-radius: 8px; }
+        button { width: 100%; padding: 15px; font-weight: bold; background: #0088ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; margin-top: 10px; transition: 0.2s; }
+        button:hover { background: #00aaff; transform: scale(1.01); }
         .hidden { display: none !important; }
-        select, input[type="number"] { background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; }
-        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        select, input { background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #222; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .setting-item { display: flex; flex-direction: column; gap: 5px; }
+        .setting-item label { font-size: 0.9em; color: #aaa; }
         .keybindings { display: flex; gap: 5px; justify-content: flex-end; }
-        .key-btn { width: 45px; padding: 5px; margin: 0; font-size: 0.8em; background: #444; font-family: monospace; }
-        .key-btn:hover { background: #666; }
+        .key-btn { width: 42px; padding: 5px; margin: 0; font-size: 0.75em; background: #444; border: 1px solid #555; }
         .key-btn.active { background: #ff3333; }
-        .key-label { font-size: 0.7em; color: #888; text-align: center; display: flex; flex-direction: column; }
+        span.val-hint { color: #0088ff; font-weight: bold; float: right; }
     </style>
 </head>
 <body>
 
 <div id="menu">
-    <h2 style="text-align:center; margin-top:0;">Donut Arena</h2>
-    <div class="controls">
-        <label>Počet hráčů:</label>
-        <select id="playerCount" onchange="renderMenu()">
-            <option value="2">2 Hráči</option>
-            <option value="3">3 Hráči</option>
-            <option value="4" selected>4 Hráči</option>
-        </select>
+    <h1 style="text-align:center; margin: 0 0 15px 0; color: #0088ff;">DONUT ARENA</h1>
+    
+    <div class="settings-grid">
+        <div class="setting-item">
+            <label>Mapa:</label>
+            <select id="mapSelect">
+                <option value="0">1. Klasická Aréna</option>
+                <option value="1">2. Úzká Chodba</option>
+                <option value="2">3. Čtvercový Duel</option>
+                <option value="3">4. Bludiště</option>
+                <option value="4">5. Velká Prázdnota</option>
+                <option value="5">6. Křížová palba</option>
+                <option value="6">7. Sloupořadí</option>
+                <option value="7">8. Mini Box</option>
+                <option value="8">9. Pevnost</option>
+                <option value="9">10. Chaos</option>
+            </select>
+        </div>
+        <div class="setting-item">
+            <label>Hráči / Body:</label>
+            <div style="display:flex; gap:5px;">
+                <select id="playerCount" onchange="renderMenu()" style="flex:1;">
+                    <option value="2">2 Hráči</option>
+                    <option value="3">3 Hráči</option>
+                    <option value="4" selected>4 Hráči</option>
+                </select>
+                <input type="number" id="targetScore" value="5" min="1" style="width: 50px;">
+            </div>
+        </div>
+        <div class="setting-item">
+            <label>Rychlost hráčů: <span id="speedHracVal" class="val-hint">5</span></label>
+            <input type="range" id="speedHrac" min="2" max="12" step="0.5" value="5" oninput="document.getElementById('speedHracVal').innerText=this.value">
+        </div>
+        <div class="setting-item">
+            <label>Rychlost disku: <span id="speedDiskVal" class="val-hint">12</span></label>
+            <input type="range" id="speedDisk" min="5" max="25" step="1" value="12" oninput="document.getElementById('speedDiskVal').innerText=this.value">
+        </div>
     </div>
-    <div class="controls">
-        <label>Počet vítězných kol:</label>
-        <input type="number" id="targetScore" value="5" min="1" max="50" style="width: 60px;">
-    </div>
+
     <div id="players-configs"></div>
-    <button onclick="startGame()">START ARÉNY</button>
+    <button onclick="startGame()">VSTOUPIT DO BOJE</button>
 </div>
 
-<canvas id="gameCanvas" width="1100" height="500"></canvas>
+<canvas id="gameCanvas"></canvas>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const menu = document.getElementById('menu');
 
+const maps = [
+    { name: "Klasická Aréna", w: 1100, h: 500, obs: [{x:550, y:250, r:70}, {x:300, y:100, r:40}, {x:300, y:400, r:40}, {x:800, y:100, r:40}, {x:800, y:400, r:40}], rects: [] },
+    { name: "Úzká Chodba", w: 1200, h: 300, obs: [], rects: [{x:400, y:0, w:30, h:120}, {x:400, y:180, w:30, h:120}, {x:800, y:0, w:30, h:120}, {x:800, y:180, w:30, h:120}] },
+    { name: "Čtvercový Duel", w: 600, h: 600, obs: [{x:300, y:300, r:100}], rects: [] },
+    { name: "Bludiště", w: 1000, h: 600, obs: [], rects: [{x:200, y:150, w:600, h:20}, {x:200, y:430, w:600, h:20}, {x:500, y:150, w:20, h:300}] },
+    { name: "Velká Prázdnota", w: 1300, h: 700, obs: [{x:650, y:350, r:20}], rects: [] },
+    { name: "Křížová palba", w: 900, h: 500, obs: [{x:225, y:125, r:50}, {x:675, y:125, r:50}, {x:225, y:375, r:50}, {x:675, y:375, r:50}, {x:450, y:250, r:30}], rects: [] },
+    { name: "Sloupořadí", w: 1100, h: 500, obs: [{x:200, y:250, r:30}, {x:400, y:250, r:30}, {x:600, y:250, r:30}, {x:800, y:250, r:30}, {x:1000, y:250, r:30}], rects: [] },
+    { name: "Mini Box", w: 500, h: 400, obs: [], rects: [{x:100, y:100, w:300, h:20}, {x:100, y:280, w:300, h:20}] },
+    { name: "Pevnost", w: 1000, h: 600, obs: [], rects: [{x:400, y:200, w:200, h:200}] },
+    { name: "Chaos", w: 1100, h: 550, obs: [{x:150, y:150, r:20}, {x:950, y:150, r:20}, {x:150, y:400, r:20}, {x:950, y:400, r:20}], rects: [{x:400, y:100, w:300, h:10}, {x:400, y:440, w:300, h:10}] }
+];
+
 let allPlayers = [
-    { id: 1, startX: 100, startY: 100, color: '#ff3333', team: 'A', up: 'w', down: 's', left: 'a', right: 'd', fire: 'q', lastDx: 1, lastDy: 0, hasDonut: true, isAlive: true },
-    { id: 2, startX: 1000, startY: 400, color: '#33ff33', team: 'B', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', fire: 'm', lastDx: -1, lastDy: 0, hasDonut: true, isAlive: true },
-    { id: 3, startX: 100, startY: 400, color: '#3333ff', team: 'A', up: 't', down: 'g', left: 'f', right: 'h', fire: 'r', lastDx: 1, lastDy: 0, hasDonut: true, isAlive: true },
-    { id: 4, startX: 1000, startY: 100, color: '#ffff33', team: 'B', up: 'i', down: 'k', left: 'j', right: 'l', fire: 'u', lastDx: -1, lastDy: 0, hasDonut: true, isAlive: true }
+    { id: 1, color: '#ff3333', team: 'A', up: 'w', down: 's', left: 'a', right: 'd', fire: 'q' },
+    { id: 2, color: '#33ff33', team: 'B', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', fire: 'm' },
+    { id: 3, color: '#3333ff', team: 'A', up: 't', down: 'g', left: 'f', right: 'h', fire: 'r' },
+    { id: 4, color: '#ffff33', team: 'B', up: 'i', down: 'k', left: 'j', right: 'l', fire: 'u' }
 ];
 
 let activePlayers = [];
 let donuts = [];
 let gameRunning = false;
 let roundOver = false;
-let gameOver = false;
-let winnerText = "";
-let teamScores = {};
+let countdown = 0;
 let targetScore = 5;
+let playerSpeed = 5;
+let donutSpeed = 12;
 let keys = {};
-
-const obstacles = [
-    { x: 550, y: 250, r: 70 },
-    { x: 300, y: 100, r: 40 },
-    { x: 300, y: 400, r: 40 },
-    { x: 800, y: 100, r: 40 },
-    { x: 800, y: 400, r: 40 }
-];
-
-function formatKey(k) {
-    if (k === ' ') return 'SPC';
-    return k.replace('Arrow', '').toUpperCase().substring(0, 3);
-}
-
-function assignKey(pIndex, action, btn) {
-    btn.classList.add('active');
-    btn.innerText = '?';
-    
-    const listener = (e) => {
-        e.preventDefault();
-        allPlayers[pIndex][action] = e.key;
-        btn.innerText = formatKey(e.key);
-        btn.classList.remove('active');
-        window.removeEventListener('keydown', listener);
-    };
-    
-    window.addEventListener('keydown', listener);
-}
+let teamScores = {};
+let currentMap = maps[0];
+const ARENA_RADIUS = 40;
 
 function renderMenu() {
     const container = document.getElementById('players-configs');
     const count = parseInt(document.getElementById('playerCount').value);
     container.innerHTML = '';
-    
     for(let i = 0; i < count; i++) {
         let p = allPlayers[i];
         container.innerHTML += `
@@ -104,28 +118,30 @@ function renderMenu() {
                 <strong>H${p.id}</strong>
                 <input type="color" value="${p.color}" onchange="allPlayers[${i}].color = this.value">
                 <select onchange="allPlayers[${i}].team = this.value">
-                    <option value="A" ${p.team === 'A' ? 'selected' : ''}>Tým A</option>
-                    <option value="B" ${p.team === 'B' ? 'selected' : ''}>Tým B</option>
-                    <option value="C" ${p.team === 'C' ? 'selected' : ''}>Tým C</option>
-                    <option value="D" ${p.team === 'D' ? 'selected' : ''}>Tým D</option>
+                    ${['A','B','C','D'].map(t => `<option value="${t}" ${p.team===t?'selected':''}>Tým ${t}</option>`).join('')}
                 </select>
                 <div class="keybindings">
-                    <div class="key-label"><span>Hore</span><button class="key-btn" onclick="assignKey(${i}, 'up', this)">${formatKey(p.up)}</button></div>
-                    <div class="key-label"><span>Dole</span><button class="key-btn" onclick="assignKey(${i}, 'down', this)">${formatKey(p.down)}</button></div>
-                    <div class="key-label"><span>Levo</span><button class="key-btn" onclick="assignKey(${i}, 'left', this)">${formatKey(p.left)}</button></div>
-                    <div class="key-label"><span>Pravo</span><button class="key-btn" onclick="assignKey(${i}, 'right', this)">${formatKey(p.right)}</button></div>
-                    <div class="key-label"><span>Hod</span><button class="key-btn" onclick="assignKey(${i}, 'fire', this)">${formatKey(p.fire)}</button></div>
+                    ${['up','down','left','right','fire'].map(k => `<button class="key-btn" onclick="assignKey(${i},'${k}',this)">${p[k].replace('Arrow','').substring(0,3).toUpperCase()}</button>`).join('')}
                 </div>
             </div>`;
     }
 }
 
+function assignKey(idx, action, btn) {
+    btn.classList.add('active');
+    const listener = (e) => {
+        allPlayers[idx][action] = e.key;
+        btn.innerText = e.key.replace('Arrow','').substring(0,3).toUpperCase();
+        btn.classList.remove('active');
+        window.removeEventListener('keydown', listener);
+    };
+    window.addEventListener('keydown', listener);
+}
+
 window.addEventListener('keydown', e => {
     keys[e.key] = true;
-    if (gameRunning && !roundOver) {
-        activePlayers.forEach(p => {
-            if (p.isAlive && e.key === p.fire) shootDonut(p);
-        });
+    if (gameRunning && !roundOver && countdown <= 0) {
+        activePlayers.forEach(p => { if (p.isAlive && e.key === p.fire) shootDonut(p); });
     }
 });
 window.addEventListener('keyup', e => keys[e.key] = false);
@@ -133,235 +149,185 @@ window.addEventListener('keyup', e => keys[e.key] = false);
 function shootDonut(p) {
     if (!p.hasDonut) return;
     p.hasDonut = false;
-    donuts.push({ owner: p, x: p.x, y: p.y, vx: p.lastDx * 12, vy: p.lastDy * 12, age: 0 });
-}
-
-function checkRoundEnd() {
-    let aliveTeams = new Set();
-    activePlayers.forEach(p => {
-        if (p.isAlive) aliveTeams.add(p.team);
-    });
-
-    if (aliveTeams.size <= 1) {
-        roundOver = true;
-        if (aliveTeams.size === 1) {
-            let winningTeam = [...aliveTeams][0];
-            teamScores[winningTeam] = (teamScores[winningTeam] || 0) + 1;
-            winnerText = `Kolo vyhrál Tým ${winningTeam}`;
-            
-            if (teamScores[winningTeam] >= targetScore) {
-                gameOver = true;
-                winnerText = `Konec hry! Vítěz: Tým ${winningTeam}`;
-            }
-        } else {
-            winnerText = "Remíza v tomto kole!";
-        }
-
-        setTimeout(() => {
-            if (gameOver) {
-                gameRunning = false;
-                menu.classList.remove('hidden');
-            } else {
-                startRound();
-            }
-        }, 2500);
-    }
+    donuts.push({ owner: p, x: p.x, y: p.y, vx: p.lastDx * donutSpeed, vy: p.lastDy * donutSpeed, age: 0 });
 }
 
 function update() {
     if (!gameRunning) return;
-
-    if (!roundOver) {
+    
+    // Pohyb a logika běží pouze pokud není odpočet a není po kole
+    if (!roundOver && countdown <= 0) {
         activePlayers.forEach(p => {
             if (!p.isAlive) return;
-
             let dx = 0, dy = 0;
-            if (keys[p.up]) dy = -5;
-            if (keys[p.down]) dy = 5;
-            if (keys[p.left]) dx = -5;
-            if (keys[p.right]) dx = 5;
-
-            p.x += dx; p.y += dy;
+            if (keys[p.up]) dy = -playerSpeed;
+            if (keys[p.down]) dy = playerSpeed;
+            if (keys[p.left]) dx = -playerSpeed;
+            if (keys[p.right]) dx = playerSpeed;
 
             if (dx !== 0 || dy !== 0) {
                 let len = Math.hypot(dx, dy);
                 p.lastDx = dx / len; p.lastDy = dy / len;
-            }
-
-            p.x = Math.max(15, Math.min(canvas.width - 15, p.x));
-            p.y = Math.max(15, Math.min(canvas.height - 15, p.y));
-
-            obstacles.forEach(obs => {
-                let distX = p.x - obs.x;
-                let distY = p.y - obs.y;
-                let dist = Math.hypot(distX, distY);
-                if (dist < obs.r + 15) {
-                    let overlap = (obs.r + 15) - dist;
-                    p.x += (distX / dist) * overlap;
-                    p.y += (distY / dist) * overlap;
+                let nx = p.x + dx, ny = p.y + dy;
+                
+                let blocked = false;
+                currentMap.obs.forEach(o => { if(Math.hypot(nx-o.x, ny-o.y) < o.r+15) blocked = true; });
+                currentMap.rects.forEach(r => { if(nx > r.x-15 && nx < r.x+r.w+15 && ny > r.y-15 && ny < r.y+r.h+15) blocked = true; });
+                
+                if (!blocked) {
+                    p.x = Math.max(20, Math.min(canvas.width - 20, nx));
+                    p.y = Math.max(20, Math.min(canvas.height - 20, ny));
                 }
-            });
+            }
         });
 
         for (let i = donuts.length - 1; i >= 0; i--) {
             let d = donuts[i];
             d.x += d.vx; d.y += d.vy; d.age++;
+            if (d.x <= 15 || d.x >= canvas.width - 15) d.vx *= -1;
+            if (d.y <= 15 || d.y >= canvas.height - 15) d.vy *= -1;
 
-            if (d.x <= 10 || d.x >= canvas.width - 10) d.vx *= -1;
-            if (d.y <= 10 || d.y >= canvas.height - 10) d.vy *= -1;
-
-            obstacles.forEach(obs => {
-                let distX = d.x - obs.x;
-                let distY = d.y - obs.y;
-                let dist = Math.hypot(distX, distY);
-                
-                if (dist < obs.r + 10) {
-                    let overlap = (obs.r + 10) - dist;
-                    let nx = distX / dist;
-                    let ny = distY / dist;
-                    
-                    d.x += nx * overlap;
-                    d.y += ny * overlap;
-                    
-                    let dotProduct = d.vx * nx + d.vy * ny;
-                    d.vx -= 2 * dotProduct * nx;
-                    d.vy -= 2 * dotProduct * ny;
+            currentMap.obs.forEach(o => {
+                let dist = Math.hypot(d.x-o.x, d.y-o.y);
+                if (dist < o.r+10) {
+                    let nx = (d.x-o.x)/dist, ny = (d.y-o.y)/dist;
+                    let dot = d.vx*nx + d.vy*ny;
+                    d.vx -= 2*dot*nx; d.vy -= 2*dot*ny;
+                }
+            });
+            
+            currentMap.rects.forEach(r => {
+                if (d.x > r.x && d.x < r.x+r.w && d.y > r.y && d.y < r.y+r.h) {
+                    if (d.x-d.vx <= r.x || d.x-d.vx >= r.x+r.w) d.vx *= -1; else d.vy *= -1;
                 }
             });
 
-            const distToOwner = Math.hypot(d.x - d.owner.x, d.y - d.owner.y);
-            if (d.age > 15 && distToOwner < 25 && d.owner.isAlive) {
-                d.owner.hasDonut = true;
-                donuts.splice(i, 1);
-                continue;
+            if (d.age > 20 && Math.hypot(d.x-d.owner.x, d.y-d.owner.y) < 25 && d.owner.isAlive) {
+                d.owner.hasDonut = true; donuts.splice(i, 1); continue;
             }
 
             activePlayers.forEach(p => {
-                if (!p.isAlive) return;
-                if (p !== d.owner && p.team !== d.owner.team) {
-                    if (Math.hypot(d.x - p.x, d.y - p.y) < 20) {
-                        p.isAlive = false;
-                        d.owner.hasDonut = true; 
-                        donuts.splice(i, 1);
-                        checkRoundEnd();
-                    }
+                if (p.isAlive && p.team !== d.owner.team && Math.hypot(d.x-p.x, d.y-p.y) < 22) {
+                    p.isAlive = false; d.owner.hasDonut = true; donuts.splice(i, 1); checkRoundEnd();
                 }
             });
         }
     }
-
     draw();
-    if (gameRunning) requestAnimationFrame(update);
+    requestAnimationFrame(update);
+}
+
+function checkRoundEnd() {
+    let alive = new Set();
+    activePlayers.forEach(p => { if(p.isAlive) alive.add(p.team); });
+    if (alive.size <= 1) {
+        roundOver = true;
+        let winT = [...alive][0];
+        if(winT) teamScores[winT]++;
+        setTimeout(() => {
+            if (winT && teamScores[winT] >= targetScore) { gameRunning = false; menu.classList.remove('hidden'); }
+            else startRound();
+        }, 1500);
+    }
 }
 
 function draw() {
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Aréna
+    ctx.beginPath();
+    ctx.roundRect(0, 0, canvas.width, canvas.height, ARENA_RADIUS);
+    ctx.fillStyle = '#050505';
+    ctx.fill();
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 10;
+    ctx.stroke();
 
+    // Mřížka
+    ctx.save();
+    ctx.clip();
     ctx.strokeStyle = '#111';
-    for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
-    for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+    for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+    for(let i=0; i<canvas.height; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+    ctx.restore();
 
-    obstacles.forEach(obs => {
-        ctx.fillStyle = '#222';
-        ctx.strokeStyle = '#444';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(obs.x, obs.y, obs.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+    // Překážky
+    currentMap.obs.forEach(o => {
+        ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#0088ff'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    });
+    currentMap.rects.forEach(r => {
+        ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#0088ff'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 10); ctx.fill(); ctx.stroke();
     });
 
+    // Hráči
     activePlayers.forEach(p => {
         if (!p.isAlive) return;
-        
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = 'white';
-        ctx.font = '12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(p.team, p.x, p.y - 20);
-
-        if (p.hasDonut) {
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([2, 2]);
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 19, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
+        ctx.fillStyle = p.color; 
+        ctx.shadowBlur = 10; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 15, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        if (p.hasDonut) { ctx.strokeStyle = 'white'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
     });
 
+    // Disky
     donuts.forEach(d => {
-        ctx.strokeStyle = d.owner.color;
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, 10, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, 3, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.strokeStyle = d.owner.color; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(d.x, d.y, 10, 0, Math.PI*2); ctx.stroke();
     });
 
-    // Vykreslení skóre
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(0, 0, canvas.width, 40);
-    ctx.fillStyle = 'white';
-    ctx.font = '20px sans-serif';
-    ctx.textAlign = 'center';
-    let scoreText = `Cíl: ${targetScore} | Skóre: `;
-    let scoreParts = [];
-    for (let team in teamScores) {
-        scoreParts.push(`Tým ${team}: ${teamScores[team]}`);
-    }
-    ctx.fillText(scoreText + (scoreParts.length > 0 ? scoreParts.join(' - ') : '0 - 0'), canvas.width / 2, 28);
-
-    if (roundOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(0, canvas.height/2 - 60, canvas.width, 120);
-        ctx.fillStyle = 'white';
-        ctx.font = '40px sans-serif';
+    // Odpočet (Countdown)
+    if (countdown > 0) {
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#0088ff';
+        ctx.font = 'bold 120px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(winnerText, canvas.width / 2, canvas.height / 2 + 15);
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#0088ff';
+        ctx.fillText(Math.ceil(countdown), canvas.width / 2, canvas.height / 2);
+        ctx.shadowBlur = 0;
     }
 }
 
 function startRound() {
     roundOver = false;
-    winnerText = "";
     donuts = [];
+    countdown = 3; // Nastavení 3 sekund
     
-    activePlayers.forEach(p => {
-        p.x = p.startX;
-        p.y = p.startY;
-        p.isAlive = true;
-        p.hasDonut = true;
+    const offset = 80;
+    const spawns = [
+        {x:offset, y:offset, dx:1, dy:1}, 
+        {x:canvas.width-offset, y:canvas.height-offset, dx:-1, dy:-1}, 
+        {x:offset, y:canvas.height-offset, dx:1, dy:-1}, 
+        {x:canvas.width-offset, y:offset, dx:-1, dy:1}
+    ];
+    activePlayers.forEach((p, i) => {
+        p.x = spawns[i].x; p.y = spawns[i].y; p.lastDx = spawns[i].dx; p.lastDy = spawns[i].dy;
+        p.isAlive = true; p.hasDonut = true;
     });
+
+    // Logika časovače
+    const timer = setInterval(() => {
+        countdown -= 1;
+        if (countdown <= 0) {
+            clearInterval(timer);
+        }
+    }, 1000);
 }
 
 function startGame() {
-    keys = {}; 
-    const count = parseInt(document.getElementById('playerCount').value);
-    targetScore = parseInt(document.getElementById('targetScore').value) || 5;
-    activePlayers = allPlayers.slice(0, count);
-    
-    teamScores = {};
-    activePlayers.forEach(p => {
-        teamScores[p.team] = 0;
-    });
-    
-    gameOver = false;
-    startRound();
-    
-    menu.classList.add('hidden');
-    gameRunning = true;
-    update();
+    currentMap = maps[document.getElementById('mapSelect').value];
+    canvas.width = currentMap.w; canvas.height = currentMap.h;
+    playerSpeed = parseFloat(document.getElementById('speedHrac').value);
+    donutSpeed = parseFloat(document.getElementById('speedDisk').value);
+    targetScore = parseInt(document.getElementById('targetScore').value);
+    activePlayers = allPlayers.slice(0, document.getElementById('playerCount').value);
+    activePlayers.forEach(p => teamScores[p.team] = 0);
+    gameRunning = true; menu.classList.add('hidden');
+    startRound(); update();
 }
 
 renderMenu();
