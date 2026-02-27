@@ -2,46 +2,55 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Worms Deluxe Edition</title>
+    <title>Tank Wars: Terrain Edition</title>
     <style>
-        body { margin: 0; background: #0f172a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        #menu { background: #1e293b; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; border: 1px solid #334155; }
-        h1 { margin-top: 0; color: #38bdf8; text-transform: uppercase; letter-spacing: 2px; }
-        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
-        button { padding: 12px 24px; font-size: 14px; cursor: pointer; background: #38bdf8; border: none; border-radius: 8px; font-weight: bold; color: #0f172a; transition: all 0.2s; }
+        body { margin: 0; background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        #menu { background: #1e293b; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; border: 1px solid #334155; z-index: 10; }
+        h1 { margin-top: 0; color: #fbbf24; text-transform: uppercase; letter-spacing: 2px; }
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        button { padding: 12px; font-size: 13px; cursor: pointer; background: #38bdf8; border: none; border-radius: 8px; font-weight: bold; color: #0f172a; transition: all 0.2s; }
         button:hover { background: #7dd3fc; transform: translateY(-2px); }
+        button.mountains { background: #94a3b8; }
+        button.plains { background: #4ade80; }
+        button.city { background: #f472b6; }
+        button.river { background: #60a5fa; }
         
         #gameContainer { display: none; position: relative; }
-        canvas { border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); cursor: crosshair; }
+        canvas { border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); cursor: crosshair; background: #000; }
         
-        .hud { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; }
-        .stat-box { background: rgba(15, 23, 42, 0.8); padding: 10px 20px; border-radius: 10px; border: 1px solid #38bdf8; backdrop-filter: blur(5px); }
-        .power-wrapper { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 300px; text-align: center; }
-        .power-bg { width: 100%; height: 12px; background: rgba(0,0,0,0.5); border-radius: 6px; border: 2px solid #fff; overflow: hidden; }
-        #powerBar { height: 100%; width: 0%; background: linear-gradient(90deg, #22c55e, #eab308, #ef4444); }
+        .hud { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; pointer-events: none; }
+        .stat-box { background: rgba(15, 23, 42, 0.8); padding: 8px 15px; border-radius: 8px; border: 1px solid #38bdf8; font-size: 14px; }
+        
+        /* Přesunutý Power Bar na bok, aby nezavazel */
+        .power-wrapper { position: absolute; left: -60px; bottom: 50px; transform: rotate(-90deg); width: 200px; text-align: center; }
+        .power-bg { width: 100%; height: 10px; background: rgba(0,0,0,0.5); border: 1px solid #fff; overflow: hidden; }
+        #powerBar { height: 100%; width: 0%; background: linear-gradient(90deg, #22c55e, #ef4444); }
     </style>
 </head>
 <body>
 
     <div id="menu">
-        <h1>WORMS HTML5</h1>
-        <p>Znič nepřítele dřív, než on zničí tebe!</p>
+        <h1>TANK WARS</h1>
+        <p>Vyber typ operace:</p>
         <div class="btn-group">
-            <button onclick="startGame(800, 500)">MALÁ MAPA</button>
-            <button onclick="startGame(1200, 700)">VELKÁ MAPA</button>
+            <button class="plains" onclick="startGame('plains')">PLANINY</button>
+            <button class="mountains" onclick="startGame('mountains')">HORY</button>
+            <button class="city" onclick="startGame('city')">MĚSTO</button>
+            <button class="river" onclick="startGame('river')">ŘEKA</button>
         </div>
     </div>
 
     <div id="gameContainer">
         <div class="hud">
-            <div class="stat-box">HRÁČ: <span id="turnDisplay" style="color: #38bdf8">1</span></div>
-            <div class="stat-box">PALIVO: <span id="moveDisplay" style="color: #fbbf24">50</span>m</div>
+            <div class="stat-box">TANK: <span id="turnDisplay" style="color: #fbbf24">1</span></div>
+            <div id="msgDisplay" style="font-weight: bold; color: #ef4444"></div>
+            <div class="stat-box">PALIVO: <span id="moveDisplay" style="color: #4ade80">50</span></div>
         </div>
         
-        <canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
         
         <div class="power-wrapper" id="powerUI" style="display:none">
-            <div style="margin-bottom: 5px; font-size: 12px; font-weight: bold;">SÍLA VÝSTŘELU</div>
+            <div id="powerBarLabel" style="font-size: 10px; margin-bottom: 2px;">SÍLA</div>
             <div class="power-bg"><div id="powerBar"></div></div>
         </div>
     </div>
@@ -52,9 +61,11 @@ const ctx = canvas.getContext('2d');
 const powerBar = document.getElementById('powerBar');
 const moveDisplay = document.getElementById('moveDisplay');
 const turnDisplay = document.getElementById('turnDisplay');
+const msgDisplay = document.getElementById('msgDisplay');
 
 let terrain = [];
-let worms = [];
+let terrainType = 'plains';
+let tanks = [];
 let particles = [];
 let projectile = null;
 let currentPlayer = 0;
@@ -63,6 +74,7 @@ let chargePower = 0;
 let moveLeft = 50;
 let keys = {};
 let mousePos = { x: 0, y: 0 };
+let gameOver = false;
 
 window.onkeydown = (e) => keys[e.code] = true;
 window.onkeyup = (e) => keys[e.code] = false;
@@ -72,52 +84,105 @@ canvas.onmousemove = (e) => {
     mousePos.y = e.clientY - rect.top;
 };
 
-function startGame(w, h) {
+function startGame(type) {
+    terrainType = type;
     document.getElementById('menu').style.display = 'none';
     document.getElementById('gameContainer').style.display = 'block';
     document.getElementById('powerUI').style.display = 'block';
-    canvas.width = w;
-    canvas.height = h;
     initGame();
     draw();
 }
 
 function initGame() {
-    let height = canvas.height * 0.7;
+    terrain = [];
+    let h = canvas.height * 0.6;
+    let roughness = 2;
+    
+    if (terrainType === 'mountains') roughness = 12;
+    if (terrainType === 'plains') roughness = 1.5;
+    
     for (let x = 0; x < canvas.width; x++) {
-        height += (Math.random() - 0.5) * 6;
-        terrain[x] = Math.min(Math.max(height, canvas.height * 0.4), canvas.height * 0.85);
+        if (terrainType === 'city') {
+            if (x % 100 === 0) h = canvas.height * (0.4 + Math.random() * 0.4);
+            terrain[x] = h;
+        } else if (terrainType === 'river') {
+            let mid = canvas.width / 2;
+            if (x > mid - 80 && x < mid + 80) {
+                terrain[x] = canvas.height - 20; // Koryto řeky
+            } else {
+                h += (Math.random() - 0.5) * roughness;
+                terrain[x] = h;
+            }
+        } else {
+            h += (Math.random() - 0.5) * roughness;
+            terrain[x] = Math.min(Math.max(h, 200), 550);
+        }
     }
-    worms = [
-        { x: 100, y: 0, color: '#ff5e57', hp: 100, name: "Hráč 1" },
-        { x: canvas.width - 100, y: 0, color: '#1dd1a1', hp: 100, name: "Hráč 2" }
+    
+    tanks = [
+        { x: 100, y: 0, color: '#4d7c0f', hp: 100, angle: 0 },
+        { x: canvas.width - 100, y: 0, color: '#1e40af', hp: 100, angle: 0 }
     ];
+    gameOver = false;
 }
 
-function createExplosion(x, y) {
-    for (let i = 0; i < 20; i++) {
-        particles.push({
-            x: x, y: y,
-            vx: (Math.random() - 0.5) * 10,
-            vy: (Math.random() - 0.5) * 10,
-            life: 1.0,
-            color: Math.random() > 0.5 ? '#ff9f43' : '#ff5e57'
-        });
+function drawTank(tank, index) {
+    if (tank.hp <= 0) return;
+    
+    ctx.save();
+    ctx.translate(tank.x, tank.y);
+    
+    // Barva podle hráče
+    ctx.fillStyle = tank.color;
+    
+    // Podvozek (Pásy)
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(-18, -4, 36, 8);
+    
+    // Tělo tanku
+    ctx.fillStyle = tank.color;
+    ctx.fillRect(-15, -12, 30, 10);
+    
+    // Věž
+    ctx.fillRect(-8, -18, 16, 8);
+    
+    // Hlaveň (míří k myši u aktivního hráče)
+    ctx.save();
+    ctx.translate(0, -15);
+    if (index === currentPlayer && !projectile && !gameOver) {
+        let angle = Math.atan2(mousePos.y - (tank.y - 15), mousePos.x - tank.x);
+        ctx.rotate(angle);
+    } else {
+        ctx.rotate(index === 0 ? 0 : Math.PI);
     }
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(0, -2, 20, 4);
+    ctx.restore();
+    
+    ctx.restore();
+
+    // HP Bar
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(tank.x - 20, tank.y - 35, 40, 5);
+    ctx.fillStyle = tank.hp > 30 ? "#22c55e" : "#ef4444";
+    ctx.fillRect(tank.x - 20, tank.y - 35, (tank.hp / 100) * 40, 5);
 }
 
 function update() {
-    if (projectile) return;
-    let worm = worms[currentPlayer];
+    if (projectile || gameOver) return;
+    
+    let tank = tanks[currentPlayer];
+    if (tank.hp <= 0) { nextTurn(); return; } // Mrtvý tank nemůže hrát
+
     if (moveLeft > 0) {
-        if (keys['KeyA'] && worm.x > 15) { worm.x -= 1.5; moveLeft -= 1.5; }
-        if (keys['KeyD'] && worm.x < canvas.width - 15) { worm.x += 1.5; moveLeft -= 1.5; }
+        if (keys['KeyA'] && tank.x > 20) { tank.x -= 1.2; moveLeft -= 1; }
+        if (keys['KeyD'] && tank.x < canvas.width - 20) { tank.x += 1.2; moveLeft -= 1; }
         moveDisplay.innerText = Math.max(0, Math.floor(moveLeft));
     }
-    worms.forEach(w => {
-        let tx = Math.floor(w.x);
-        if (w.y < terrain[tx] - 8) w.y += 3;
-        else w.y = terrain[tx] - 8;
+    
+    tanks.forEach(t => {
+        let tx = Math.floor(t.x);
+        t.y = terrain[tx] || canvas.height;
     });
 }
 
@@ -127,14 +192,22 @@ function explode(ex, ey, radius) {
         if (x >= 0 && x < canvas.width) {
             let dist = Math.abs(x - ex);
             let depth = Math.sqrt(Math.max(0, Math.pow(radius, 2) - Math.pow(dist, 2)));
-            if (ey + depth > terrain[x]) terrain[x] = Math.max(terrain[x], ey + depth);
+            terrain[x] = Math.min(canvas.height, Math.max(terrain[x], ey + depth * 0.8));
         }
     }
-    worms.forEach(w => {
-        let d = Math.hypot(w.x - ex, w.y - ey);
-        if (d < radius + 15) w.hp -= (radius - d + 20);
+    
+    tanks.forEach((t, i) => {
+        let d = Math.hypot(t.x - ex, t.y - ey);
+        if (d < radius + 15) {
+            t.hp -= (radius - d + 20);
+            if (t.hp <= 0) {
+                t.hp = 0;
+                msgDisplay.innerText = `TANK ${i + 1} ZNIČEN!`;
+                gameOver = true;
+            }
+        }
     });
-    nextTurn();
+    if (!gameOver) nextTurn();
 }
 
 function nextTurn() {
@@ -143,14 +216,14 @@ function nextTurn() {
     turnDisplay.innerText = currentPlayer + 1;
 }
 
-canvas.onmousedown = () => { if (!projectile) isCharging = true; };
+canvas.onmousedown = () => { if (!projectile && !gameOver && tanks[currentPlayer].hp > 0) isCharging = true; };
 canvas.onmouseup = () => {
     if (!isCharging) return;
     isCharging = false;
-    const worm = worms[currentPlayer];
-    const angle = Math.atan2(mousePos.y - worm.y, mousePos.x - worm.x);
+    const tank = tanks[currentPlayer];
+    const angle = Math.atan2(mousePos.y - (tank.y - 15), mousePos.x - tank.x);
     projectile = {
-        x: worm.x, y: worm.y - 10,
+        x: tank.x, y: tank.y - 15,
         vx: Math.cos(angle) * (chargePower / 5),
         vy: Math.sin(angle) * (chargePower / 5)
     };
@@ -158,109 +231,86 @@ canvas.onmouseup = () => {
     powerBar.style.width = '0%';
 };
 
+function createExplosion(x, y) {
+    for (let i = 0; i < 30; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.5) * 12,
+            life: 1.0,
+            color: Math.random() > 0.5 ? '#f59e0b' : '#ef4444'
+        });
+    }
+}
+
 function draw() {
-    // 1. Obloha
-    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    skyGrad.addColorStop(0, '#0c4a6e');
-    skyGrad.addColorStop(1, '#38bdf8');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Obloha
+    let sky = ctx.createLinearGradient(0,0,0,canvas.height);
+    sky.addColorStop(0, '#1e293b');
+    sky.addColorStop(1, '#334155');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,canvas.width, canvas.height);
+
+    // Řeka (pokud je typ river)
+    if (terrainType === 'river') {
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(canvas.width/2 - 80, canvas.height - 40, 160, 40);
+    }
 
     update();
 
-    // 2. Terén s trávou
-    ctx.fillStyle = '#1e293b'; // Barva hlíny
+    // Terén
+    ctx.fillStyle = terrainType === 'city' ? '#475569' : (terrainType === 'mountains' ? '#64748b' : '#3f6212');
     ctx.beginPath();
     ctx.moveTo(0, canvas.height);
     for (let x = 0; x < canvas.width; x++) ctx.lineTo(x, terrain[x]);
     ctx.lineTo(canvas.width, canvas.height);
     ctx.fill();
 
-    // Travnatý okraj
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    for (let x = 0; x < canvas.width; x++) ctx.lineTo(x, terrain[x] + 2);
-    ctx.stroke();
+    // Tanky
+    tanks.forEach((t, i) => drawTank(t, i));
 
-    // 3. Červi
-    worms.forEach((w, i) => {
-        if (w.hp <= 0) return;
-        
-        // Tělo červa (zakulacené)
-        ctx.fillStyle = w.color;
-        ctx.beginPath();
-        ctx.ellipse(w.x, w.y - 5, 10, 8, 0, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Oči
-        ctx.fillStyle = "white";
-        ctx.beginPath();
-        ctx.arc(w.x + (i===0?4:-4), w.y - 8, 3, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = "black";
-        ctx.beginPath();
-        ctx.arc(w.x + (i===0?5:-3), w.y - 8, 1.5, 0, Math.PI*2);
-        ctx.fill();
-
-        // HP Bar nad červem
-        ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillRect(w.x - 15, w.y - 25, 30, 4);
-        ctx.fillStyle = w.hp > 30 ? "#22c55e" : "#ef4444";
-        ctx.fillRect(w.x - 15, w.y - 25, (w.hp/100) * 30, 4);
-
-        if (i === currentPlayer && !projectile) {
-            ctx.strokeStyle = "rgba(255,255,255,0.5)";
-            ctx.setLineDash([5, 5]);
-            ctx.strokeRect(w.x - 15, w.y - 35, 30, 40);
-            ctx.setLineDash([]);
-        }
-    });
-
-    // 4. Predikce trajektorie
+    // Trajektorie
     if (isCharging && !projectile) {
-        const worm = worms[currentPlayer];
-        const angle = Math.atan2(mousePos.y - worm.y, mousePos.x - worm.x);
-        let sx = worm.x, sy = worm.y - 10, svx = Math.cos(angle) * (chargePower / 5), svy = Math.sin(angle) * (chargePower / 5);
-        ctx.fillStyle = "white";
-        for (let i = 0; i < 12; i++) {
+        const tank = tanks[currentPlayer];
+        const angle = Math.atan2(mousePos.y - (tank.y - 15), mousePos.x - tank.x);
+        let sx = tank.x, sy = tank.y - 15, svx = Math.cos(angle) * (chargePower / 5), svy = Math.sin(angle) * (chargePower / 5);
+        ctx.fillStyle = "rgba(255,255,255,0.3)";
+        for (let i = 0; i < 15; i++) {
             sx += svx * 2; sy += svy * 2; svy += 0.2;
-            ctx.beginPath(); ctx.arc(sx, sy, 1.5 + (i/10), 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(sx, sy, 2, 0, Math.PI*2); ctx.fill();
         }
     }
 
-    // 5. Projektil (Bomba)
+    // Projektil
     if (projectile) {
         projectile.x += projectile.vx;
         projectile.y += projectile.vy;
-        projectile.vy += 0.2;
-        ctx.fillStyle = '#000';
-        ctx.beginPath(); ctx.arc(projectile.x, projectile.y, 5, 0, Math.PI*2); ctx.fill();
-        // Záblesk na bombě
+        projectile.vy += 0.15;
         ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(projectile.x - 1, projectile.y - 1, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(projectile.x, projectile.y, 4, 0, Math.PI*2); ctx.fill();
 
         let tx = Math.floor(projectile.x);
         if (tx < 0 || tx >= canvas.width || projectile.y > canvas.height) {
             projectile = null; nextTurn();
         } else if (projectile.y >= terrain[tx]) {
-            explode(projectile.x, projectile.y, 40);
+            explode(projectile.x, projectile.y, 35);
             projectile = null;
         }
     }
 
-    // 6. Částice výbuchu
-    particles.forEach((p, index) => {
+    // Částice
+    particles.forEach((p, i) => {
         p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.02;
         ctx.globalAlpha = p.life;
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, 3, 3);
-        if (p.life <= 0) particles.splice(index, 1);
+        ctx.fillRect(p.x, p.y, 4, 4);
+        if (p.life <= 0) particles.splice(i, 1);
     });
     ctx.globalAlpha = 1;
 
     if (isCharging) {
-        chargePower = Math.min(chargePower + 1.2, 100);
+        chargePower = Math.min(chargePower + 1.5, 100);
         powerBar.style.width = chargePower + '%';
     }
 
