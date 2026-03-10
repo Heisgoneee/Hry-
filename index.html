@@ -4,22 +4,162 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Můj Herní Svět</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;800&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; font-family: 'Poppins', sans-serif; background: #0f172a; color: white; }
-        header { text-align: center; padding: 50px 20px; background: linear-gradient(to bottom, #1e293b, #0f172a); }
-        h1 { font-size: 3rem; margin: 0; color: #38bdf8; text-transform: uppercase; }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; padding: 40px; max-width: 1200px; margin: 0 auto; }
+        :root {
+            --bg-color: #0b1120;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: #334155;
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.4);
+            --accent: #f472b6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body { 
+            margin: 0; 
+            font-family: 'Outfit', sans-serif; 
+            background: var(--bg-color);
+            background-image: radial-gradient(circle at top center, #1e293b 0%, var(--bg-color) 70%);
+            color: var(--text-main); 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header { 
+            text-align: center; 
+            padding: 80px 20px 40px; 
+            position: relative;
+        }
+
+        h1 { 
+            font-size: 4rem; 
+            margin: 0; 
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase; 
+            letter-spacing: 2px;
+            filter: drop-shadow(0 0 20px var(--primary-glow));
+        }
+
+        header p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            font-weight: 300;
+            margin-top: 10px;
+        }
+
+        .container { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 30px; 
+            padding: 40px; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            flex: 1;
+        }
         
         /* Karta hry */
-        .game-card { background: #1e293b; border-radius: 15px; overflow: hidden; border: 1px solid #334155; transition: transform 0.3s, border-color 0.3s; cursor: pointer; text-decoration: none; color: white; }
-        .game-card:hover { transform: translateY(-10px); border-color: #38bdf8; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2); }
+        .game-card { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(10px);
+            border-radius: 20px; 
+            overflow: hidden; 
+            border: 1px solid var(--card-border); 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            cursor: pointer; 
+            text-decoration: none; 
+            color: white; 
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-card:hover { 
+            transform: translateY(-10px) scale(1.02); 
+            border-color: var(--primary); 
+            box-shadow: 0 15px 35px var(--primary-glow); 
+        }
         
-        .thumbnail { width: 100%; height: 160px; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
-        .info { padding: 20px; }
-        .info h3 { margin: 0 0 10px 0; color: #38bdf8; }
-        .info p { font-size: 0.9rem; color: #94a3b8; line-height: 1.5; }
+        .thumbnail { 
+            width: 100%; 
+            height: 180px; 
+            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.2) 100%); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 4rem; 
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.4s;
+        }
+
+        .game-card:hover .thumbnail {
+            transform: scale(1.1);
+        }
         
-        .badge { display: inline-block; padding: 4px 10px; background: #0ea5e9; border-radius: 5px; font-size: 0.7rem; font-weight: bold; margin-bottom: 10px; }
+        .info { 
+            padding: 25px; 
+            background: rgba(15, 23, 42, 0.8);
+            flex: 1;
+            z-index: 1;
+        }
+
+        .info h3 { 
+            margin: 0 0 12px 0; 
+            color: var(--text-main); 
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+
+        .info p { 
+            font-size: 0.95rem; 
+            color: var(--text-muted); 
+            line-height: 1.6; 
+            font-weight: 300;
+        }
+        
+        .badge { 
+            display: inline-block; 
+            padding: 6px 12px; 
+            background: rgba(56, 189, 248, 0.1); 
+            color: var(--primary);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 8px; 
+            font-size: 0.75rem; 
+            font-weight: 800; 
+            letter-spacing: 1px;
+            margin-bottom: 15px; 
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: 40px;
+        }
+
+        .vibe-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.1), rgba(244, 114, 182, 0.1));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .vibe-badge span {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
     </style>
 </head>
 <body>
@@ -30,6 +170,15 @@
     </header>
 
     <div class="container">
+        <a href="tetris/index.html" class="game-card">
+            <div class="thumbnail">🧱</div>
+            <div class="info">
+                <span class="badge">LOGICKÁ</span>
+                <h3>Tetris Pro</h3>
+                <p>Klasická hra s padajícími bloky. Obsahuje vizuální efekty, online žebříček přes Firebase a zrychlující se úrovně.</p>
+            </div>
+        </a>
+
         <a href="bomberbam/index.html" class="game-card">
             <div class="thumbnail">💣</div>
             <div class="info">
@@ -75,16 +224,21 @@
             </div>
         </a>
 
-        <a href="#" class="game-card" style="opacity: 0.6; cursor: default;">
+        <a href="#" class="game-card" style="opacity: 0.5; cursor: default;">
             <div class="thumbnail">🕹️</div>
             <div class="info">
-                <span class="badge">PŘIPRAVUJEME</span>
-                <h3>Další pecka...</h3>
+                <span class="badge" style="background: rgba(255,255,255,0.05); color: #888; border-color: rgba(255,255,255,0.1);">PŘIPRAVUJEME</span>
+                <h3 style="color: #888;">Další pecka...</h3>
                 <p>Pracuji na další hře. Už brzy zde najdeš něco nového!</p>
             </div>
         </a>
     </div>
 
+    <footer>
+        <div class="vibe-badge">
+            🚀 Vytvořeno čistě přes <span>vibe coding</span>
+        </div>
+    </footer>
+
 </body>
 </html>
-
