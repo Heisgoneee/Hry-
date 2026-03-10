@@ -2,34 +2,35 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Donut Tron Arena - Countdown Edition</title>
+    <title>Donut Tron Arena - Ultimate Edition V4</title>
     <style>
         body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; overflow: hidden; }
         #menu { position: absolute; top: 15px; background: rgba(20,20,20,0.95); padding: 25px; border: 3px solid #0088ff; border-radius: 15px; z-index: 10; width: 720px; box-shadow: 0 0 50px rgba(0,136,255,0.3); max-height: 90vh; overflow-y: auto; }
-        canvas { background: #000; border: none; margin-top: 10px; border-radius: 40px; }
+        canvas#gameCanvas { background: #000; border: none; margin-top: 10px; border-radius: 40px; max-width: 95vw; max-height: 95vh; object-fit: contain; }
+        canvas#mapPreview { background: #050505; border: 2px solid #444; border-radius: 10px; width: 100%; height: 160px; margin-top: 10px; }
         .p-config { display: grid; grid-template-columns: 30px 40px 80px 1fr; gap: 10px; margin-bottom: 8px; align-items: center; background: #222; padding: 8px; border-radius: 8px; }
         button { width: 100%; padding: 15px; font-weight: bold; background: #0088ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; margin-top: 10px; transition: 0.2s; }
         button:hover { background: #00aaff; transform: scale(1.01); }
         .hidden { display: none !important; }
-        select, input { background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; }
+        select, input[type="number"], input[type="range"] { background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; }
         .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #222; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
         .setting-item { display: flex; flex-direction: column; gap: 5px; }
         .setting-item label { font-size: 0.9em; color: #aaa; }
         .keybindings { display: flex; gap: 5px; justify-content: flex-end; }
-        .key-btn { width: 42px; padding: 5px; margin: 0; font-size: 0.75em; background: #444; border: 1px solid #555; }
+        .key-btn { width: 55px; padding: 5px; margin: 0; font-size: 0.75em; background: #444; border: 1px solid #555; cursor: pointer; }
         .key-btn.active { background: #ff3333; }
         span.val-hint { color: #0088ff; font-weight: bold; float: right; }
+        #pauseOverlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; font-size: 4em; font-weight: bold; color: white; text-shadow: 0 0 20px #0088ff; z-index: 5; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div id="menu">
     <h1 style="text-align:center; margin: 0 0 15px 0; color: #0088ff;">DONUT ARENA</h1>
-    
     <div class="settings-grid">
         <div class="setting-item">
             <label>Mapa:</label>
-            <select id="mapSelect">
+            <select id="mapSelect" onchange="drawMapPreview()">
                 <option value="0">1. Klasická Aréna</option>
                 <option value="1">2. Úzká Chodba</option>
                 <option value="2">3. Čtvercový Duel</option>
@@ -39,12 +40,13 @@
                 <option value="6">7. Sloupořadí</option>
                 <option value="7">8. Mini Box</option>
                 <option value="8">9. Pevnost</option>
-                <option value="9">10. Chaos</option>
+                <option value="9">10. Chaos (Nové mechaniky)</option>
             </select>
+            <canvas id="mapPreview" width="350" height="200"></canvas>
         </div>
         <div class="setting-item">
-            <label>Hráči / Body:</label>
-            <div style="display:flex; gap:5px;">
+            <label>Hráči / Body / Power-upy:</label>
+            <div style="display:flex; gap:5px; margin-bottom: 10px;">
                 <select id="playerCount" onchange="renderMenu()" style="flex:1;">
                     <option value="2">2 Hráči</option>
                     <option value="3">3 Hráči</option>
@@ -52,60 +54,107 @@
                 </select>
                 <input type="number" id="targetScore" value="5" min="1" style="width: 50px;">
             </div>
-        </div>
-        <div class="setting-item">
-            <label>Rychlost hráčů: <span id="speedHracVal" class="val-hint">5</span></label>
-            <input type="range" id="speedHrac" min="2" max="12" step="0.5" value="5" oninput="document.getElementById('speedHracVal').innerText=this.value">
-        </div>
-        <div class="setting-item">
-            <label>Rychlost disku: <span id="speedDiskVal" class="val-hint">12</span></label>
-            <input type="range" id="speedDisk" min="5" max="25" step="1" value="12" oninput="document.getElementById('speedDiskVal').innerText=this.value">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                <input type="checkbox" id="powerupsEnabled" checked style="width: 20px; height: 20px;">
+                Povolit Power-upy
+            </label>
+            <label style="margin-top: 15px;">Rychlost hráčů: <span id="speedHracVal" class="val-hint">5</span></label>
+            <input type="range" id="speedHrac" min="2" max="15" step="0.5" value="5" oninput="document.getElementById('speedHracVal').innerText=this.value">
+            
+            <label style="margin-top: 10px;">Rychlost disku: <span id="speedDiskVal" class="val-hint">12</span></label>
+            <input type="range" id="speedDisk" min="5" max="30" step="1" value="12" oninput="document.getElementById('speedDiskVal').innerText=this.value">
         </div>
     </div>
-
     <div id="players-configs"></div>
     <button onclick="startGame()">VSTOUPIT DO BOJE</button>
 </div>
 
+<div id="pauseOverlay" class="hidden">POZASTAVENO</div>
 <canvas id="gameCanvas"></canvas>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const menu = document.getElementById('menu');
+const pauseOverlay = document.getElementById('pauseOverlay');
+const mapPreviewCanvas = document.getElementById('mapPreview');
+const previewCtx = mapPreviewCanvas.getContext('2d');
+const ARENA_RADIUS = 40;
+
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let actx;
+
+function playSound(type) {
+    if(!actx) actx = new AudioContext();
+    if(actx.state === 'suspended') actx.resume();
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.connect(gain); gain.connect(actx.destination);
+    const t = actx.currentTime;
+    if(type === 'throw') {
+        osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(300, t+0.1);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.1);
+        osc.start(t); osc.stop(t+0.1);
+    } else if (type === 'bounce') {
+        osc.type = 'square'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(100, t+0.05);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.05);
+        osc.start(t); osc.stop(t+0.05);
+    } else if (type === 'death') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(20, t+0.3);
+        gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0.01, t+0.3);
+        osc.start(t); osc.stop(t+0.3);
+    } else if (type === 'powerup') {
+        osc.frequency.setValueAtTime(400, t); osc.frequency.setValueAtTime(600, t+0.1); osc.frequency.setValueAtTime(800, t+0.2);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0.01, t+0.3);
+        osc.start(t); osc.stop(t+0.3);
+    }
+}
+
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.volume = 0.6; u.rate = 1.3; window.speechSynthesis.speak(u);
+}
 
 const maps = [
-    { name: "Klasická Aréna", w: 1100, h: 500, obs: [{x:550, y:250, r:70}, {x:300, y:100, r:40}, {x:300, y:400, r:40}, {x:800, y:100, r:40}, {x:800, y:400, r:40}], rects: [] },
-    { name: "Úzká Chodba", w: 1200, h: 300, obs: [], rects: [{x:400, y:0, w:30, h:120}, {x:400, y:180, w:30, h:120}, {x:800, y:0, w:30, h:120}, {x:800, y:180, w:30, h:120}] },
-    { name: "Čtvercový Duel", w: 600, h: 600, obs: [{x:300, y:300, r:100}], rects: [] },
-    { name: "Bludiště", w: 1000, h: 600, obs: [], rects: [{x:200, y:150, w:600, h:20}, {x:200, y:430, w:600, h:20}, {x:500, y:150, w:20, h:300}] },
-    { name: "Velká Prázdnota", w: 1300, h: 700, obs: [{x:650, y:350, r:20}], rects: [] },
-    { name: "Křížová palba", w: 900, h: 500, obs: [{x:225, y:125, r:50}, {x:675, y:125, r:50}, {x:225, y:375, r:50}, {x:675, y:375, r:50}, {x:450, y:250, r:30}], rects: [] },
-    { name: "Sloupořadí", w: 1100, h: 500, obs: [{x:200, y:250, r:30}, {x:400, y:250, r:30}, {x:600, y:250, r:30}, {x:800, y:250, r:30}, {x:1000, y:250, r:30}], rects: [] },
-    { name: "Mini Box", w: 500, h: 400, obs: [], rects: [{x:100, y:100, w:300, h:20}, {x:100, y:280, w:300, h:20}] },
-    { name: "Pevnost", w: 1000, h: 600, obs: [], rects: [{x:400, y:200, w:200, h:200}] },
-    { name: "Chaos", w: 1100, h: 550, obs: [{x:150, y:150, r:20}, {x:950, y:150, r:20}, {x:150, y:400, r:20}, {x:950, y:400, r:20}], rects: [{x:400, y:100, w:300, h:10}, {x:400, y:440, w:300, h:10}] }
+    { name: "1. Klasická Aréna", w: 1400, h: 700, obs: [{x:700, y:350, r:90}, {x:400, y:150, r:60}, {x:400, y:550, r:60}, {x:1000, y:150, r:60}, {x:1000, y:550, r:60}], rects: [] },
+    { name: "2. Úzká Chodba", w: 1500, h: 500, obs: [], rects: [{x:500, y:0, w:40, h:200}, {x:500, y:300, w:40, h:200}, {x:1000, y:0, w:40, h:200}, {x:1000, y:300, w:40, h:200}] },
+    { name: "3. Čtvercový Duel", w: 900, h: 900, obs: [{x:450, y:450, r:150}], rects: [] },
+    { name: "4. Bludiště", w: 1400, h: 800, obs: [], rects: [{x:300, y:200, w:800, h:30}, {x:300, y:570, w:800, h:30}, {x:700, y:200, w:30, h:400}] },
+    { name: "5. Velká Prázdnota", w: 1600, h: 900, obs: [{x:800, y:450, r:40}], rects: [] },
+    { name: "6. Křížová palba", w: 1400, h: 800, obs: [{x:350, y:200, r:70}, {x:1050, y:200, r:70}, {x:350, y:600, r:70}, {x:1050, y:600, r:70}, {x:700, y:400, r:50}], rects: [] },
+    { name: "7. Sloupořadí", w: 1500, h: 700, obs: [{x:250, y:350, r:40}, {x:500, y:350, r:40}, {x:750, y:350, r:40}, {x:1000, y:350, r:40}, {x:1250, y:350, r:40}], rects: [] },
+    { name: "8. Mini Box", w: 1000, h: 700, obs: [], rects: [{x:200, y:150, w:600, h:30}, {x:200, y:520, w:600, h:30}] },
+    { name: "9. Pevnost", w: 1400, h: 800, obs: [], rects: [{x:500, y:250, w:400, h:300}] },
+    { name: "10. Chaos (Nové mechaniky)", w: 1500, h: 800, 
+      obs: [{x:200, y:200, r:40}, {x:1300, y:200, r:40}, {x:200, y:600, r:40}, {x:1300, y:600, r:40}], 
+      rects: [{x:550, y:150, w:400, h:20}, {x:550, y:630, w:400, h:20}],
+      treadmills: [{x: 500, y: 150, w: 500, h: 40, vx: 3, vy: 0}, {x: 500, y: 610, w: 500, h: 40, vx: -3, vy: 0}],
+      teleports: [{x: 750, y: 400, r: 40, target: {x: 750, y: 100}}],
+      movingObs: [{x: 750, y: 200, r: 40, vx: 0, vy: 4, minY: 200, maxY: 600}]
+    }
 ];
 
 let allPlayers = [
-    { id: 1, color: '#ff3333', team: 'A', up: 'w', down: 's', left: 'a', right: 'd', fire: 'q' },
-    { id: 2, color: '#33ff33', team: 'B', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', fire: 'm' },
-    { id: 3, color: '#3333ff', team: 'A', up: 't', down: 'g', left: 'f', right: 'h', fire: 'r' },
-    { id: 4, color: '#ffff33', team: 'B', up: 'i', down: 'k', left: 'j', right: 'l', fire: 'u' }
+    { id: 1, color: '#ff3333', team: 'A', up: 'w', down: 's', left: 'a', right: 'd', fire: 'q', gpId: 0 },
+    { id: 2, color: '#33ff33', team: 'B', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', fire: 'm', gpId: 1 },
+    { id: 3, color: '#3333ff', team: 'A', up: 't', down: 'g', left: 'f', right: 'h', fire: 'r', gpId: 2 },
+    { id: 4, color: '#ffff33', team: 'B', up: 'i', down: 'k', left: 'j', right: 'l', fire: 'u', gpId: 3 }
 ];
 
-let activePlayers = [];
-let donuts = [];
-let gameRunning = false;
-let roundOver = false;
-let countdown = 0;
-let targetScore = 5;
-let playerSpeed = 5;
-let donutSpeed = 12;
-let keys = {};
-let teamScores = {};
-let currentMap = maps[0];
-const ARENA_RADIUS = 40;
+let activePlayers = [], donuts = [], items = [], particles = [];
+let gameRunning = false, roundOver = false, isPaused = false;
+let countdown = 0, lastSpokenCount = 0;
+let itemTimer = 0;
+let targetScore = 5, playerSpeed = 5, donutSpeed = 12, powerupsActive = true;
+let keys = {}, teamScores = {}, currentMap = maps[0];
+let screenShake = 0;
+
+function formatKeyName(k) {
+    if (k === ' ') return 'SPACE';
+    if (k.startsWith('Arrow')) return k.replace('Arrow', '').toUpperCase();
+    return k.toUpperCase();
+}
 
 function renderMenu() {
     const container = document.getElementById('players-configs');
@@ -121,71 +170,270 @@ function renderMenu() {
                     ${['A','B','C','D'].map(t => `<option value="${t}" ${p.team===t?'selected':''}>Tým ${t}</option>`).join('')}
                 </select>
                 <div class="keybindings">
-                    ${['up','down','left','right','fire'].map(k => `<button class="key-btn" onclick="assignKey(${i},'${k}',this)">${p[k].replace('Arrow','').substring(0,3).toUpperCase()}</button>`).join('')}
+                    ${['up','down','left','right','fire'].map(k => `<button class="key-btn" onclick="assignKey(${i},'${k}',this)">${formatKeyName(p[k])}</button>`).join('')}
                 </div>
             </div>`;
     }
 }
 
+function drawMapPreview() {
+    const map = maps[document.getElementById('mapSelect').value];
+    previewCtx.clearRect(0, 0, mapPreviewCanvas.width, mapPreviewCanvas.height);
+    
+    previewCtx.save();
+    const scale = Math.min(mapPreviewCanvas.width / map.w, mapPreviewCanvas.height / map.h);
+    previewCtx.translate((mapPreviewCanvas.width - map.w * scale) / 2, (mapPreviewCanvas.height - map.h * scale) / 2);
+    previewCtx.scale(scale, scale);
+
+    previewCtx.beginPath();
+    previewCtx.roundRect(0, 0, map.w, map.h, ARENA_RADIUS);
+    previewCtx.fillStyle = '#050505';
+    previewCtx.fill();
+    previewCtx.strokeStyle = '#333';
+    previewCtx.lineWidth = 10;
+    previewCtx.stroke();
+
+    previewCtx.save();
+    previewCtx.clip();
+    (map.treadmills || []).forEach(t => {
+        previewCtx.fillStyle = 'rgba(255,100,0,0.2)'; previewCtx.fillRect(t.x, t.y, t.w, t.h);
+    });
+    (map.teleports || []).forEach(t => {
+        previewCtx.fillStyle = 'rgba(200,0,255,0.4)'; previewCtx.beginPath(); previewCtx.arc(t.x, t.y, t.r, 0, Math.PI*2); previewCtx.fill();
+    });
+    previewCtx.restore();
+
+    map.obs.forEach(o => {
+        previewCtx.fillStyle = '#1a1a1a'; previewCtx.strokeStyle = '#0088ff'; previewCtx.lineWidth = 4;
+        previewCtx.beginPath(); previewCtx.arc(o.x, o.y, o.r, 0, Math.PI*2); previewCtx.fill(); previewCtx.stroke();
+    });
+    (map.movingObs || []).forEach(o => {
+        previewCtx.fillStyle = '#2a1a1a'; previewCtx.strokeStyle = '#ff8800'; previewCtx.lineWidth = 4;
+        previewCtx.beginPath(); previewCtx.arc(o.x, o.y, o.r, 0, Math.PI*2); previewCtx.fill(); previewCtx.stroke();
+    });
+    map.rects.forEach(r => {
+        previewCtx.fillStyle = '#1a1a1a'; previewCtx.strokeStyle = '#0088ff'; previewCtx.lineWidth = 4;
+        previewCtx.beginPath(); previewCtx.roundRect(r.x, r.y, r.w, r.h, 10); previewCtx.fill(); previewCtx.stroke();
+    });
+
+    previewCtx.restore();
+}
+
 function assignKey(idx, action, btn) {
-    btn.classList.add('active');
+    btn.classList.add('active'); btn.innerText = '...';
     const listener = (e) => {
-        allPlayers[idx][action] = e.key;
-        btn.innerText = e.key.replace('Arrow','').substring(0,3).toUpperCase();
-        btn.classList.remove('active');
+        e.preventDefault(); allPlayers[idx][action] = e.key;
+        btn.innerText = formatKeyName(e.key); btn.classList.remove('active');
         window.removeEventListener('keydown', listener);
     };
     window.addEventListener('keydown', listener);
 }
 
 window.addEventListener('keydown', e => {
-    keys[e.key] = true;
-    if (gameRunning && !roundOver && countdown <= 0) {
-        activePlayers.forEach(p => { if (p.isAlive && e.key === p.fire) shootDonut(p); });
+    if (e.key === 'Escape' && gameRunning && !roundOver) {
+        isPaused = !isPaused;
+        pauseOverlay.classList.toggle('hidden', !isPaused);
+        return;
+    }
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+    const k = e.key.toLowerCase(); keys[k] = true;
+    
+    if (gameRunning && !roundOver && countdown <= 0 && !isPaused) {
+        activePlayers.forEach(p => { 
+            if (p.isAlive && k === p.fire.toLowerCase() && !p.gpFirePressed) shootDonut(p); 
+        });
     }
 });
-window.addEventListener('keyup', e => keys[e.key] = false);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
 function shootDonut(p) {
     if (!p.hasDonut) return;
-    p.hasDonut = false;
-    donuts.push({ owner: p, x: p.x, y: p.y, vx: p.lastDx * donutSpeed, vy: p.lastDy * donutSpeed, age: 0 });
+    p.hasDonut = false; playSound('throw');
+    
+    if (p.multiShotTime > 0) {
+        const angles = [-0.2, 0, 0.2];
+        let baseAngle = Math.atan2(p.lastDy, p.lastDx);
+        angles.forEach(a => {
+            let nVx = Math.cos(baseAngle + a) * donutSpeed;
+            let nVy = Math.sin(baseAngle + a) * donutSpeed;
+            donuts.push({ owner: p, x: p.x, y: p.y, vx: nVx, vy: nVy, age: 0, trail: [] });
+        });
+    } else {
+        donuts.push({ owner: p, x: p.x, y: p.y, vx: p.lastDx * donutSpeed, vy: p.lastDy * donutSpeed, age: 0, trail: [] });
+    }
+}
+
+function createParticles(x, y, color) {
+    for(let i=0; i<15; i++) particles.push({ x, y, vx:(Math.random()-0.5)*15, vy:(Math.random()-0.5)*15, life:1, color });
+}
+
+function applyBounds(obj, r, isDisk) {
+    const R = ARENA_RADIUS; let inCorner = false; let cx = 0, cy = 0;
+    if (obj.x < R && obj.y < R) { cx = R; cy = R; inCorner = true; }
+    else if (obj.x > canvas.width - R && obj.y < R) { cx = canvas.width - R; cy = R; inCorner = true; }
+    else if (obj.x < R && obj.y > canvas.height - R) { cx = R; cy = canvas.height - R; inCorner = true; }
+    else if (obj.x > canvas.width - R && obj.y > canvas.height - R) { cx = canvas.width - R; cy = canvas.height - R; inCorner = true; }
+
+    if (inCorner) {
+        let dx = obj.x - cx, dy = obj.y - cy;
+        let dist = Math.hypot(dx, dy);
+        let maxDist = R - r;
+        if (dist > maxDist) {
+            let nx = dx / dist, ny = dy / dist;
+            obj.x = cx + nx * maxDist; obj.y = cy + ny * maxDist;
+            if (isDisk) {
+                let dot = obj.vx * nx + obj.vy * ny;
+                obj.vx -= 2 * dot * nx; obj.vy -= 2 * dot * ny;
+                playSound('bounce');
+            }
+        }
+    } else {
+        if (obj.x < r) { obj.x = r; if (isDisk) {obj.vx *= -1; playSound('bounce');} }
+        else if (obj.x > canvas.width - r) { obj.x = canvas.width - r; if (isDisk) {obj.vx *= -1; playSound('bounce');} }
+        if (obj.y < r) { obj.y = r; if (isDisk) {obj.vy *= -1; playSound('bounce');} }
+        else if (obj.y > canvas.height - r) { obj.y = canvas.height - r; if (isDisk) {obj.vy *= -1; playSound('bounce');} }
+    }
+}
+
+function checkCollision(px, py, r, isGhost) {
+    if (isGhost) return false;
+    for (let o of currentMap.obs) if (Math.hypot(px - o.x, py - o.y) < o.r + r) return true;
+    for (let o of (currentMap.movingObs || [])) if (Math.hypot(px - o.x, py - o.y) < o.r + r) return true;
+    for (let rect of currentMap.rects) if (px > rect.x - r && px < rect.x + rect.w + r && py > rect.y - r && py < rect.y + rect.h + r) return true;
+    return false;
+}
+
+function processGamepads() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    activePlayers.forEach(p => {
+        if (!p.isAlive) return;
+        const gp = gamepads[p.gpId];
+        if (gp) {
+            let ax = gp.axes[0], ay = gp.axes[1];
+            if (Math.abs(ax) > 0.2) p.gpDx = ax; else p.gpDx = 0;
+            if (Math.abs(ay) > 0.2) p.gpDy = ay; else p.gpDy = 0;
+            
+            let firing = gp.buttons[0]?.pressed || gp.buttons[7]?.pressed;
+            if (firing && !p.gpFirePressed) shootDonut(p);
+            p.gpFirePressed = firing;
+        } else {
+            p.gpDx = 0; p.gpDy = 0;
+        }
+    });
 }
 
 function update() {
     if (!gameRunning) return;
+    if (isPaused) { requestAnimationFrame(update); return; }
     
-    // Pohyb a logika běží pouze pokud není odpočet a není po kole
     if (!roundOver && countdown <= 0) {
+        processGamepads();
+        screenShake *= 0.85;
+
+        (currentMap.movingObs || []).forEach(m => {
+            m.x += m.vx; m.y += m.vy;
+            if (m.y < m.minY || m.y > m.maxY) m.vy *= -1;
+        });
+
+        if (powerupsActive) {
+            itemTimer--;
+            if (itemTimer <= 0 && items.length < 3) {
+                let sx, sy, valid = false;
+                for(let a=0; a<50 && !valid; a++) {
+                    sx = Math.random() * (canvas.width - 100) + 50; sy = Math.random() * (canvas.height - 100) + 50;
+                    valid = true;
+                    if (sx < ARENA_RADIUS && sy < ARENA_RADIUS) valid = false;
+                    else if (sx > canvas.width - ARENA_RADIUS && sy < ARENA_RADIUS) valid = false;
+                    else if (sx < ARENA_RADIUS && sy > canvas.height - ARENA_RADIUS) valid = false;
+                    else if (sx > canvas.width - ARENA_RADIUS && sy > canvas.height - ARENA_RADIUS) valid = false;
+                    if (checkCollision(sx, sy, 20, false)) valid = false;
+                }
+                if (valid) {
+                    const types = ['shield', 'speed', 'multi', 'ghost'];
+                    items.push({x: sx, y: sy, type: types[Math.floor(Math.random()*types.length)]});
+                }
+                itemTimer = Math.floor(Math.random() * 300) + 200; 
+            }
+        } else {
+            items = [];
+        }
+
         activePlayers.forEach(p => {
             if (!p.isAlive) return;
+
+            if (p.shieldTime > 0) p.shieldTime--; else p.hasShield = false;
+            if (p.speedTime > 0) p.speedTime--;
+            if (p.multiShotTime > 0) p.multiShotTime--;
+            if (p.ghostTime > 0) { p.ghostTime--; p.isGhost = true; } else p.isGhost = false;
+
+            p.trail.push({x: p.x, y: p.y});
+            if(p.trail.length > 8) p.trail.shift();
+
+            let cSpeed = p.speedTime > 0 ? playerSpeed * 1.5 : playerSpeed;
             let dx = 0, dy = 0;
-            if (keys[p.up]) dy = -playerSpeed;
-            if (keys[p.down]) dy = playerSpeed;
-            if (keys[p.left]) dx = -playerSpeed;
-            if (keys[p.right]) dx = playerSpeed;
+            
+            if (keys[p.up.toLowerCase()]) dy -= cSpeed;
+            if (keys[p.down.toLowerCase()]) dy += cSpeed;
+            if (keys[p.left.toLowerCase()]) dx -= cSpeed;
+            if (keys[p.right.toLowerCase()]) dx += cSpeed;
+            
+            dx += p.gpDx * cSpeed; dy += p.gpDy * cSpeed;
+
+            (currentMap.treadmills || []).forEach(t => {
+                if (p.x > t.x && p.x < t.x+t.w && p.y > t.y && p.y < t.y+t.h) { dx += t.vx; dy += t.vy; }
+            });
+
+            if (p.teleportCd > 0) p.teleportCd--;
+            (currentMap.teleports || []).forEach(t => {
+                if (p.teleportCd <= 0 && Math.hypot(p.x - t.x, p.y - t.y) < t.r) {
+                    p.x = t.target.x; p.y = t.target.y; p.teleportCd = 60; playSound('powerup');
+                }
+            });
 
             if (dx !== 0 || dy !== 0) {
                 let len = Math.hypot(dx, dy);
-                p.lastDx = dx / len; p.lastDy = dy / len;
-                let nx = p.x + dx, ny = p.y + dy;
-                
-                let blocked = false;
-                currentMap.obs.forEach(o => { if(Math.hypot(nx-o.x, ny-o.y) < o.r+15) blocked = true; });
-                currentMap.rects.forEach(r => { if(nx > r.x-15 && nx < r.x+r.w+15 && ny > r.y-15 && ny < r.y+r.h+15) blocked = true; });
-                
-                if (!blocked) {
-                    p.x = Math.max(20, Math.min(canvas.width - 20, nx));
-                    p.y = Math.max(20, Math.min(canvas.height - 20, ny));
+                if(Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+                    p.lastDx = dx / len; p.lastDy = dy / len;
                 }
+                
+                let nx = p.x + dx, ny = p.y + dy;
+                let canMoveX = !checkCollision(nx, p.y, 15, p.isGhost);
+                let canMoveY = !checkCollision(p.x, ny, 15, p.isGhost);
+                let canMoveBoth = !checkCollision(nx, ny, 15, p.isGhost);
+
+                if (canMoveBoth && canMoveX && canMoveY) { p.x = nx; p.y = ny; } 
+                else { if (canMoveX) p.x = nx; if (canMoveY) p.y = ny; }
+                
+                applyBounds(p, 15, false);
             }
         });
 
+        for (let i = items.length - 1; i >= 0; i--) {
+            let item = items[i];
+            for (let p of activePlayers) {
+                if (p.isAlive && Math.hypot(p.x - item.x, p.y - item.y) < 25) {
+                    playSound('powerup');
+                    if(item.type === 'shield') { p.hasShield = true; p.shieldTime = 20 * 60; }
+                    if(item.type === 'speed') p.speedTime = 10 * 60;
+                    if(item.type === 'multi') p.multiShotTime = 15 * 60;
+                    if(item.type === 'ghost') p.ghostTime = 8 * 60;
+                    items.splice(i, 1); break;
+                }
+            }
+        }
+
         for (let i = donuts.length - 1; i >= 0; i--) {
             let d = donuts[i];
+            
+            (currentMap.treadmills || []).forEach(t => {
+                if (d.x > t.x && d.x < t.x+t.w && d.y > t.y && d.y < t.y+t.h) { d.x += t.vx*0.5; d.y += t.vy*0.5; }
+            });
+
             d.x += d.vx; d.y += d.vy; d.age++;
-            if (d.x <= 15 || d.x >= canvas.width - 15) d.vx *= -1;
-            if (d.y <= 15 || d.y >= canvas.height - 15) d.vy *= -1;
+            d.trail.push({x: d.x, y: d.y});
+            if(d.trail.length > 10) d.trail.shift();
+            
+            applyBounds(d, 10, true);
 
             currentMap.obs.forEach(o => {
                 let dist = Math.hypot(d.x-o.x, d.y-o.y);
@@ -193,12 +441,26 @@ function update() {
                     let nx = (d.x-o.x)/dist, ny = (d.y-o.y)/dist;
                     let dot = d.vx*nx + d.vy*ny;
                     d.vx -= 2*dot*nx; d.vy -= 2*dot*ny;
+                    d.x += nx * 2; d.y += ny * 2;
+                    playSound('bounce');
+                }
+            });
+
+            (currentMap.movingObs || []).forEach(o => {
+                let dist = Math.hypot(d.x-o.x, d.y-o.y);
+                if (dist < o.r+10) {
+                    let nx = (d.x-o.x)/dist, ny = (d.y-o.y)/dist;
+                    let dot = d.vx*nx + d.vy*ny;
+                    d.vx -= 2*dot*nx; d.vy -= 2*dot*ny;
+                    d.x += nx * 2; d.y += ny * 2;
+                    playSound('bounce');
                 }
             });
             
             currentMap.rects.forEach(r => {
                 if (d.x > r.x && d.x < r.x+r.w && d.y > r.y && d.y < r.y+r.h) {
                     if (d.x-d.vx <= r.x || d.x-d.vx >= r.x+r.w) d.vx *= -1; else d.vy *= -1;
+                    playSound('bounce');
                 }
             });
 
@@ -206,11 +468,23 @@ function update() {
                 d.owner.hasDonut = true; donuts.splice(i, 1); continue;
             }
 
-            activePlayers.forEach(p => {
+            for (let j = 0; j < activePlayers.length; j++) {
+                let p = activePlayers[j];
                 if (p.isAlive && p.team !== d.owner.team && Math.hypot(d.x-p.x, d.y-p.y) < 22) {
-                    p.isAlive = false; d.owner.hasDonut = true; donuts.splice(i, 1); checkRoundEnd();
+                    if (p.hasShield) {
+                        p.hasShield = false; p.shieldTime = 0; playSound('bounce');
+                    } else {
+                        p.isAlive = false; screenShake = 15; createParticles(p.x, p.y, p.color); playSound('death'); checkRoundEnd();
+                    }
+                    d.owner.hasDonut = true; donuts.splice(i, 1); break;
                 }
-            });
+            }
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let pt = particles[i];
+            pt.x += pt.vx; pt.y += pt.vy; pt.life -= 0.03;
+            if (pt.life <= 0) particles.splice(i, 1);
         }
     }
     draw();
@@ -221,39 +495,47 @@ function checkRoundEnd() {
     let alive = new Set();
     activePlayers.forEach(p => { if(p.isAlive) alive.add(p.team); });
     if (alive.size <= 1) {
-        roundOver = true;
-        let winT = [...alive][0];
+        roundOver = true; let winT = [...alive][0];
         if(winT) teamScores[winT]++;
         setTimeout(() => {
             if (winT && teamScores[winT] >= targetScore) { gameRunning = false; menu.classList.remove('hidden'); }
             else startRound();
-        }, 1500);
+        }, 2000);
     }
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Aréna
-    ctx.beginPath();
-    ctx.roundRect(0, 0, canvas.width, canvas.height, ARENA_RADIUS);
-    ctx.fillStyle = '#050505';
-    ctx.fill();
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 10;
-    ctx.stroke();
-
-    // Mřížka
     ctx.save();
-    ctx.clip();
+    if (screenShake > 0.5) ctx.translate((Math.random()-0.5)*screenShake, (Math.random()-0.5)*screenShake);
+    
+    ctx.beginPath(); ctx.roundRect(0, 0, canvas.width, canvas.height, ARENA_RADIUS);
+    ctx.fillStyle = '#050505'; ctx.fill();
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 10; ctx.stroke();
+
+    ctx.save(); ctx.clip();
     ctx.strokeStyle = '#111';
     for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
     for(let i=0; i<canvas.height; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+    
+    (currentMap.treadmills || []).forEach(t => {
+        ctx.fillStyle = 'rgba(255,100,0,0.1)'; ctx.fillRect(t.x, t.y, t.w, t.h);
+        ctx.strokeStyle = 'rgba(255,100,0,0.5)'; ctx.setLineDash([5, 5]); ctx.strokeRect(t.x, t.y, t.w, t.h);
+        ctx.setLineDash([]);
+    });
+
+    (currentMap.teleports || []).forEach(t => {
+        ctx.fillStyle = 'rgba(200,0,255,0.2)'; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#c0f'; ctx.lineWidth = 2; ctx.stroke();
+    });
     ctx.restore();
 
-    // Překážky
     currentMap.obs.forEach(o => {
         ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#0088ff'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    });
+    (currentMap.movingObs || []).forEach(o => {
+        ctx.fillStyle = '#2a1a1a'; ctx.strokeStyle = '#ff8800'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
     });
     currentMap.rects.forEach(r => {
@@ -261,75 +543,111 @@ function draw() {
         ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 10); ctx.fill(); ctx.stroke();
     });
 
-    // Hráči
+    if (powerupsActive) {
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('POWER-UPY: S = Štít | >> = Rychlost | 3x = Trojhod | G = Duch', canvas.width / 2, 25);
+    }
+
+    items.forEach(item => {
+        let colors = {shield: '#00ffff', speed: '#ffff00', multi: '#ff00ff', ghost: '#aaaaaa'};
+        let labels = {shield: 'S', speed: '>>', multi: '3x', ghost: 'G'};
+        ctx.fillStyle = colors[item.type]; ctx.shadowBlur = 15; ctx.shadowColor = colors[item.type];
+        ctx.beginPath(); ctx.arc(item.x, item.y, 12, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+        ctx.fillStyle = '#000'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(labels[item.type], item.x, item.y);
+    });
+
     activePlayers.forEach(p => {
         if (!p.isAlive) return;
-        ctx.fillStyle = p.color; 
-        ctx.shadowBlur = 10; ctx.shadowColor = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 15, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-        if (p.hasDonut) { ctx.strokeStyle = 'white'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
-    });
-
-    // Disky
-    donuts.forEach(d => {
-        ctx.strokeStyle = d.owner.color; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(d.x, d.y, 10, 0, Math.PI*2); ctx.stroke();
-    });
-
-    // Odpočet (Countdown)
-    if (countdown > 0) {
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        ctx.fillStyle = '#0088ff';
-        ctx.font = 'bold 120px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#0088ff';
-        ctx.fillText(Math.ceil(countdown), canvas.width / 2, canvas.height / 2);
-        ctx.shadowBlur = 0;
+        ctx.globalAlpha = p.isGhost ? 0.4 : 1;
+        
+        ctx.beginPath();
+        for(let i=0; i<p.trail.length; i++) {
+            ctx.lineTo(p.trail[i].x, p.trail[i].y);
+        }
+        ctx.strokeStyle = p.color; ctx.lineWidth = 5; ctx.globalAlpha = 0.3; ctx.stroke(); ctx.globalAlpha = 1;
+
+        ctx.fillStyle = p.color; ctx.shadowBlur = 10; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 15, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+        
+        if (p.hasDonut) { 
+            ctx.strokeStyle = p.multiShotTime > 0 ? '#ff00ff' : 'white'; 
+            ctx.setLineDash([3,3]); ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]); 
+        }
+
+        if (p.hasShield) {
+            let ratio = p.shieldTime / (20*60);
+            ctx.strokeStyle = `rgba(0, 255, 255, ${Math.max(0.2, ratio)})`; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 24, -Math.PI/2, -Math.PI/2 + (Math.PI*2*ratio)); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+    });
+
+    donuts.forEach(d => {
+        ctx.beginPath();
+        for(let i=0; i<d.trail.length; i++) ctx.lineTo(d.trail[i].x, d.trail[i].y);
+        ctx.strokeStyle = d.owner.color; ctx.lineWidth = 10; ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1;
+
+        ctx.strokeStyle = 'white'; ctx.fillStyle = d.owner.color; ctx.lineWidth = 3; 
+        ctx.beginPath(); ctx.arc(d.x, d.y, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    });
+
+    particles.forEach(pt => {
+        ctx.globalAlpha = pt.life; ctx.fillStyle = pt.color;
+        ctx.fillRect(pt.x, pt.y, 4, 4);
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+
+    if (countdown > 0) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#0088ff'; ctx.font = 'bold 150px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 30; ctx.shadowColor = '#0088ff';
+        ctx.fillText(Math.ceil(countdown), canvas.width / 2, canvas.height / 2); ctx.shadowBlur = 0;
     }
 }
 
 function startRound() {
-    roundOver = false;
-    donuts = [];
-    countdown = 3; // Nastavení 3 sekund
+    roundOver = false; donuts = []; items = []; particles = [];
+    countdown = 3; itemTimer = Math.floor(Math.random() * 200) + 100;
+    lastSpokenCount = 4;
     
-    const offset = 80;
-    const spawns = [
-        {x:offset, y:offset, dx:1, dy:1}, 
-        {x:canvas.width-offset, y:canvas.height-offset, dx:-1, dy:-1}, 
-        {x:offset, y:canvas.height-offset, dx:1, dy:-1}, 
-        {x:canvas.width-offset, y:offset, dx:-1, dy:1}
-    ];
+    const offset = 100;
+    const spawns = [ {x:offset, y:offset, dx:1, dy:1}, {x:canvas.width-offset, y:canvas.height-offset, dx:-1, dy:-1}, {x:offset, y:canvas.height-offset, dx:1, dy:-1}, {x:canvas.width-offset, y:offset, dx:-1, dy:1} ];
     activePlayers.forEach((p, i) => {
         p.x = spawns[i].x; p.y = spawns[i].y; p.lastDx = spawns[i].dx; p.lastDy = spawns[i].dy;
-        p.isAlive = true; p.hasDonut = true;
+        p.isAlive = true; p.hasDonut = false; p.hasShield = false; p.shieldTime = 0; p.speedTime = 0; p.multiShotTime = 0; p.ghostTime = 0; p.trail = [];
     });
 
-    // Logika časovače
     const timer = setInterval(() => {
-        countdown -= 1;
-        if (countdown <= 0) {
-            clearInterval(timer);
-        }
-    }, 1000);
+        if(isPaused) return;
+        countdown -= 0.1;
+        let intCount = Math.ceil(countdown);
+        if(intCount < lastSpokenCount && intCount > 0) { speak(intCount.toString()); lastSpokenCount = intCount; }
+        if (countdown <= 0) { speak("Fight!"); clearInterval(timer); activePlayers.forEach(p => p.hasDonut = true); }
+    }, 100);
 }
 
 function startGame() {
     currentMap = maps[document.getElementById('mapSelect').value];
+    powerupsActive = document.getElementById('powerupsEnabled').checked;
     canvas.width = currentMap.w; canvas.height = currentMap.h;
     playerSpeed = parseFloat(document.getElementById('speedHrac').value);
     donutSpeed = parseFloat(document.getElementById('speedDisk').value);
     targetScore = parseInt(document.getElementById('targetScore').value);
     activePlayers = allPlayers.slice(0, document.getElementById('playerCount').value);
     activePlayers.forEach(p => teamScores[p.team] = 0);
-    gameRunning = true; menu.classList.add('hidden');
+    gameRunning = true; isPaused = false; pauseOverlay.classList.add('hidden'); menu.classList.add('hidden');
+    
+    if(!actx) actx = new AudioContext(); if(actx.state === 'suspended') actx.resume();
     startRound(); update();
 }
 
+drawMapPreview();
 renderMenu();
 </script>
 </body>
