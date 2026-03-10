@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Bank Heist CO-OP</title>
+    <style>
+        body { background: #1a1a1a; color: white; text-align: center; font-family: Arial; margin: 0; overflow: hidden; }
+        canvas { background: #333; border: 4px solid #555; cursor: crosshair; margin-top: 20px; }
+        .stats { position: absolute; top: 10px; left: 10px; text-align: left; background: rgba(0,0,0,0.5); padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="stats">
+        <div>Peníze: <span id="money">0</span> $</div>
+        <div>Tvoje HP: <span id="hp">100</span></div>
+    </div>
+    <canvas id="game" width="800" height="600"></canvas>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const socket = io('http://localhost:3000');
+
+        let gameState = { players: {}, cops: [], vault: { money: 0 } };
+        const keys = {};
+
+        window.onkeydown = (e) => keys[e.key.toLowerCase()] = true;
+        window.onkeyup = (e) => keys[e.key.toLowerCase()] = false;
+
+        // Střelba kliknutím
+        canvas.onmousedown = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            
+            gameState.cops.forEach(cop => {
+                if (mx > cop.x && mx < cop.x + 30 && my > cop.y && my < cop.y + 30) {
+                    socket.emit('shoot', cop.id);
+                }
+            });
+        };
+
+        socket.on('gameState', (data) => {
+            gameState = data;
+            if (gameState.players[socket.id]) {
+                document.getElementById('money').innerText = gameState.vault.money;
+                document.getElementById('hp').innerText = gameState.players[socket.id].hp;
+            }
+        });
+
+        function loop() {
+            // Pohyb lokálního hráče
+            if (gameState.players[socket.id]) {
+                let p = gameState.players[socket.id];
+                let moved = false;
+                if (keys['w']) { p.y -= 4; moved = true; }
+                if (keys['s']) { p.y += 4; moved = true; }
+                if (keys['a']) { p.x -= 4; moved = true; }
+                if (keys['d']) { p.x += 4; moved = true; }
+                if (moved) socket.emit('move', { x: p.x, y: p.y });
+            }
+
+            // Vykreslování
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Trezor
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(350, 20, 100, 100);
+            ctx.fillStyle = 'black';
+            ctx.fillText("TREZOR", 380, 75);
+
+            // Policisté
+            gameState.cops.forEach(cop => {
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(cop.x, cop.y, 30, 30);
+                ctx.fillStyle = 'white';
+                ctx.fillText("POLICIE", cop.x, cop.y - 5);
+            });
+
+            // Hráči
+            for (let id in gameState.players) {
+                let p = gameState.players[id];
+                ctx.fillStyle = (id === socket.id) ? '#00ff00' : '#ff0000';
+                ctx.fillRect(p.x, p.y, 40, 40);
+            }
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>
