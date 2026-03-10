@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meme Clicker Simulator 2026 - Custom Skin Edition</title>
+    <style>
+        :root { --btn-color: #ff4757; --bg-color: #f4f4f9; --text-color: #333; }
+        @keyframes rainbow { 0%{background-position:0% 82%} 50%{background-position:100% 19%} 100%{background-position:0% 82%} }
+        .bg-rainbow { background: linear-gradient(124deg, #ff2400, #e81d1d, #e8b71d, #e3e81d, #1de840, #1ddde8, #2b1de8, #dd00f3, #dd00f3); background-size: 1800% 1800%; animation: rainbow 5s ease infinite; color: white !important; }
+        .bg-dark { background-color: #111; color: #00ff00 !important; font-family: 'Courier New', Courier, monospace !important; }
+
+        body { font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif; text-align: center; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; transition: all 0.3s; }
+        .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+        .panel { background: rgba(255, 255, 255, 0.9); color: #333; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); width: 340px; text-align: left; border: 3px solid #333; display: flex; flex-direction: column; }
+        .bg-dark .panel { background: rgba(0, 0, 0, 0.8); border-color: #00ff00; color: #00ff00; }
+        
+        .center-panel { width: 450px; text-align: center; }
+        #click-btn { font-size: 60px; padding: 0; border-radius: 50%; border: 5px solid #fff; background-color: var(--btn-color); cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: transform 0.05s, filter 0.2s; user-select: none; width: 220px; height: 220px; margin: 20px auto; display: flex; justify-content: center; align-items: center; background-size: cover; background-position: center; background-repeat: no-repeat; overflow: hidden; color: white; }
+        #click-btn:active { transform: scale(0.9); filter: brightness(1.2); }
+        
+        .score-display { font-size: 40px; font-weight: bold; margin-bottom: 5px; text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff; color: #e74c3c; }
+        .timer-display { font-size: 24px; font-family: monospace; font-weight: bold; margin-bottom: 20px; background: #333; color: #00ff00; padding: 5px 15px; border-radius: 8px; display: inline-block; cursor: crosshair; }
+        
+        .upgrades-container { max-height: 250px; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; }
+        .upgrades-container::-webkit-scrollbar { width: 8px; }
+        .upgrades-container::-webkit-scrollbar-thumb { background: #ff4757; border-radius: 4px; }
+        
+        .achievements-container { max-height: 150px; overflow-y: auto; border: 2px dashed #777; padding: 5px; border-radius: 10px; margin-top: 10px; background: rgba(0,0,0,0.05); }
+        .achievement { font-size: 12px; padding: 5px; border-bottom: 1px solid #ccc; color: #7f8c8d; display: flex; justify-content: space-between; }
+        .achievement.unlocked { color: #2ecc71; font-weight: bold; background: rgba(46, 204, 113, 0.1); }
+
+        .btn { padding: 10px 15px; margin: 5px 0; cursor: pointer; border-radius: 10px; border: 2px solid #222; background-color: #f1c40f; color: #222; font-weight: bold; width: 100%; text-align: left; transition: 0.2s; font-family: inherit; font-size: 13px; }
+        .btn:hover { filter: brightness(1.1); transform: translateX(5px); }
+        .btn:disabled { background-color: #ced6e0; color: #7f8c8d; cursor: not-allowed; transform: none; border-color: #bdc3c7; }
+        .btn span { float: right; background: #fff; padding: 2px 6px; border-radius: 5px; color: #000; font-size: 12px; }
+        .btn small { display: block; font-size: 10px; opacity: 0.7; font-weight: normal; margin-top: 3px; }
+        
+        .submit-btn { background-color: #e74c3c; color: white; text-align: center; font-size: 18px; padding: 15px; animation: pulse 2s infinite; border: 3px dashed #fff; margin-top: 20px; }
+        .submit-btn:hover { background-color: #c0392b; transform: scale(1.05); }
+        
+        .shop-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .shop-table th, .shop-table td { border: 2px solid #333; padding: 8px; text-align: center; font-size: 14px; }
+        .shop-table button { width: 100%; padding: 5px; font-family: inherit; font-weight: bold; cursor: pointer; background: #3498db; color: white; border: 2px solid #2980b9; border-radius: 5px; }
+        .shop-table button:disabled { background: #95a5a6; border-color: #7f8c8d; cursor: not-allowed; }
+        .shop-table button.equipped { background: #2ecc71; border-color: #27ae60; cursor: default; }
+
+        .leaderboard { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        .leaderboard th, .leaderboard td { border: 1px dashed #777; padding: 5px; text-align: left; }
+        .leaderboard th { background: #eee; color: #333; }
+        .bg-dark .leaderboard th { background: #222; color: #00ff00; }
+
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 15px; border-radius: 10px; font-size: 16px; border: 2px solid #f1c40f; opacity: 0; transition: opacity 0.5s; z-index: 9999; pointer-events: none; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+        
+        .particle { position: absolute; pointer-events: none; font-weight: bold; font-size: 28px; animation: floatUp 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; z-index: 100; text-shadow: 1px 1px 0 #000; color: #f1c40f; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); } 100% { opacity: 0; transform: translateY(-80px) scale(2) rotate(20deg); } }
+        
+        #loading-lb { font-size: 12px; color: #e74c3c; }
+    </style>
+</head>
+<body id="game-body">
+
+    <div id="toast" class="toast"></div>
+    <input type="file" id="custom-image-upload" accept="image/*" style="display: none;">
+
+    <div class="container">
+        <div class="panel">
+            <h3>📈 Meme Vylepšení</h3>
+            <div class="upgrades-container">
+                <button id="upg-click" class="btn">Giga-Chad Prst <span id="cost-click">10</span><small>Síla kliku +1</small></button>
+                <button id="bld-auto" class="btn">Najmout Trola <span id="cost-auto">50</span><small>Produkce +1/s</small></button>
+                <button id="bld-factory" class="btn">Meme Farma <span id="cost-factory">500</span><small>Produkce +10/s</small></button>
+                <button id="bld-mine" class="btn">Těžba Dogecoinů <span id="cost-mine">3000</span><small>Produkce +50/s</small></button>
+                <button id="bld-ai" class="btn">AI Meme Generátor <span id="cost-ai">15000</span><small>Produkce +250/s</small></button>
+                <button id="bld-tiktok" class="btn">Brainrot TikTok Účet <span id="cost-tiktok">100000</span><small>Produkce +1.5k/s</small></button>
+                <button id="bld-elon" class="btn">Elon Musk Tweet <span id="cost-elon">1000000</span><small>Produkce +10k/s</small></button>
+                <button id="bld-matrix" class="btn">Ovládnutí Matrixu <span id="cost-matrix">15000000</span><small>Produkce +50k/s</small></button>
+                <button id="bld-crypto" class="btn">Vlastní Krypto Burza <span id="cost-crypto">100000000</span><small>Produkce +300k/s</small></button>
+                <button id="bld-metaverse" class="btn">Metaverse Realitka <span id="cost-metaverse">1000000000</span><small>Produkce +2M/s</small></button>
+                <button id="bld-alien" class="btn">UFO Technologie <span id="cost-alien">50000000000</span><small>Produkce +50M/s</small></button>
+            </div>
+            
+            <h3>🏆 Achievementy</h3>
+            <div class="achievements-container" id="achievements-list"></div>
+        </div>
+
+        <div class="panel center-panel">
+            <h2>🔥 Meme Clicker Simulator 2026 🔥</h2>
+            <div id="timer" class="timer-display" title="Schválně na mě klikej">00:00:00</div>
+            <div class="score-display"><span id="score">0</span></div>
+            <div style="font-size: 16px; font-weight: bold; margin-bottom: 20px;">Produkce: <span id="bps">0</span> bodů/s</div>
+            
+            <div id="click-btn">🔴</div>
+
+            <button id="btn-submit" class="btn submit-btn">🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀</button>
+            <p style="font-size: 12px; color: #777;">(Vymaže progress, uloží do databáze)</p>
+        </div>
+
+        <div class="panel">
+            <h3>🎨 Drip & Swag (Kosmetika)</h3>
+            <div class="upgrades-container" style="max-height: 400px;">
+                <table class="shop-table">
+                    <tr><th colspan="2">Skiny Tlačítka (Obrázky)</th></tr>
+                    <tr><td>🐶 Doge</td><td><button id="buy-skin-doge" class="buy-cosmetic" data-type="skin" data-id="doge" data-cost="1000">1000</button></td></tr>
+                    <tr><td>🖼️ Vlastní</td><td><button id="buy-skin-custom" class="buy-cosmetic" data-type="skin" data-id="custom" data-cost="100000">100k</button></td></tr>
+                    
+                    <tr><th colspan="2" style="padding-top:15px;">Pozadí</th></tr>
+                    <tr><td>🌈 RGB Matrix</td><td><button id="buy-bg-rainbow" class="buy-cosmetic" data-type="bg" data-id="rainbow" data-cost="10000">10000</button></td></tr>
+                    <tr><td>💻 Hacker (Dark)</td><td><button id="buy-bg-dark" class="buy-cosmetic" data-type="bg" data-id="dark" data-cost="25000">25000</button></td></tr>
+                </table>
+            </div>
+
+            <h3 style="margin-top: 10px;">🌐 Živý Leaderboard <span id="loading-lb">⏳ Načítám...</span></h3>
+            <table class="leaderboard">
+                <thead><tr><th>Nick</th><th>Skóre</th><th>Čas</th></tr></thead>
+                <tbody id="lb-body"></tbody>
+            </table>
+            
+            <div style="margin-top: 15px;">
+                <button id="btn-hard-reset" style="background: #333; color: white; border: none; padding: 8px; cursor: pointer; border-radius: 5px; font-size: 12px; width: 100%;">Hard Reset Lokálních Dat</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playSound(type) {
+            switch(type) {
+                case 'click_default': playTone(400 + Math.random() * 200, 'sine', 0.1, 0.2); break;
+                case 'click_doge': playTone(800 + Math.random() * 100, 'triangle', 0.15, 0.2); break;
+                case 'click_custom': playTone(300 + Math.random() * 300, 'sawtooth', 0.1, 0.1); break;
+                case 'buy_upgrade': 
+                    playTone(500, 'sine', 0.1, 0.1); 
+                    setTimeout(() => playTone(700, 'sine', 0.15, 0.1), 100); 
+                    break;
+                case 'buy_cosmetic':
+                    playTone(800, 'triangle', 0.1, 0.1);
+                    setTimeout(() => playTone(1000, 'triangle', 0.1, 0.1), 100);
+                    setTimeout(() => playTone(1200, 'triangle', 0.2, 0.1), 200);
+                    break;
+                case 'error': playTone(200, 'sawtooth', 0.3, 0.2); break;
+                case 'achievement':
+                    playTone(400, 'sine', 0.1, 0.2);
+                    setTimeout(() => playTone(500, 'sine', 0.1, 0.2), 150);
+                    setTimeout(() => playTone(600, 'sine', 0.3, 0.2), 300);
+                    break;
+                case 'submit':
+                    playTone(300, 'square', 0.5, 0.3);
+                    setTimeout(() => playTone(200, 'square', 1.0, 0.3), 100);
+                    break;
+            }
+        }
+        document.body.addEventListener('click', () => { if (audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBnFQf-YQODWhZN-3scSbWIQIgr3poDIos",
+            authDomain: "tetris-5e14c.firebaseapp.com",
+            projectId: "tetris-5e14c",
+            storageBucket: "tetris-5e14c.firebasestorage.app",
+            messagingSenderId: "923778243713",
+            appId: "1:923778243713:web:fb80a82f654d0b8c244180",
+            measurementId: "G-ZSFEFRN6X4"
+        };
+
+        let db = null;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            document.getElementById('loading-lb').textContent = "(Připojeno)";
+            document.getElementById('loading-lb').style.color = "#2ecc71";
+            fetchLeaderboard();
+        } catch(e) {
+            document.getElementById('loading-lb').textContent = "(Lokální mód)";
+            document.getElementById('loading-lb').style.color = "#e74c3c";
+        }
+
+        const defaultState = {
+            score: 0, clicks: 0, clickPower: 1, 
+            buildings: { auto: 0, factory: 0, mine: 0, ai: 0, tiktok: 0, elon: 0, matrix: 0, crypto: 0, metaverse: 0, alien: 0 },
+            costs: { click: 10, auto: 50, factory: 500, mine: 3000, ai: 15000, tiktok: 100000, elon: 1000000, matrix: 15000000, crypto: 100000000, metaverse: 1000000000, alien: 50000000000 },
+            startTime: null, lastTime: Date.now(),
+            cosmetics: { skinsUnlocked: ['default'], currentSkin: 'default', bgsUnlocked: ['default'], currentBg: 'default', customImage: null },
+            unlockedAchievements: []
+        };
+
+        const skinMap = { 
+            'default': { type: 'text', val: '🔴' }, 
+            'doge': { type: 'img', val: 'https://i.imgflip.com/4t0m5.jpg' }, 
+            'custom': { type: 'custom', val: '' }
+        };
+        
+        const bpsRates = { auto: 1, factory: 10, mine: 50, ai: 250, tiktok: 1500, elon: 10000, matrix: 50000, crypto: 300000, metaverse: 2000000, alien: 50000000 };
+
+        let game = JSON.parse(localStorage.getItem('meme_clicker_fb')) || JSON.parse(JSON.stringify(defaultState));
+        if(!game.unlockedAchievements) game.unlockedAchievements = [];
+        if(!game.buildings.crypto) Object.assign(game.buildings, { crypto: 0, metaverse: 0, alien: 0 });
+        if(!game.costs.crypto) Object.assign(game.costs, { crypto: 100000000, metaverse: 1000000000, alien: 50000000000 });
+        if(!game.cosmetics.customImage) game.cosmetics.customImage = null;
+        if(!skinMap[game.cosmetics.currentSkin]) game.cosmetics.currentSkin = 'default';
+        if(!game.startTime && game.score > 0) game.startTime = Date.now();
+
+        let localLeaderboard = JSON.parse(localStorage.getItem('meme_lb_local')) || [];
+        let secretBuffer = "";
+
+        const allAchievements = [
+            { id: 'first', name: '👶 První krůčky (1 klik)', req: () => game.clicks >= 1 },
+            { id: 'hundred', name: '💯 Tryhard (100 kliků)', req: () => game.clicks >= 100 },
+            { id: 'rich', name: '💸 Bohatýr (1M bodů)', req: () => game.score >= 1000000 },
+            { id: 'billionaire', name: '💰 Miliardář (1B bodů)', req: () => game.score >= 1000000000 },
+            { id: 'trillionaire', name: '👑 Vládce Vesmíru (1T bodů)', req: () => game.score >= 1000000000000 },
+            { id: 'elon_fan', name: '🚀 Koupil jsi Twitter', req: () => game.buildings.elon >= 1 },
+            { id: 'hacker', name: '💊 Útěk z Matrixu', req: () => game.buildings.matrix >= 1 },
+            { id: 'collector', name: '🛍️ Shopaholik (Všechny skiny)', req: () => game.cosmetics.skinsUnlocked.length >= Object.keys(skinMap).length },
+            { id: 'easter_timer', name: '⏱️ Časostroj (Klikl jsi na timer)', req: () => false },
+            { id: 'easter_jicin', name: '🏰 Novojičínský Drip (Tajný kód)', req: () => false },
+            { id: 'easter_sigma', name: '🗿 Sigma Grindset (Tajný kód)', req: () => false }
+        ];
+
+        function getBPS() { 
+            let total = 0;
+            for(const key in game.buildings) total += game.buildings[key] * bpsRates[key];
+            return total; 
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000000000) return (num / 1000000000000).toFixed(2) + ' T';
+            if (num >= 1000000000) return (num / 1000000000).toFixed(2) + ' B';
+            if (num >= 1000000) return (num / 1000000).toFixed(2) + ' M';
+            if (num >= 10000) return (num / 1000).toFixed(1) + ' k';
+            return Math.floor(num);
+        }
+
+        function formatTime(ms) {
+            let t = Math.floor(ms / 1000);
+            return `${Math.floor(t/3600).toString().padStart(2,'0')}:${Math.floor((t%3600)/60).toString().padStart(2,'0')}:${(t%60).toString().padStart(2,'0')}`;
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.style.opacity = 1;
+            setTimeout(() => t.style.opacity = 0, 3500);
+        }
+
+        function renderAchievements() {
+            const list = document.getElementById('achievements-list');
+            list.innerHTML = '';
+            allAchievements.forEach(a => {
+                const unlocked = game.unlockedAchievements.includes(a.id);
+                list.innerHTML += `<div class="achievement ${unlocked ? 'unlocked' : ''}">
+                    <span>${a.name}</span>
+                    <span>${unlocked ? '✔️' : '🔒'}</span>
+                </div>`;
+            });
+        }
+
+        function checkAchievements() {
+            let changed = false;
+            allAchievements.forEach(a => {
+                if(!game.unlockedAchievements.includes(a.id) && a.req()) {
+                    game.unlockedAchievements.push(a.id);
+                    playSound('achievement');
+                    showToast(`🏆 Achievement Odemčen: ${a.name}`);
+                    changed = true;
+                }
+            });
+            if(changed) renderAchievements();
+        }
+
+        function unlockSecret(id, bonusText, bonusPoints) {
+            if(!game.unlockedAchievements.includes(id)) {
+                game.unlockedAchievements.push(id);
+                game.score += bonusPoints;
+                playSound('achievement');
+                showToast(`🤯 TAJNÝ EASTER EGG ODKRYT! ${bonusText}`);
+                renderAchievements();
+                updateUI();
+            }
+        }
+
+        async function fetchLeaderboard() {
+            const tbody = document.getElementById('lb-body');
+            tbody.innerHTML = '';
+            
+            if (db) {
+                try {
+                    const q = query(collection(db, "clicker_leaderboard"), orderBy("score", "desc"), limit(10));
+                    const snapshot = await getDocs(q);
+                    if(snapshot.empty) { tbody.innerHTML = '<tr><td colspan="3">Firebase tabulka je prázdná.</td></tr>'; return; }
+                    
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        tbody.innerHTML += `<tr><td>${data.name}</td><td>${formatNumber(data.score)}</td><td>${data.time}</td></tr>`;
+                    });
+                } catch(e) {
+                    renderLocalLeaderboard();
+                }
+            } else {
+                renderLocalLeaderboard();
+            }
+        }
+
+        function renderLocalLeaderboard() {
+            const tbody = document.getElementById('lb-body');
+            tbody.innerHTML = '';
+            localLeaderboard.slice(0, 10).forEach(entry => {
+                tbody.innerHTML += `<tr><td>${entry.name}</td><td>${formatNumber(entry.score)}</td><td>${entry.time}</td></tr>`;
+            });
+            if(localLeaderboard.length === 0) tbody.innerHTML = '<tr><td colspan="3">Žádná data. Zkus nahrát skóre!</td></tr>';
+        }
+
+        function applyCosmetics() {
+            const btn = document.getElementById('click-btn');
+            const skinData = skinMap[game.cosmetics.currentSkin] || skinMap['default'];
+            
+            if (skinData.type === 'img') {
+                btn.textContent = '';
+                btn.style.backgroundImage = `url('${skinData.val}')`;
+                btn.style.backgroundColor = 'transparent';
+                btn.style.border = 'none';
+            } else if (skinData.type === 'custom') {
+                btn.textContent = '';
+                btn.style.backgroundImage = game.cosmetics.customImage ? `url('${game.cosmetics.customImage}')` : 'none';
+                btn.style.backgroundColor = 'transparent';
+                btn.style.border = 'none';
+            } else {
+                btn.textContent = skinData.val;
+                btn.style.backgroundImage = 'none';
+                btn.style.backgroundColor = 'var(--btn-color)';
+                btn.style.border = '5px solid #fff';
+            }
+
+            const body = document.getElementById('game-body');
+            body.className = '';
+            if(game.cosmetics.currentBg === 'rainbow') body.classList.add('bg-rainbow');
+            else if(game.cosmetics.currentBg === 'dark') body.classList.add('bg-dark');
+
+            document.querySelectorAll('.buy-cosmetic').forEach(b => {
+                const type = b.dataset.type, id = b.dataset.id, cost = parseInt(b.dataset.cost);
+                const isUnlocked = type === 'skin' ? game.cosmetics.skinsUnlocked.includes(id) : game.cosmetics.bgsUnlocked.includes(id);
+                const isEquipped = type === 'skin' ? game.cosmetics.currentSkin === id : game.cosmetics.currentBg === id;
+
+                if (id === 'custom') {
+                    if (isEquipped) { b.textContent = 'Změnit obrázek'; b.className = 'buy-cosmetic equipped'; b.disabled = false; }
+                    else if (isUnlocked) { b.textContent = 'Vybavit'; b.className = 'buy-cosmetic'; b.disabled = false; b.style.background = '#e67e22'; b.style.borderColor = '#d35400'; }
+                    else { b.textContent = formatNumber(cost); b.className = 'buy-cosmetic'; b.disabled = game.score < cost; b.style.background = '#3498db'; b.style.borderColor = '#2980b9'; }
+                } else {
+                    if (isEquipped) { b.textContent = 'Vybaveno'; b.className = 'buy-cosmetic equipped'; b.disabled = false; }
+                    else if (isUnlocked) { b.textContent = 'Vybavit'; b.className = 'buy-cosmetic'; b.disabled = false; b.style.background = '#e67e22'; b.style.borderColor = '#d35400'; }
+                    else { b.textContent = formatNumber(cost); b.className = 'buy-cosmetic'; b.disabled = game.score < cost; b.style.background = '#3498db'; b.style.borderColor = '#2980b9'; }
+                }
+            });
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = formatNumber(game.score);
+            document.getElementById('bps').textContent = formatNumber(getBPS());
+            document.getElementById('cost-click').textContent = formatNumber(game.costs.click);
+            document.getElementById('upg-click').disabled = game.score < game.costs.click;
+
+            for(const key in game.buildings) {
+                const costEl = document.getElementById(`cost-${key}`), btnEl = document.getElementById(`bld-${key}`);
+                if(costEl && btnEl) { costEl.textContent = formatNumber(game.costs[key]); btnEl.disabled = game.score < game.costs[key]; }
+            }
+            applyCosmetics();
+            checkAchievements();
+        }
+
+        function spawnParticle(x, y, text) {
+            const p = document.createElement('div');
+            p.className = 'particle'; p.textContent = text;
+            p.style.left = (x - 20 + Math.random()*40) + 'px'; p.style.top = y + 'px';
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 1000);
+        }
+
+        document.getElementById('click-btn').addEventListener('click', (e) => {
+            if (!game.startTime) game.startTime = Date.now();
+            const gain = game.clickPower;
+            game.score += gain; game.clicks++;
+            
+            let soundKey = 'click_' + game.cosmetics.currentSkin;
+            if(game.cosmetics.currentSkin === 'custom') soundKey = 'click_custom';
+            if(!['click_default', 'click_doge', 'click_custom'].includes(soundKey)) soundKey = 'click_default';
+            playSound(soundKey);
+            
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX !== undefined ? e.clientX : rect.left + rect.width / 2;
+            const y = e.clientY !== undefined ? e.clientY : rect.top + rect.height / 2;
+            
+            const texts = ['BOOP', 'STONKS', '+'+formatNumber(gain), 'SHEESH', 'W', 'FR FR', 'CHAD'];
+            spawnParticle(x, y, texts[Math.floor(Math.random()*texts.length)]);
+            updateUI();
+        });
+
+        document.getElementById('upg-click').addEventListener('click', () => {
+            if (game.score >= game.costs.click) {
+                game.score -= game.costs.click;
+                game.clickPower += Math.ceil(game.clickPower * 0.1);
+                game.costs.click = Math.floor(game.costs.click * 1.5);
+                playSound('buy_upgrade');
+                updateUI();
+            } else { playSound('error'); }
+        });
+
+        document.querySelectorAll('.upgrades-container .btn[id^="bld-"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.id.replace('bld-', '');
+                if (game.score >= game.costs[id]) {
+                    game.score -= game.costs[id]; game.buildings[id]++;
+                    game.costs[id] = Math.floor(game.costs[id] * 1.15);
+                    playSound('buy_upgrade');
+                    updateUI();
+                } else { playSound('error'); }
+            });
+        });
+
+        document.getElementById('custom-image-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(readerEvent) {
+                    game.cosmetics.customImage = readerEvent.target.result;
+                    applyCosmetics();
+                    localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.querySelectorAll('.buy-cosmetic').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.target.dataset.type, id = e.target.dataset.id, cost = parseInt(e.target.dataset.cost);
+                const unlockedList = type === 'skin' ? game.cosmetics.skinsUnlocked : game.cosmetics.bgsUnlocked;
+                
+                if (id === 'custom') {
+                    if (unlockedList.includes(id)) {
+                        game.cosmetics.currentSkin = id;
+                        document.getElementById('custom-image-upload').click();
+                        playSound('buy_cosmetic');
+                    } else if (game.score >= cost) {
+                        game.score -= cost; unlockedList.push(id);
+                        game.cosmetics.currentSkin = id;
+                        document.getElementById('custom-image-upload').click();
+                        playSound('buy_cosmetic');
+                    } else { playSound('error'); }
+                } else {
+                    if (unlockedList.includes(id)) {
+                        if (type === 'skin') game.cosmetics.currentSkin = id; else game.cosmetics.currentBg = id;
+                        playSound('buy_cosmetic');
+                    } else if (game.score >= cost) {
+                        game.score -= cost; unlockedList.push(id);
+                        if (type === 'skin') game.cosmetics.currentSkin = id; else game.cosmetics.currentBg = id;
+                        playSound('buy_cosmetic');
+                    } else { playSound('error'); }
+                }
+                updateUI();
+            });
+        });
+
+        document.getElementById('btn-submit').addEventListener('click', async () => {
+            if(game.score < 100) { playSound('error'); alert('Nahraj aspoň 100 bodů kámo, ať neděláš ostudu.'); return; }
+            playSound('submit');
+            const nick = prompt("Zadej svůj meme nick pro zápis do Leaderboardu:");
+            if(nick && nick.trim() !== '') {
+                if(confirm("🚨 Bacha! Tohle ti vymaže celej progress (budovy, vylepšení), ale tvoje skóre poletí do databáze. Seš si jistej?")) {
+                    const elapsed = game.startTime ? (Date.now() - game.startTime) : 0;
+                    const timeStr = formatTime(elapsed);
+                    const finalScore = game.score;
+                    
+                    const btn = document.getElementById('btn-submit');
+                    btn.disabled = true; btn.textContent = "⏳ ODESÍLÁM...";
+
+                    if(db) {
+                        try {
+                            await addDoc(collection(db, "clicker_leaderboard"), {
+                                name: nick.substring(0,15), score: finalScore, time: timeStr, timestamp: Date.now()
+                            });
+                            alert('Zapsáno do Firebase! Jsi ofiko frajer.');
+                        } catch(e) {
+                            alert("Firebase zápis selhal, ukládám lokálně.");
+                            saveLocally(nick, finalScore, timeStr);
+                        }
+                    } else {
+                        saveLocally(nick, finalScore, timeStr);
+                        alert('Zapsáno lokálně!');
+                    }
+                    
+                    const savedCosmetics = game.cosmetics, savedAch = game.unlockedAchievements;
+                    game = JSON.parse(JSON.stringify(defaultState));
+                    game.cosmetics = savedCosmetics; game.unlockedAchievements = savedAch;
+                    localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
+                    
+                    btn.disabled = false; btn.textContent = "🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀";
+                    fetchLeaderboard(); updateUI(); renderAchievements();
+                }
+            }
+        });
+
+        function saveLocally(nick, score, timeStr) {
+            localLeaderboard.push({ name: nick.substring(0,15), score: score, time: timeStr });
+            localLeaderboard.sort((a,b) => b.score - a.score);
+            localStorage.setItem('meme_lb_local', JSON.stringify(localLeaderboard));
+        }
+
+        document.getElementById('btn-hard-reset').addEventListener('click', () => {
+            if(confirm('Chceš fakt smazat i skóre a lokální data? Není cesty zpět!')) {
+                playSound('submit');
+                localStorage.removeItem('meme_clicker_fb'); localStorage.removeItem('meme_lb_local'); location.reload();
+            }
+        });
+
+        document.getElementById('timer').addEventListener('click', () => {
+            unlockSecret('easter_timer', '+500 bodů za hraní si s časem', 500);
+        });
+
+        window.addEventListener('keydown', (e) => {
+            secretBuffer += e.key.toLowerCase();
+            if(secretBuffer.length > 10) secretBuffer = secretBuffer.slice(-10);
+            
+            if(secretBuffer.includes('sigma')) { unlockSecret('easter_sigma', 'Sigma Chad Energie +10,000!', 10000); secretBuffer = ""; }
+            if(secretBuffer.includes('jicin')) { unlockSecret('easter_jicin', 'Moravskoslezský kraj represent! +100,000!', 100000); secretBuffer = ""; }
+        });
+
+        setInterval(() => {
+            const now = Date.now();
+            if (game.startTime) document.getElementById('timer').textContent = formatTime(now - game.startTime);
+            const dt = (now - game.lastTime) / 1000;
+            game.lastTime = now;
+            
+            const gain = getBPS() * dt;
+            if (gain > 0) game.score += gain;
+            
+            updateUI();
+            localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
+        }, 100);
+
+        renderAchievements();
+    </script>
+</body>
+</html>
