@@ -53,17 +53,60 @@
             margin-top: 10px;
         }
 
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .tab-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 12px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-btn:hover {
+            border-color: var(--primary);
+            color: var(--text-main);
+            transform: translateY(-2px);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 5px 20px var(--primary-glow);
+        }
+
         .container { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
             gap: 30px; 
-            padding: 40px; 
+            padding: 0 40px 40px; 
             max-width: 1200px; 
             margin: 0 auto; 
             flex: 1;
+            width: 100%;
+            box-sizing: border-box;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .container.fade-out {
+            opacity: 0;
+            transform: translateY(15px) scale(0.98);
         }
         
-        /* Karta hry */
         .game-card { 
             background: var(--card-bg); 
             backdrop-filter: blur(10px);
@@ -74,8 +117,12 @@
             cursor: pointer; 
             text-decoration: none; 
             color: white; 
-            display: flex;
+            display: none; 
             flex-direction: column;
+        }
+
+        .game-card.show {
+            display: flex;
         }
 
         .game-card:hover { 
@@ -169,8 +216,14 @@
         <p>Moje sbírka HTML5 her vytvořených pro GitHub</p>
     </header>
 
-    <div class="container">
-        <a href="tetris/index.html" class="game-card">
+    <div class="tabs">
+        <button class="tab-btn active" data-target="singleplayer">Singleplayer</button>
+        <button class="tab-btn" data-target="multiplayer">Multiplayer</button>
+    </div>
+
+    <div class="container" id="game-container">
+        
+        <a href="tetris/index.html" class="game-card" data-category="singleplayer">
             <div class="thumbnail">🧱</div>
             <div class="info">
                 <span class="badge">LOGICKÁ</span>
@@ -179,7 +232,25 @@
             </div>
         </a>
 
-        <a href="bomberbam/index.html" class="game-card">
+        <a href="clicker/index.html" class="game-card" data-category="singleplayer">
+            <div class="thumbnail">🖱️</div>
+            <div class="info">
+                <span class="badge">ODDECHOVÁ</span>
+                <h3>Clicker</h3>
+                <p>Nekonečné klikání, upgrady a automatizace. Vybuduj své impérium z jediného kliknutí.</p>
+            </div>
+        </a>
+
+        <a href="jumpking/index.html" class="game-card" data-category="singleplayer">
+            <div class="thumbnail">👑</div>
+            <div class="info">
+                <span class="badge">PLOŠINOVKA</span>
+                <h3>Jump King</h3>
+                <p>Extrémně náročná skákačka, kde každý chybný skok znamená dlouhý pád dolů. Máš na to se dostat až na vrchol?</p>
+            </div>
+        </a>
+
+        <a href="bomberbam/index.html" class="game-card" data-category="multiplayer">
             <div class="thumbnail">💣</div>
             <div class="info">
                 <span class="badge">ARKÁDA</span>
@@ -188,7 +259,7 @@
             </div>
         </a>
 
-        <a href="tawk/index.html" class="game-card">
+        <a href="tawk/index.html" class="game-card" data-category="multiplayer">
             <div class="thumbnail">🪱</div>
             <div class="info">
                 <span class="badge">AKČNÍ</span>
@@ -197,7 +268,7 @@
             </div>
         </a>
 
-        <a href="discwar/index.html" class="game-card">
+        <a href="discwar/index.html" class="game-card" data-category="multiplayer">
             <div class="thumbnail">🥏</div>
             <div class="info">
                 <span class="badge">ARKÁDA</span>
@@ -206,7 +277,7 @@
             </div>
         </a>
 
-        <a href="tron/index.html" class="game-card">
+        <a href="tron/index.html" class="game-card" data-category="multiplayer">
             <div class="thumbnail">🏍️</div>
             <div class="info">
                 <span class="badge">ZÁVODNÍ</span>
@@ -215,7 +286,7 @@
             </div>
         </a>
 
-        <a href="tanki/index.html" class="game-card">
+        <a href="tanki/index.html" class="game-card" data-category="multiplayer">
             <div class="thumbnail">🪖</div>
             <div class="info">
                 <span class="badge">AKČNÍ</span>
@@ -224,7 +295,16 @@
             </div>
         </a>
 
-        <a href="#" class="game-card" style="opacity: 0.5; cursor: default;">
+        <a href="bangbang/index.html" class="game-card" data-category="multiplayer">
+            <div class="thumbnail">🔫</div>
+            <div class="info">
+                <span class="badge">STŘÍLEČKA</span>
+                <h3>BangBang</h3>
+                <p>Rychlá přestřelka v aréně. Tas zbraň rychleji než tvůj soupeř a vyhraje ten nejlepší.</p>
+            </div>
+        </a>
+
+        <a href="#" class="game-card" data-category="multiplayer" style="opacity: 0.5; cursor: default;">
             <div class="thumbnail">🕹️</div>
             <div class="info">
                 <span class="badge" style="background: rgba(255,255,255,0.05); color: #888; border-color: rgba(255,255,255,0.1);">PŘIPRAVUJEME</span>
@@ -240,5 +320,38 @@
         </div>
     </footer>
 
+    <script>
+        const tabs = document.querySelectorAll('.tab-btn');
+        const cards = document.querySelectorAll('.game-card');
+        const container = document.getElementById('game-container');
+
+        function filterGames(category) {
+            cards.forEach(card => {
+                if (card.dataset.category === category) {
+                    card.classList.add('show');
+                } else {
+                    card.classList.remove('show');
+                }
+            });
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                if (tab.classList.contains('active')) return;
+
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                container.classList.add('fade-out');
+
+                setTimeout(() => {
+                    filterGames(tab.dataset.target);
+                    container.classList.remove('fade-out');
+                }, 300);
+            });
+        });
+
+        filterGames('singleplayer');
+    </script>
 </body>
 </html>
