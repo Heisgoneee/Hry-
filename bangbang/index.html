@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Bank Heist CO-OP | Render</title>
+    <style>
+        body { background: #1a1a1a; color: white; text-align: center; font-family: sans-serif; margin: 0; overflow: hidden; }
+        canvas { background: #333; border: 4px solid #111; cursor: crosshair; margin-top: 10px; }
+        .ui { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 5px; text-align: left; }
+        .hp-bar { width: 150px; height: 15px; background: #400; border: 1px solid #777; margin-top: 5px; }
+        .hp-fill { height: 100%; background: #f00; transition: width 0.1s; }
+    </style>
+</head>
+<body>
+    <div class="ui">
+        <div style="color: gold; font-weight: bold;">LUP: $<span id="money">0</span></div>
+        <div>HP:</div>
+        <div class="hp-bar"><div id="hp-fill" class="hp-fill"></div></div>
+    </div>
+    <canvas id="game" width="800" height="600"></canvas>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        // NAHRAĎ TUTO ADRESU ADRESOU Z RENDERU (např. https://bank-heist.onrender.com)
+        const socket = io('https://hry-krna.onrender.com');
+
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        let gameState = { players: {}, cops: [], vault: {}, walls: [] };
+        let localPos = { x: 400, y: 500 }; // Tvoje plynulá pozice
+        const keys = {};
+
+        window.onkeydown = (e) => keys[e.key.toLowerCase()] = true;
+        window.onkeyup = (e) => keys[e.key.toLowerCase()] = false;
+
+        canvas.onmousedown = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            gameState.cops.forEach(cop => {
+                if (mx > cop.x && mx < cop.x + 30 && my > cop.y && my < cop.y + 30) socket.emit('shoot', cop.id);
+            });
+        };
+
+        socket.on('gameState', (data) => {
+            gameState = data;
+            if (gameState.players[socket.id]) {
+                document.getElementById('money').innerText = gameState.vault.money;
+                document.getElementById('hp-fill').style.width = gameState.players[socket.id].hp + "%";
+            }
+        });
+
+        // Kontrola kolize se zdmi
+        function canMoveTo(nx, ny) {
+            for (let w of gameState.walls) {
+                if (nx < w.x + w.w && nx + 40 > w.x && ny < w.y + w.h && ny + 40 > w.y) return false;
+            }
+            // Okraje mapy
+            if (nx < 0 || nx > 760 || ny < 0 || ny > 560) return false;
+            return true;
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Zdi
+            ctx.fillStyle = "#222";
+            gameState.walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
+
+            // 2. Trezor
+            ctx.fillStyle = "gold";
+            ctx.fillRect(350, 20, 100, 100);
+
+            // 3. Policisté
+            gameState.cops.forEach(cop => {
+                ctx.fillStyle = "blue"; ctx.fillRect(cop.x, cop.y, 30, 30);
+            });
+
+            // 4. Hráči (Vykreslení)
+            for (let id in gameState.players) {
+                let p = gameState.players[id];
+                if (p.hp <= 0) continue;
+                ctx.fillStyle = (id === socket.id) ? "#0f0" : "#f90";
+                // Pro sebe používám plynulou localPos, pro ostatní serverovou pozici
+                let drawX = (id === socket.id) ? localPos.x : p.x;
+                let drawY = (id === socket.id) ? localPos.y : p.y;
+                ctx.fillRect(drawX, drawY, 40, 40);
+            }
+
+            // 5. Pohyb (Client-Side Prediction)
+            if (gameState.players[socket.id]?.hp > 0) {
+                let moved = false;
+                let nx = localPos.x;
+                let ny = localPos.y;
+                if (keys['w']) { ny -= 5; moved = true; }
+                if (keys['s']) { ny += 5; moved = true; }
+                if (keys['a']) { nx -= 5; moved = true; }
+                if (keys['d']) { nx += 5; moved = true; }
+
+                if (moved && canMoveTo(nx, ny)) {
+                    localPos.x = nx;
+                    localPos.y = ny;
+                    socket.emit('move', { x: localPos.x, y: localPos.y });
+                }
+            }
+
+            // 6. Game Over
+            if (gameState.players[socket.id]?.hp <= 0) {
+                ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,800,600);
+                ctx.fillStyle = "white"; ctx.font = "30px Arial";
+                ctx.fillText("ZATČEN! Stiskni R", 280, 300);
+                if (keys['r']) { socket.emit('respawn'); localPos = {x:400, y:500}; }
+            }
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>
