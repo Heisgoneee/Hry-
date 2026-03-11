@@ -49,6 +49,19 @@
             z-index: 10;
         }
 
+        #game-over-controls {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #final-score {
+            font-size: 1.5em;
+            color: #F538FF;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
         input[type="text"] {
             background: #333;
             border: 1px solid #0dc2ff;
@@ -79,7 +92,8 @@
             font-weight: bold;
             transition: 0.2s;
         }
-        button:hover { background: #0099cc; transform: scale(1.05); }
+        button:hover:not(:disabled) { background: #0099cc; transform: scale(1.05); }
+        button:disabled { background: #555; cursor: not-allowed; }
 
         #leaderboard-list {
             list-style: none;
@@ -104,11 +118,14 @@
     <div class="game-area">
         <div id="menu-overlay">
             <h1 id="status-text">TETRIS</h1>
-            <input type="text" id="player-name" placeholder="Tvé jméno" maxlength="10">
             
-            <div class="checkbox-container">
-                <input type="checkbox" id="save-score-cb" checked>
-                <label for="save-score-cb">Uložit skóre do žebříčku</label>
+            <div id="game-over-controls">
+                <div id="final-score"></div>
+                <input type="text" id="player-name" placeholder="Tvé jméno" maxlength="10">
+                <div class="checkbox-container">
+                    <input type="checkbox" id="save-score-cb" checked>
+                    <label for="save-score-cb">Uložit skóre do žebříčku</label>
+                </div>
             </div>
 
             <button id="start-btn">SPUSTIT HRU</button>
@@ -171,6 +188,8 @@
     const menuOverlay = document.getElementById('menu-overlay');
     const statusText = document.getElementById('status-text');
     const leaderboardList = document.getElementById('leaderboard-list');
+    const gameOverControls = document.getElementById('game-over-controls');
+    const finalScoreElement = document.getElementById('final-score');
 
     context.scale(20, 20);
     nextContext.scale(20, 20);
@@ -415,17 +434,13 @@
         dropInterval = Math.max(100, 800 - (currentLevel - 1) * 75);
     }
 
-    async function gameOver() {
+    function gameOver() {
         gameRunning = false;
         menuOverlay.style.display = 'flex';
-        
-        if (saveScoreCb.checked && player.score > 0) {
-            const name = nameInput.value.trim() || "Anonym";
-            statusText.innerText = "Ukládání skóre...";
-            await saveScore(name, player.score);
-        }
-        
+        gameOverControls.style.display = 'flex';
         statusText.innerText = "KONEC HRY";
+        finalScoreElement.innerText = "Skóre: " + player.score;
+        startBtn.innerText = "HRÁT ZNOVU";
     }
 
     async function saveScore(name, score) {
@@ -483,7 +498,23 @@
         else if (event.keyCode === 87) playerRotate(1);
     });
 
-    startBtn.addEventListener('click', startGame);
+    startBtn.addEventListener('click', async () => {
+        if (!gameRunning && statusText.innerText === "KONEC HRY") {
+            if (saveScoreCb.checked && player.score > 0) {
+                const name = nameInput.value.trim() || "Anonym";
+                statusText.innerText = "Ukládání skóre...";
+                startBtn.disabled = true;
+                await saveScore(name, player.score);
+                startBtn.disabled = false;
+            }
+        }
+        
+        gameOverControls.style.display = 'none';
+        startBtn.innerText = "SPUSTIT HRU";
+        statusText.innerText = "TETRIS";
+        startGame();
+    });
+
     displayLeaderboard();
     drawNextPiece();
     draw();
