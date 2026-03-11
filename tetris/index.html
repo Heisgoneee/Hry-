@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
@@ -60,6 +60,15 @@
             width: 150px;
         }
 
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
         button {
             background: #0dc2ff;
             border: none;
@@ -96,6 +105,12 @@
         <div id="menu-overlay">
             <h1 id="status-text">TETRIS</h1>
             <input type="text" id="player-name" placeholder="Tvé jméno" maxlength="10">
+            
+            <div class="checkbox-container">
+                <input type="checkbox" id="save-score-cb" checked>
+                <label for="save-score-cb">Uložit skóre do žebříčku</label>
+            </div>
+
             <button id="start-btn">SPUSTIT HRU</button>
         </div>
         <canvas id="tetris" width="240" height="400"></canvas>
@@ -152,6 +167,7 @@
     const levelElement = document.getElementById('level');
     const startBtn = document.getElementById('start-btn');
     const nameInput = document.getElementById('player-name');
+    const saveScoreCb = document.getElementById('save-score-cb');
     const menuOverlay = document.getElementById('menu-overlay');
     const statusText = document.getElementById('status-text');
     const leaderboardList = document.getElementById('leaderboard-list');
@@ -401,15 +417,18 @@
 
     async function gameOver() {
         gameRunning = false;
-        const name = nameInput.value.trim() || "Anonym";
-        statusText.innerText = "Ukládání skóre...";
         menuOverlay.style.display = 'flex';
-        await saveScore(name, player.score);
+        
+        if (saveScoreCb.checked && player.score > 0) {
+            const name = nameInput.value.trim() || "Anonym";
+            statusText.innerText = "Ukládání skóre...";
+            await saveScore(name, player.score);
+        }
+        
         statusText.innerText = "KONEC HRY";
     }
 
     async function saveScore(name, score) {
-        if (score <= 0) return;
         try {
             await addDoc(collection(db, "tetris_leaderboard"), {
                 name: name,
