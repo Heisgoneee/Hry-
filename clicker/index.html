@@ -69,7 +69,6 @@
         
         #loading-lb { font-size: 12px; color: #e74c3c; }
 
-        /* Changelog Styly */
         .changelog-btn { position: fixed; top: 20px; right: 20px; background: #34495e; color: white; border: 2px solid #2c3e50; padding: 10px 15px; border-radius: 10px; cursor: pointer; font-family: inherit; font-weight: bold; z-index: 100; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         .changelog-btn:hover { background: #2c3e50; transform: scale(1.05); }
         
@@ -176,7 +175,7 @@
                 </table>
             </div>
 
-            <h3 style="margin-top: 10px;">🌐 Živý Leaderboard <span id="loading-lb">⏳ Načítám...</span></h3>
+            <h3 style="margin-top: 10px;">🌐 Živý Leaderboard <button id="btn-refresh-lb" style="font-size: 10px; cursor: pointer; border-radius: 5px; padding: 2px 5px; margin-left: 5px; vertical-align: middle;">🔄 Obnovit</button> <span id="loading-lb">⏳ Načítám...</span></h3>
             <table class="leaderboard">
                 <thead><tr><th>Nick</th><th>Skóre</th><th>Čas</th></tr></thead>
                 <tbody id="lb-body"></tbody>
@@ -272,7 +271,7 @@
 
         const skinMap = { 
             'default': { type: 'text', val: '🔴' }, 
-            'doge': { type: 'img', val: 'https://i.imgflip.com/4t0m5.jpg' }, 
+            'doge': { type: 'img', val: 'assets/doge.jpg' }, 
             'custom': { type: 'custom', val: '' }
         };
         
@@ -339,7 +338,6 @@
         ];
 
         function getMultiplier() {
-            // Každý level skillu 1 dává +10% (0.1), každý splněný achievement dává +0.1% (0.001)
             return 1 + (game.ascend.skill1 * 0.1) + (game.unlockedAchievements.length * 0.001);
         }
 
@@ -401,24 +399,39 @@
 
         async function fetchLeaderboard() {
             const tbody = document.getElementById('lb-body');
-            tbody.innerHTML = '';
-            
+            const now = Date.now();
+            const cachedLB = JSON.parse(sessionStorage.getItem('cached_lb'));
+
+            if (cachedLB && (now - cachedLB.timestamp < 300000)) {
+                renderLeaderboardData(cachedLB.data);
+                return;
+            }
+
             if (db) {
                 try {
                     const q = query(collection(db, "clicker_leaderboard"), orderBy("score", "desc"), limit(10));
                     const snapshot = await getDocs(q);
                     if(snapshot.empty) { tbody.innerHTML = '<tr><td colspan="3">Firebase tabulka je prázdná.</td></tr>'; return; }
                     
-                    snapshot.forEach((doc) => {
-                        const data = doc.data();
-                        tbody.innerHTML += `<tr><td>${data.name}</td><td>${formatNumber(data.score)}</td><td>${data.time}</td></tr>`;
-                    });
+                    let lbData = [];
+                    snapshot.forEach((doc) => lbData.push(doc.data()));
+                    
+                    sessionStorage.setItem('cached_lb', JSON.stringify({ timestamp: now, data: lbData }));
+                    renderLeaderboardData(lbData);
                 } catch(e) {
                     renderLocalLeaderboard();
                 }
             } else {
                 renderLocalLeaderboard();
             }
+        }
+
+        function renderLeaderboardData(data) {
+            const tbody = document.getElementById('lb-body');
+            tbody.innerHTML = '';
+            data.forEach((d) => {
+                tbody.innerHTML += `<tr><td>${d.name}</td><td>${formatNumber(d.score)}</td><td>${d.time}</td></tr>`;
+            });
         }
 
         function renderLocalLeaderboard() {
@@ -429,6 +442,15 @@
             });
             if(localLeaderboard.length === 0) tbody.innerHTML = '<tr><td colspan="3">Žádná data. Zkus nahrát skóre!</td></tr>';
         }
+
+        document.getElementById('btn-refresh-lb').addEventListener('click', () => {
+            document.getElementById('loading-lb').textContent = "⏳ Načítám...";
+            sessionStorage.removeItem('cached_lb'); 
+            fetchLeaderboard().then(() => {
+                if(db) document.getElementById('loading-lb').textContent = "(Připojeno)";
+                else document.getElementById('loading-lb').textContent = "(Lokální mód)";
+            });
+        });
 
         function applyCosmetics() {
             const btn = document.getElementById('click-btn');
@@ -729,7 +751,8 @@
             localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
             
             btn.disabled = false; btn.textContent = "🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀";
-            fetchLeaderboard();
+            
+            document.getElementById('btn-refresh-lb').click();
         });
 
         function saveLocally(nick, score, timeStr) {
