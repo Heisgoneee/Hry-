@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meme Clicker Simulator 2026 - Modular Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body id="game-body">
+
+    <button id="btn-changelog" class="changelog-btn">📜 Changelog</button>
+
+    <div id="changelog-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-changelog">&times;</span>
+            <h2 style="margin-top: 0; text-align: center;">📜 Co je nového?</h2>
+            
+            <div class="version-title">Aktuální verze</div>
+            <ul class="changelog-list">
+                <li><b>NOVÉ: Ascend Reset Systém!</b> Skóre se přeměňuje na AP po resetu.</li>
+                <li><b>NOVÉ: Ascend Tree Upgrady</b> (např. +50% k síle kliku).</li>
+                <li>Všechny panely viditelné najednou pomocí rozdělených souborů.</li>
+                <li>Anti-Cheat systém (Proti Console injection a časovým skipům).</li>
+                <li>Ukazatel koupených věcí ve shopu.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="ascend-modal" class="modal">
+        <div class="modal-content" style="border-color: #9b59b6;">
+            <span class="close-btn" id="close-ascend">&times;</span>
+            <h2 style="margin-top: 0; color: #8e44ad; text-align: center;">🌌 Ascend Tree 🌌</h2>
+            
+            <div style="background: rgba(155,89,182,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; border: 2px dashed #9b59b6;">
+                <p style="font-size: 18px; margin: 0 0 10px 0;">Máš <strong><span id="ap-display" style="color: #e74c3c;">0</span> AP</strong></p>
+                <p style="font-size: 14px; margin: 0 0 10px 0; color: #333;">K dispozici po resetu: <strong><span id="ap-pending" style="color: #2ecc71;">0</span> AP</strong></p>
+                <p style="font-size: 12px; margin: 0 0 15px 0; color: #777;">Zbývá <span id="ap-next-req" style="font-weight:bold;">100k</span> skóre do dalšího bodu.</p>
+                <button id="btn-ascend-reset" class="submit-btn" style="width: 100%; font-size: 16px; padding: 10px; animation: none; background-color: #8e44ad; border-color: #732d91;">🔥 PROVÉST ASCEND RESET 🔥</button>
+            </div>
+
+            <h3 style="margin-top: 0;">Upgrady</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button id="buy-ascend-click" class="btn" style="background-color: #3498db; color: white; border-color: #2980b9;">
+                    👆 Zisk z klikání +50%
+                    <span style="color: black;">Cena: <span id="cost-ascend-click">1</span> AP</span>
+                    <small style="color: #ddd;">Level: <span id="lvl-ascend-click">0</span></small>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <input type="file" id="custom-image-upload" accept="image/*" style="display: none;">
+
+    <div class="container" id="app-container">
+        <div id="upgrades-wrapper"></div>
+        <div id="clicker-wrapper"></div>
+        <div id="shop-wrapper"></div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>
