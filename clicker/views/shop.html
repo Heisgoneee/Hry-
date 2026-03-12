@@ -1,24 +1,25 @@
-<div class="panel">
-    <h3>🎨 Drip & Swag (Kosmetika)</h3>
-    <div class="upgrades-container" style="max-height: 400px;">
+<div class="panel" style="border-color: #27ae60; width: 340px;">
+    <h3 style="color: #27ae60;">🎨 Drip & Swag (Kosmetika)</h3>
+    <div style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;">
         <table class="shop-table">
-            <tr><th colspan="2">Skiny Tlačítka (Obrázky)</th></tr>
-            <tr><td>🐶 Doge</td><td><button id="buy-skin-doge" class="buy-cosmetic" data-type="skin" data-id="doge" data-cost="1000">1000</button></td></tr>
-            <tr><td>🖼️ Vlastní</td><td><button id="buy-skin-custom" class="buy-cosmetic" data-type="skin" data-id="custom" data-cost="100000">100k</button></td></tr>
+            <tr><th colspan="2">Skiny Tlačítka</th></tr>
+            <tr><td>🐶 Doge</td><td><button id="buy-skin-doge" class="btn buy-cosmetic" style="margin:0; padding:8px;" data-type="skin" data-id="doge" data-cost="1000">1000</button></td></tr>
+            <tr><td>🖼️ Vlastní</td><td><button id="buy-skin-custom" class="btn buy-cosmetic" style="margin:0; padding:8px;" data-type="skin" data-id="custom" data-cost="100000">100k</button></td></tr>
             
             <tr><th colspan="2" style="padding-top:15px;">Pozadí</th></tr>
-            <tr><td>🌈 RGB Matrix</td><td><button id="buy-bg-rainbow" class="buy-cosmetic" data-type="bg" data-id="rainbow" data-cost="10000">10000</button></td></tr>
-            <tr><td>💻 Hacker (Dark)</td><td><button id="buy-bg-dark" class="buy-cosmetic" data-type="bg" data-id="dark" data-cost="25000">25000</button></td></tr>
+            <tr><td>🌈 RGB Matrix</td><td><button id="buy-bg-rainbow" class="btn buy-cosmetic" style="margin:0; padding:8px;" data-type="bg" data-id="rainbow" data-cost="10000">10000</button></td></tr>
+            <tr><td>💻 Hacker (Dark)</td><td><button id="buy-bg-dark" class="btn buy-cosmetic" style="margin:0; padding:8px;" data-type="bg" data-id="dark" data-cost="25000">25000</button></td></tr>
         </table>
     </div>
 
-    <h3 style="margin-top: 10px;">🌐 Živý Leaderboard <button id="btn-refresh-lb" style="font-size: 10px; cursor: pointer; border-radius: 5px; padding: 2px 5px; margin-left: 5px; vertical-align: middle;">🔄 Obnovit</button> <span id="loading-lb">⏳ Načítám...</span></h3>
-    <table class="leaderboard">
-        <thead><tr><th>Nick</th><th>Celkové</th><th>Nynější</th><th>Čas</th></tr></thead>
-        <tbody id="lb-body"></tbody>
-    </table>
-    
-    <div style="margin-top: 15px;">
-        <button id="btn-hard-reset" style="background: #333; color: white; border: none; padding: 8px; cursor: pointer; border-radius: 5px; font-size: 12px; width: 100%;">Hard Reset Lokálních Dat</button>
+    <h3 style="margin-top: 10px;">🌐 Leaderboard <button id="btn-refresh-lb" class="btn" style="width:auto; font-size: 10px; padding: 5px 10px; margin-left: 5px; float: right; margin-top:-5px;">🔄 Obnovit</button></h3>
+    <p id="loading-lb" style="font-size: 12px; margin: 0 0 5px 0;">⏳ Načítám...</p>
+    <div style="max-height: 250px; overflow-y: auto;">
+        <table class="leaderboard">
+            <thead><tr><th>Nick</th><th>Celkové</th><th>Nynější</th></tr></thead>
+            <tbody id="lb-body"></tbody>
+        </table>
     </div>
+    
+    <button id="btn-hard-reset" class="btn" style="background: #e74c3c; color: white; border: none; margin-top: 20px;">Smazat Lokální Data (Hard Reset)</button>
 </div>
