@@ -1,17 +1,25 @@
-<div class="panel center-panel">
+<div class="panel center-panel" style="border-color: var(--secondary);">
     <h2>🔥 Meme Clicker Simulator 2026 🔥</h2>
     <div id="timer" class="timer-display" title="Schválně na mě klikej">00:00:00</div>
     <div class="score-display"><span id="score">0</span></div>
-    <div style="font-size: 16px; font-weight: bold; margin-bottom: 2px;">Produkce: <span id="bps">0</span> bodů/s</div>
-    <div style="font-size: 14px; color: #666; font-weight: bold; margin-bottom: 5px;">Celkový zisk: <span id="total-score-display">0</span></div>
-    <div id="multiplier-display" style="font-size: 14px; color: #9b59b6; font-weight: bold; margin-bottom: 15px; display: block;">🌌 BPS Multiplikátor: x<span id="mult-val">1.000</span></div>
+    <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">Produkce: <span id="bps">0</span> bodů/s</div>
+    <div style="font-size: 15px; opacity: 0.7; font-weight: bold; margin-bottom: 10px;">Celkový zisk: <span id="total-score-display">0</span></div>
+    <div id="multiplier-display" style="font-size: 15px; color: var(--primary); font-weight: bold; margin-bottom: 15px; background: rgba(142, 68, 173, 0.1); padding: 5px; border-radius: 8px;">🌌 Celkový Multiplikátor: x<span id="mult-val">1.000</span></div>
     
+    <div id="frenzy-display" style="display: none; background: #f39c12; color: white; font-weight: bold; padding: 10px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 0 15px rgba(243, 156, 18, 0.5);">
+        <span id="frenzy-name">🌟 FRENZY 🌟</span>
+        <div style="width: 100%; background: rgba(0,0,0,0.2); height: 12px; border-radius: 6px; margin-top: 8px; overflow: hidden;">
+            <div id="frenzy-bar" style="width: 100%; background: #fff; height: 100%; transition: width 0.1s linear;"></div>
+        </div>
+        <div id="frenzy-time" style="font-size: 14px; margin-top: 5px;">30.0s</div>
+    </div>
+
     <div id="click-btn">🔴</div>
 
-    <button id="btn-submit" class="btn submit-btn">🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀</button>
-    <p style="font-size: 12px; color: #777;">(Do tabulky se nahrává tvůj celkový a nynější zisk)</p>
+    <button id="btn-submit" class="submit-btn" style="border-radius: 12px; width: 100%;">🚀 SUBMIT DO LEADERBOARDU 🚀</button>
+    <p style="font-size: 12px; opacity: 0.6; margin-top: 5px;">(Nahraje se tvůj celkový i nynější zisk)</p>
 
-    <button id="btn-open-ascend" class="btn" style="background-color: #8e44ad; color: white; border-color: #732d91; margin-top: 10px; text-align: center; font-size: 16px; padding: 15px;">
+    <button id="btn-open-ascend" class="btn ascend-btn" style="text-align: center; font-size: 16px; padding: 15px; margin-top: 10px;">
         🌌 OTEVŘÍT ASCEND TREE 🌌
     </button>
 </div>
