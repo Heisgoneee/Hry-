@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man v HTML5</title>
+    <style>
+        body {
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            padding-top: 50px;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            gap: 40px;
+        }
+        #game-container {
+            text-align: center;
+            position: relative;
+        }
+        canvas {
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.2);
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            width: 420px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffeb3b;
+        }
+        #leaderboard-container {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+            width: 250px;
+        }
+        #leaderboard-container h2 {
+            margin-top: 0;
+            color: #ffeb3b;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+        }
+        th {
+            color: #aaa;
+        }
+        .overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border: 2px solid #ffeb3b;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 10;
+            width: 300px;
+        }
+        .overlay input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 80%;
+            font-size: 16px;
+        }
+        .overlay button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #ffeb3b;
+            color: #000;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            width: 90%;
+        }
+        #game-over { display: none; }
+        #start-screen { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div class="header">
+            <span>PAC-MAN</span>
+            <span>Skóre: <span id="score">0</span></span>
+        </div>
+        <canvas id="gameCanvas" width="420" height="420"></canvas>
+        
+        <div id="start-screen" class="overlay">
+            <h2>PAC-MAN</h2>
+            <button onclick="window.startGame()">Start Game</button>
+        </div>
+
+        <div id="game-over" class="overlay">
+            <h2>KONEC HRY</h2>
+            <p>Tvé skóre: <span id="final-score">0</span></p>
+            <input type="text" id="player-name" placeholder="Zadej své jméno" maxlength="10">
+            <br>
+            <button onclick="window.saveScore()">Uložit skóre</button>
+            <button onclick="window.restartGame()">Hrát znovu (bez uložení)</button>
+        </div>
+    </div>
+
+    <div id="leaderboard-container">
+        <h2>Tabulka nejlepších</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Jméno</th>
+                    <th>Skóre</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBnFQf-YQODWhZN-3scSbWIQIgr3poDIos",
+            authDomain: "tetris-5e14c.firebaseapp.com",
+            projectId: "tetris-5e14c",
+            storageBucket: "tetris-5e14c.firebasestorage.app",
+            messagingSenderId: "923778243713",
+            appId: "1:923778243713:web:077bbed4244572f7244180",
+            measurementId: "G-Z92Q96BX30"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const finalScoreElement = document.getElementById('final-score');
+        const leaderboardBody = document.getElementById('leaderboard-body');
+
+        const tileSize = 20;
+        const rows = 21;
+        const cols = 21;
+        let score = 0;
+        let gameActive = false;
+        let animationId;
+        let powerModeTime = 0;
+        let lastFrameTime = 0;
+
+        let map = [];
+        const initialMap = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,3,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,3,1],
+            [1,0,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+            [1,1,1,1,1,0,1,1,1,2,1,2,1,1,1,0,1,1,1,1,1],
+            [2,2,2,2,1,0,1,2,2,2,2,2,2,2,1,0,1,2,2,2,2],
+            [1,1,1,1,1,0,1,2,1,1,2,1,1,2,1,0,1,1,1,1,1],
+            [2,2,2,2,2,0,2,2,1,2,2,2,1,2,2,0,2,2,2,2,2],
+            [1,1,1,1,1,0,1,2,1,1,1,1,1,2,1,0,1,1,1,1,1],
+            [2,2,2,2,1,0,1,2,2,2,2,2,2,2,1,0,1,2,2,2,2],
+            [1,1,1,1,1,0,1,2,1,1,1,1,1,2,1,0,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1],
+            [1,3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,1],
+            [1,1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1,1],
+            [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        let pacman;
+        let ghosts = [];
+        let fruit = { active: false, x: 10, y: 13, timer: 0 };
+
+        async function loadLeaderboard() {
+            try {
+                const q = query(collection(db, "pacman_leaderboard"), orderBy("score", "desc"), limit(10));
+                const querySnapshot = await getDocs(q);
+                leaderboardBody.innerHTML = '';
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${data.name}</td><td>${data.score}</td>`;
+                    leaderboardBody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error("Chyba při načítání tabulky: ", e);
+            }
+        }
+
+        function initGame() {
+            map = initialMap.map(row => [...row]);
+            score = 0;
+            scoreElement.innerText = score;
+            powerModeTime = 0;
+            fruit.active = false;
+            
+            let now = Date.now();
+
+            pacman = { x: 10, y: 15, vx: 0, vy: 0, nextVx: 0, nextVy: 0, speed: 2, pixelX: 10 * tileSize, pixelY: 15 * tileSize, angle: 0, mouthOpen: 0 };
+            
+            ghosts = [
+                { x: 10, y: 7, vx: -1, vy: 0, speed: 1, pixelX: 10 * tileSize, pixelY: 7 * tileSize, color: '#FF0000', startX: 10, startY: 9, releaseTime: now, released: true }, 
+                { x: 10, y: 9, vx: 0, vy: 0, speed: 1, pixelX: 10 * tileSize, pixelY: 9 * tileSize, color: '#FFB8FF', startX: 10, startY: 9, releaseTime: now + 10000, released: false },
+                { x: 11, y: 9, vx: 0, vy: 0, speed: 1, pixelX: 11 * tileSize, pixelY: 9 * tileSize, color: '#00FFFF', startX: 11, startY: 9, releaseTime: now + 20000, released: false }
+            ];
+            
+            drawMap();
+            drawPacman();
+            drawGhosts();
+        }
+
+        window.startGame = function() {
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            initGame();
+            lastFrameTime = performance.now();
+            if(animationId) cancelAnimationFrame(animationId);
+            animationId = requestAnimationFrame(gameLoop);
+        };
+
+        window.restartGame = function() {
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            initGame();
+            lastFrameTime = performance.now();
+            if(animationId) cancelAnimationFrame(animationId);
+            animationId = requestAnimationFrame(gameLoop);
+        };
+
+        window.saveScore = async function() {
+            const nameInput = document.getElementById('player-name').value.trim() || 'Hráč';
+            try {
+                await addDoc(collection(db, "pacman_leaderboard"), {
+                    name: nameInput,
+                    score: score,
+                    timestamp: new Date()
+                });
+                await loadLeaderboard();
+            } catch (e) {
+                console.error("Chyba při ukládání: ", e);
+            }
+            window.restartGame();
+        };
+
+        function drawMap() {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (map[r][c] === 1) {
+                        ctx.fillStyle = '#1919A6';
+                        ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+                    } else if (map[r][c] === 0) {
+                        ctx.fillStyle = '#FFB8AE';
+                        ctx.beginPath();
+                        ctx.arc(c * tileSize + tileSize / 2, r * tileSize + tileSize / 2, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (map[r][c] === 3) {
+                        ctx.fillStyle = '#FFB8AE';
+                        ctx.beginPath();
+                        ctx.arc(c * tileSize + tileSize / 2, r * tileSize + tileSize / 2, 7, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawFruit() {
+            if (!fruit.active) return;
+            ctx.save();
+            ctx.translate(fruit.x * tileSize + tileSize / 2, fruit.y * tileSize + tileSize / 2);
+            
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath();
+            ctx.arc(-4, 2, 4, 0, Math.PI * 2);
+            ctx.arc(4, 2, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-4, -1);
+            ctx.lineTo(0, -7);
+            ctx.lineTo(4, -1);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        function drawPacman() {
+            ctx.save();
+            ctx.translate(pacman.pixelX + tileSize / 2, pacman.pixelY + tileSize / 2);
+            
+            if (pacman.vx === 1) pacman.angle = 0;
+            else if (pacman.vx === -1) pacman.angle = Math.PI;
+            else if (pacman.vy === 1) pacman.angle = Math.PI / 2;
+            else if (pacman.vy === -1) pacman.angle = -Math.PI / 2;
+
+            ctx.rotate(pacman.angle);
+
+            pacman.mouthOpen += 0.2;
+            let mouthAngle = 0.2 * Math.abs(Math.sin(pacman.mouthOpen));
+
+            ctx.fillStyle = '#FFFF00';
+            ctx.beginPath();
+            ctx.arc(0, 0, tileSize / 2 - 2, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
+            ctx.lineTo(0, 0);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                ctx.save();
+                ctx.translate(ghost.pixelX + tileSize / 2, ghost.pixelY + tileSize / 2);
+                
+                let isScared = powerModeTime > 0 && ghost.released;
+                ctx.fillStyle = isScared ? (powerModeTime < 60 && powerModeTime % 10 < 5 ? '#FFFFFF' : '#0000FF') : ghost.color;
+                
+                ctx.beginPath();
+                ctx.arc(0, -2, tileSize / 2 - 2, Math.PI, 0);
+                ctx.lineTo(tileSize / 2 - 2, tileSize / 2 - 2);
+                
+                ctx.lineTo(tileSize / 4, tileSize / 2 - 5);
+                ctx.lineTo(0, tileSize / 2 - 2);
+                ctx.lineTo(-tileSize / 4, tileSize / 2 - 5);
+                
+                ctx.lineTo(-tileSize / 2 + 2, tileSize / 2 - 2);
+                ctx.fill();
+
+                if (!isScared) {
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(-3, -3, 3, 0, Math.PI * 2);
+                    ctx.arc(3, -3, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'blue';
+                    ctx.beginPath();
+                    ctx.arc(-3 + ghost.vx, -3 + ghost.vy, 1.5, 0, Math.PI * 2);
+                    ctx.arc(3 + ghost.vx, -3 + ghost.vy, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            });
+        }
+
+        function getValidMoves(x, y, currentVx, currentVy) {
+            const moves = [];
+            const directions = [{vx: 0, vy: -1}, {vx: 1, vy: 0}, {vx: 0, vy: 1}, {vx: -1, vy: 0}];
+            
+            directions.forEach(dir => {
+                if (dir.vx === -currentVx && dir.vy === -currentVy && (currentVx !== 0 || currentVy !== 0)) return; 
+                let nx = x + dir.vx;
+                let ny = y + dir.vy;
+                
+                if (nx < 0) nx = cols - 1;
+                if (nx >= cols) nx = 0;
+                
+                if (map[ny] && map[ny][nx] !== 1) {
+                    moves.push(dir);
+                }
+            });
+            
+            if (moves.length === 0) return [{vx: -currentVx, vy: -currentVy}];
+            return moves;
+        }
+
+        function updateGhosts() {
+            let now = Date.now();
+            ghosts.forEach(ghost => {
+                if (!ghost.released) {
+                    if (now >= ghost.releaseTime) {
+                        ghost.released = true;
+                        ghost.x = 10;
+                        ghost.y = 7;
+                        ghost.pixelX = 10 * tileSize;
+                        ghost.pixelY = 7 * tileSize;
+                        ghost.vx = -1;
+                        ghost.vy = 0;
+                    } else {
+                        return;
+                    }
+                }
+
+                const isCenteredX = Math.abs(ghost.pixelX - ghost.x * tileSize) < ghost.speed;
+                const isCenteredY = Math.abs(ghost.pixelY - ghost.y * tileSize) < ghost.speed;
+
+                if (isCenteredX && isCenteredY) {
+                    ghost.pixelX = ghost.x * tileSize;
+                    ghost.pixelY = ghost.y * tileSize;
+
+                    const validMoves = getValidMoves(ghost.x, ghost.y, ghost.vx, ghost.vy);
+                    const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+                    ghost.vx = move.vx;
+                    ghost.vy = move.vy;
+
+                    ghost.pixelX += ghost.vx * ghost.speed;
+                    ghost.pixelY += ghost.vy * ghost.speed;
+                } else {
+                    ghost.pixelX += ghost.vx * ghost.speed;
+                    ghost.pixelY += ghost.vy * ghost.speed;
+                }
+
+                if (ghost.pixelX < 0) {
+                    ghost.pixelX = (cols - 1) * tileSize;
+                } else if (ghost.pixelX >= cols * tileSize) {
+                    ghost.pixelX = 0;
+                }
+
+                ghost.x = Math.round(ghost.pixelX / tileSize);
+                ghost.y = Math.round(ghost.pixelY / tileSize);
+                
+                const dist = Math.hypot(pacman.pixelX - ghost.pixelX, pacman.pixelY - ghost.pixelY);
+                if (dist < tileSize - 4) {
+                    if (powerModeTime > 0 && ghost.released) {
+                        ghost.released = false;
+                        ghost.releaseTime = Date.now() + 5000;
+                        ghost.x = ghost.startX;
+                        ghost.y = ghost.startY;
+                        ghost.pixelX = ghost.startX * tileSize;
+                        ghost.pixelY = ghost.startY * tileSize;
+                        score += 200;
+                    } else if (powerModeTime <= 0) {
+                        endGame();
+                    }
+                }
+            });
+        }
+
+        function updatePacman() {
+            const isCenteredX = Math.abs(pacman.pixelX - pacman.x * tileSize) < pacman.speed;
+            const isCenteredY = Math.abs(pacman.pixelY - pacman.y * tileSize) < pacman.speed;
+
+            if (isCenteredX && isCenteredY) {
+                pacman.pixelX = pacman.x * tileSize;
+                pacman.pixelY = pacman.y * tileSize;
+
+                if (pacman.nextVx !== 0 || pacman.nextVy !== 0) {
+                    let nextGridX = pacman.x + pacman.nextVx;
+                    let nextGridY = pacman.y + pacman.nextVy;
+                    
+                    if (nextGridX < 0) nextGridX = cols - 1;
+                    if (nextGridX >= cols) nextGridX = 0;
+
+                    if (map[nextGridY] && map[nextGridY][nextGridX] !== 1) {
+                        pacman.vx = pacman.nextVx;
+                        pacman.vy = pacman.nextVy;
+                    }
+                }
+
+                let currentGridX = pacman.x + pacman.vx;
+                let currentGridY = pacman.y + pacman.vy;
+                
+                if (currentGridX < 0) currentGridX = cols - 1;
+                if (currentGridX >= cols) currentGridX = 0;
+
+                if (map[currentGridY] && map[currentGridY][currentGridX] !== 1) {
+                    pacman.pixelX += pacman.vx * pacman.speed;
+                    pacman.pixelY += pacman.vy * pacman.speed;
+                } else {
+                    pacman.vx = 0;
+                    pacman.vy = 0;
+                }
+                
+            } else {
+                pacman.pixelX += pacman.vx * pacman.speed;
+                pacman.pixelY += pacman.vy * pacman.speed;
+            }
+
+            if (pacman.pixelX < 0) {
+                pacman.pixelX = (cols - 1) * tileSize;
+            } else if (pacman.pixelX >= cols * tileSize) {
+                pacman.pixelX = 0;
+            }
+
+            pacman.x = Math.round(pacman.pixelX / tileSize);
+            pacman.y = Math.round(pacman.pixelY / tileSize);
+
+            if (map[pacman.y] && map[pacman.y][pacman.x] === 0) {
+                map[pacman.y][pacman.x] = 2;
+                score += 10;
+                scoreElement.innerText = score;
+            } else if (map[pacman.y] && map[pacman.y][pacman.x] === 3) {
+                map[pacman.y][pacman.x] = 2;
+                score += 50;
+                scoreElement.innerText = score;
+                powerModeTime = 300; 
+            }
+
+            if (fruit.active && pacman.x === fruit.x && pacman.y === fruit.y) {
+                score += 100;
+                scoreElement.innerText = score;
+                fruit.active = false;
+            }
+        }
+
+        function updateFruit() {
+            if (!fruit.active && Math.random() < 0.002) {
+                let emptyTiles = [];
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (map[r][c] !== 1 && (r < 7 || r > 11)) { 
+                            emptyTiles.push({x: c, y: r});
+                        }
+                    }
+                }
+                if(emptyTiles.length > 0) {
+                    let spot = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
+                    fruit.x = spot.x;
+                    fruit.y = spot.y;
+                    fruit.active = true;
+                    fruit.timer = 500; 
+                }
+            }
+            
+            if (fruit.active) {
+                fruit.timer--;
+                if (fruit.timer <= 0) {
+                    fruit.active = false;
+                }
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            finalScoreElement.innerText = score;
+            gameOverScreen.style.display = 'block';
+        }
+
+        function update() {
+            if (!gameActive) return;
+            if (powerModeTime > 0) powerModeTime--;
+            updatePacman();
+            updateGhosts();
+            updateFruit();
+        }
+
+        function gameLoop(timestamp) {
+            if (!gameActive) return;
+            animationId = requestAnimationFrame(gameLoop);
+            
+            if (!timestamp) timestamp = performance.now();
+            if (timestamp - lastFrameTime < 20) return; 
+            lastFrameTime = timestamp;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMap();
+            drawFruit();
+            update();
+            drawPacman();
+            drawGhosts();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            if (e.key === 'ArrowUp') { pacman.nextVx = 0; pacman.nextVy = -1; }
+            if (e.key === 'ArrowDown') { pacman.nextVx = 0; pacman.nextVy = 1; }
+            if (e.key === 'ArrowLeft') { pacman.nextVx = -1; pacman.nextVy = 0; }
+            if (e.key === 'ArrowRight') { pacman.nextVx = 1; pacman.nextVy = 0; }
+            if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
+                e.preventDefault(); 
+            }
+        });
+
+        initGame();
+        loadLeaderboard();
+    </script>
+</body>
+</html>
