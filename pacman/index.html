@@ -97,7 +97,7 @@
 
     <div id="game-container">
         <div class="header">
-            <span>PAC-MAN</span>
+            <span>Úroveň: <span id="level-display">1</span></span>
             <span>Skóre: <span id="score">0</span></span>
         </div>
         <canvas id="gameCanvas" width="420" height="420"></canvas>
@@ -151,15 +151,94 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level-display');
         const gameOverScreen = document.getElementById('game-over');
         const startScreen = document.getElementById('start-screen');
         const finalScoreElement = document.getElementById('final-score');
         const leaderboardBody = document.getElementById('leaderboard-body');
 
+        // Audio Context Setup
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let chompToggle = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'chomp') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(chompToggle ? 300 : 450, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+                chompToggle = !chompToggle;
+            } else if (type === 'power') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.linearRampToValueAtTime(800, now + 0.2);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'eatGhost') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'eatFruit') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.setValueAtTime(800, now + 0.1);
+                osc.frequency.setValueAtTime(1200, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'die') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 1);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 1);
+                osc.start(now);
+                osc.stop(now + 1);
+            } else if (type === 'levelUp') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.setValueAtTime(500, now + 0.15);
+                osc.frequency.setValueAtTime(600, now + 0.3);
+                osc.frequency.setValueAtTime(800, now + 0.45);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
+            }
+        }
+
         const tileSize = 20;
         const rows = 21;
         const cols = 21;
         let score = 0;
+        let level = 1;
         let gameActive = false;
         let animationId;
         let powerModeTime = 0;
@@ -193,6 +272,35 @@
         let pacman;
         let ghosts = [];
         let fruit = { active: false, x: 10, y: 13, timer: 0 };
+        let particles = [];
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.life = 1.0;
+                this.color = color;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.04;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, 3, 3);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x + tileSize/2, y + tileSize/2, color));
+            }
+        }
 
         async function loadLeaderboard() {
             try {
@@ -210,21 +318,33 @@
             }
         }
 
-        function initGame() {
+        function checkLevelComplete() {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (map[r][c] === 0 || map[r][c] === 3) return false;
+                }
+            }
+            return true;
+        }
+
+        function startLevel() {
             map = initialMap.map(row => [...row]);
-            score = 0;
-            scoreElement.innerText = score;
+            levelElement.innerText = level;
             powerModeTime = 0;
             fruit.active = false;
+            particles = [];
             
             let now = Date.now();
-
             pacman = { x: 10, y: 15, vx: 0, vy: 0, nextVx: 0, nextVy: 0, speed: 2, pixelX: 10 * tileSize, pixelY: 15 * tileSize, angle: 0, mouthOpen: 0 };
             
+            let ghostSpeed = level >= 4 ? 2 : 1; 
+            let delayPinky = Math.max(2000, 10000 - (level - 1) * 2000);
+            let delayInky = Math.max(4000, 20000 - (level - 1) * 4000);
+
             ghosts = [
-                { x: 10, y: 7, vx: -1, vy: 0, speed: 1, pixelX: 10 * tileSize, pixelY: 7 * tileSize, color: '#FF0000', startX: 10, startY: 9, releaseTime: now, released: true }, 
-                { x: 10, y: 9, vx: 0, vy: 0, speed: 1, pixelX: 10 * tileSize, pixelY: 9 * tileSize, color: '#FFB8FF', startX: 10, startY: 9, releaseTime: now + 10000, released: false },
-                { x: 11, y: 9, vx: 0, vy: 0, speed: 1, pixelX: 11 * tileSize, pixelY: 9 * tileSize, color: '#00FFFF', startX: 11, startY: 9, releaseTime: now + 20000, released: false }
+                { x: 10, y: 7, vx: -1, vy: 0, speed: ghostSpeed, pixelX: 10 * tileSize, pixelY: 7 * tileSize, color: '#FF0000', startX: 10, startY: 9, releaseTime: now, released: true }, 
+                { x: 10, y: 9, vx: 0, vy: 0, speed: ghostSpeed, pixelX: 10 * tileSize, pixelY: 9 * tileSize, color: '#FFB8FF', startX: 10, startY: 9, releaseTime: now + delayPinky, released: false },
+                { x: 11, y: 9, vx: 0, vy: 0, speed: ghostSpeed, pixelX: 11 * tileSize, pixelY: 9 * tileSize, color: '#00FFFF', startX: 11, startY: 9, releaseTime: now + delayInky, released: false }
             ];
             
             drawMap();
@@ -233,22 +353,23 @@
         }
 
         window.startGame = function() {
+            initAudio();
             startScreen.style.display = 'none';
             gameOverScreen.style.display = 'none';
             gameActive = true;
-            initGame();
+            score = 0;
+            level = 1;
+            scoreElement.innerText = score;
+            startLevel();
+            playSound('levelUp');
             lastFrameTime = performance.now();
             if(animationId) cancelAnimationFrame(animationId);
             animationId = requestAnimationFrame(gameLoop);
         };
 
         window.restartGame = function() {
-            gameOverScreen.style.display = 'none';
-            gameActive = true;
-            initGame();
-            lastFrameTime = performance.now();
-            if(animationId) cancelAnimationFrame(animationId);
-            animationId = requestAnimationFrame(gameLoop);
+            initAudio();
+            window.startGame();
         };
 
         window.saveScore = async function() {
@@ -278,7 +399,7 @@
                         ctx.arc(c * tileSize + tileSize / 2, r * tileSize + tileSize / 2, 3, 0, Math.PI * 2);
                         ctx.fill();
                     } else if (map[r][c] === 3) {
-                        ctx.fillStyle = '#FFB8AE';
+                        ctx.fillStyle = powerModeTime % 10 < 5 ? '#FFFFFF' : '#FFB8AE';
                         ctx.beginPath();
                         ctx.arc(c * tileSize + tileSize / 2, r * tileSize + tileSize / 2, 7, 0, Math.PI * 2);
                         ctx.fill();
@@ -436,6 +557,8 @@
                 const dist = Math.hypot(pacman.pixelX - ghost.pixelX, pacman.pixelY - ghost.pixelY);
                 if (dist < tileSize - 4) {
                     if (powerModeTime > 0 && ghost.released) {
+                        playSound('eatGhost');
+                        createExplosion(ghost.pixelX, ghost.pixelY, ghost.color);
                         ghost.released = false;
                         ghost.releaseTime = Date.now() + 5000;
                         ghost.x = ghost.startX;
@@ -443,6 +566,7 @@
                         ghost.pixelX = ghost.startX * tileSize;
                         ghost.pixelY = ghost.startY * tileSize;
                         score += 200;
+                        scoreElement.innerText = score;
                     } else if (powerModeTime <= 0) {
                         endGame();
                     }
@@ -503,14 +627,31 @@
                 map[pacman.y][pacman.x] = 2;
                 score += 10;
                 scoreElement.innerText = score;
+                playSound('chomp');
+                if (checkLevelComplete()) {
+                    level++;
+                    playSound('levelUp');
+                    startLevel();
+                    return;
+                }
             } else if (map[pacman.y] && map[pacman.y][pacman.x] === 3) {
                 map[pacman.y][pacman.x] = 2;
                 score += 50;
                 scoreElement.innerText = score;
-                powerModeTime = 300; 
+                playSound('power');
+                createExplosion(pacman.pixelX, pacman.pixelY, '#FFB8AE');
+                powerModeTime = Math.max(100, 300 - (level - 1) * 40); 
+                if (checkLevelComplete()) {
+                    level++;
+                    playSound('levelUp');
+                    startLevel();
+                    return;
+                }
             }
 
             if (fruit.active && pacman.x === fruit.x && pacman.y === fruit.y) {
+                playSound('eatFruit');
+                createExplosion(pacman.pixelX, pacman.pixelY, '#FF0000');
                 score += 100;
                 scoreElement.innerText = score;
                 fruit.active = false;
@@ -544,8 +685,22 @@
             }
         }
 
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => p.draw(ctx));
+        }
+
         function endGame() {
             gameActive = false;
+            playSound('die');
             finalScoreElement.innerText = score;
             gameOverScreen.style.display = 'block';
         }
@@ -556,6 +711,7 @@
             updatePacman();
             updateGhosts();
             updateFruit();
+            updateParticles();
         }
 
         function gameLoop(timestamp) {
@@ -572,6 +728,7 @@
             update();
             drawPacman();
             drawGhosts();
+            drawParticles();
         }
 
         window.addEventListener('keydown', (e) => {
@@ -585,7 +742,6 @@
             }
         });
 
-        initGame();
         loadLeaderboard();
     </script>
 </body>
