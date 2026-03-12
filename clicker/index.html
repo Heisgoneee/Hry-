@@ -55,7 +55,7 @@
         .shop-table button:disabled { background: #95a5a6; border-color: #7f8c8d; cursor: not-allowed; }
         .shop-table button.equipped { background: #2ecc71; border-color: #27ae60; cursor: default; }
 
-        .leaderboard { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        .leaderboard { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
         .leaderboard th, .leaderboard td { border: 1px dashed #777; padding: 5px; text-align: left; }
         .leaderboard th { background: #eee; color: #333; }
         .bg-dark .leaderboard th { background: #222; color: #00ff00; }
@@ -105,6 +105,7 @@
                 <li>Zlevněný giga chad prst</li>
                 <li><b>NOVÉ: Sledování celkového zisku</b></li>
                 <li><b>NOVÉ: Achievementy za koupené skiny</b></li>
+                <li><b>TABULKA: Zobrazuje Celkové i Nynější skóre</b></li>
             </ul>
         </div>
     </div>
@@ -144,7 +145,7 @@
             <div id="click-btn">🔴</div>
 
             <button id="btn-submit" class="btn submit-btn">🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀</button>
-            <p style="font-size: 12px; color: #777;">(Do tabulky se nahrává tvůj celkový zisk)</p>
+            <p style="font-size: 12px; color: #777;">(Do tabulky se nahrává tvůj celkový a nynější zisk)</p>
 
             <button id="btn-ascend" class="btn submit-btn ascend-btn">
                 🌌 ASCEND (Získáš <span id="ascend-gain">0</span> AP) 🌌<br>
@@ -180,7 +181,7 @@
 
             <h3 style="margin-top: 10px;">🌐 Živý Leaderboard <button id="btn-refresh-lb" style="font-size: 10px; cursor: pointer; border-radius: 5px; padding: 2px 5px; margin-left: 5px; vertical-align: middle;">🔄 Obnovit</button> <span id="loading-lb">⏳ Načítám...</span></h3>
             <table class="leaderboard">
-                <thead><tr><th>Nick</th><th>Skóre</th><th>Čas</th></tr></thead>
+                <thead><tr><th>Nick</th><th>Celkové</th><th>Nynější</th><th>Čas</th></tr></thead>
                 <tbody id="lb-body"></tbody>
             </table>
             
@@ -285,7 +286,6 @@
 
         let game = JSON.parse(localStorage.getItem('meme_clicker_fb')) || JSON.parse(JSON.stringify(defaultState));
         
-        // Zajištění dat pro nové featury
         if(game.totalScore === undefined) game.totalScore = game.score;
         if(!game.unlockedAchievements) game.unlockedAchievements = [];
         game.unlockedAchievements = game.unlockedAchievements.filter(a => !['easter_timer', 'easter_jicin', 'easter_sigma'].includes(a));
@@ -343,7 +343,6 @@
             { id: 'bld_alien_10', name: '🛸 Area 51 (10x UFO)', req: () => game.buildings.alien >= 10 },
             { id: 'bld_alien_50', name: '🛸 Mezigalaktický vládce (50x UFO)', req: () => game.buildings.alien >= 50 },
             { id: 'bld_alien_100', name: '🛸 Vládce multivesmíru (100x UFO)', req: () => game.buildings.alien >= 100 },
-            // NOVÉ: Achievementy za skiny a pozadí
             { id: 'skin_doge_unlocked', name: '🐕 Wow Such Click (Doge Skin)', req: () => game.cosmetics.skinsUnlocked.includes('doge') },
             { id: 'skin_custom_unlocked', name: '🎨 Umělec (Vlastní Skin)', req: () => game.cosmetics.skinsUnlocked.includes('custom') },
             { id: 'bg_rainbow_unlocked', name: '🌈 Párty (RGB Pozadí)', req: () => game.cosmetics.bgsUnlocked.includes('rainbow') },
@@ -424,7 +423,7 @@
                 try {
                     const q = query(collection(db, "clicker_leaderboard"), orderBy("score", "desc"), limit(10));
                     const snapshot = await getDocs(q);
-                    if(snapshot.empty) { tbody.innerHTML = '<tr><td colspan="3">Firebase tabulka je prázdná.</td></tr>'; return; }
+                    if(snapshot.empty) { tbody.innerHTML = '<tr><td colspan="4">Firebase tabulka je prázdná.</td></tr>'; return; }
                     
                     let lbData = [];
                     snapshot.forEach((doc) => lbData.push(doc.data()));
@@ -443,7 +442,13 @@
             const tbody = document.getElementById('lb-body');
             tbody.innerHTML = '';
             data.forEach((d) => {
-                tbody.innerHTML += `<tr><td>${d.name}</td><td>${formatNumber(d.score)}</td><td>${d.time}</td></tr>`;
+                // Přidán sloupec pro d.current (nynější skóre)
+                tbody.innerHTML += `<tr>
+                    <td>${d.name}</td>
+                    <td style="font-weight:bold;color:#e67e22;">${formatNumber(d.score)}</td>
+                    <td>${formatNumber(d.current || 0)}</td>
+                    <td>${d.time}</td>
+                </tr>`;
             });
         }
 
@@ -451,9 +456,14 @@
             const tbody = document.getElementById('lb-body');
             tbody.innerHTML = '';
             localLeaderboard.slice(0, 10).forEach(entry => {
-                tbody.innerHTML += `<tr><td>${entry.name}</td><td>${formatNumber(entry.score)}</td><td>${entry.time}</td></tr>`;
+                tbody.innerHTML += `<tr>
+                    <td>${entry.name}</td>
+                    <td>${formatNumber(entry.score)}</td>
+                    <td>${formatNumber(entry.current || 0)}</td>
+                    <td>${entry.time}</td>
+                </tr>`;
             });
-            if(localLeaderboard.length === 0) tbody.innerHTML = '<tr><td colspan="3">Žádná data. Zkus nahrát skóre!</td></tr>';
+            if(localLeaderboard.length === 0) tbody.innerHTML = '<tr><td colspan="4">Žádná data. Zkus nahrát skóre!</td></tr>';
         }
 
         document.getElementById('btn-refresh-lb').addEventListener('click', () => {
@@ -510,7 +520,7 @@
 
         function updateUI() {
             document.getElementById('score').textContent = formatNumber(game.score);
-            document.getElementById('total-score-display').textContent = formatNumber(game.totalScore); // NOVÉ: Zobrazení total
+            document.getElementById('total-score-display').textContent = formatNumber(game.totalScore);
             document.getElementById('bps').textContent = formatNumber(getBPS());
             
             document.getElementById('cost-click').textContent = formatNumber(game.costs.click);
@@ -523,9 +533,7 @@
                     costEl.textContent = formatNumber(game.costs[key]); 
                     btnEl.disabled = game.score < game.costs[key]; 
                 }
-                if(countEl) {
-                    countEl.textContent = `[${game.buildings[key]}]`;
-                }
+                if(countEl) countEl.textContent = `[${game.buildings[key]}]`;
             }
 
             const currentReq = 1000000 * Math.pow(1.5, game.ascend.timesAscended);
@@ -577,7 +585,7 @@
             if (!game.startTime) game.startTime = Date.now();
             const gain = game.clickPower * getMultiplier();
             game.score += gain; 
-            game.totalScore += gain; // PŘIDÁNO K CELKOVÉMU ZISKU
+            game.totalScore += gain;
             game.clicks++;
             
             let soundKey = 'click_' + game.cosmetics.currentSkin;
@@ -629,7 +637,7 @@
                     const savedNick = game.nick;
                     const savedCosmetics = game.cosmetics;
                     const savedAch = game.unlockedAchievements;
-                    const savedTotal = game.totalScore; // NOVÉ: Zachovat celkový zisk při ascendu
+                    const savedTotal = game.totalScore;
 
                     game = JSON.parse(JSON.stringify(defaultState));
                     
@@ -637,7 +645,7 @@
                     game.nick = savedNick;
                     game.cosmetics = savedCosmetics;
                     game.unlockedAchievements = savedAch;
-                    game.totalScore = savedTotal; // Obnova celkového zisku
+                    game.totalScore = savedTotal;
 
                     localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
                     updateUI();
@@ -725,14 +733,13 @@
                 if(inputNick && inputNick.trim() !== '') {
                     nick = inputNick.substring(0,15);
                     game.nick = nick;
-                } else {
-                    return;
-                }
+                } else return;
             }
             
             const elapsed = game.startTime ? (Date.now() - game.startTime) : 0;
             const timeStr = formatTime(elapsed);
-            const finalScore = game.totalScore; // POUŽITÍ CELKOVÉHO ZISKU PRO LEADERBOARD
+            const finalTotalScore = game.totalScore;
+            const finalCurrentScore = game.score;
             
             const btn = document.getElementById('btn-submit');
             btn.disabled = true; btn.textContent = "⏳ ODESÍLÁM...";
@@ -740,40 +747,38 @@
             if(db) {
                 try {
                     const docRef = doc(db, "clicker_leaderboard", nick);
-                    const docSnap = await getDoc(docRef);
-                    
-                    if (docSnap.exists() && docSnap.data().score >= finalScore) {
-                        alert('V databázi už máš stejné nebo vyšší skóre.');
-                        btn.disabled = false; btn.textContent = "🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀";
-                        return;
-                    }
-
+                    // Odesíláme do Firebase jak total (jako score), tak nynější (jako current)
                     await setDoc(docRef, {
-                        name: nick, score: finalScore, time: timeStr, timestamp: Date.now()
+                        name: nick, 
+                        score: finalTotalScore, 
+                        current: finalCurrentScore,
+                        time: timeStr, 
+                        timestamp: Date.now()
                     });
-                    alert('Zapsán tvůj CELKOVÝ ZISK do Firebase!');
+                    alert('Zapsáno do Firebase! Ostatní uvidí tvůj celkový i nynější zisk.');
                 } catch(e) {
                     alert("Chyba při zápisu, ukládám lokálně.");
-                    saveLocally(nick, finalScore, timeStr);
+                    saveLocally(nick, finalTotalScore, timeStr, finalCurrentScore);
                 }
             } else {
-                saveLocally(nick, finalScore, timeStr);
+                saveLocally(nick, finalTotalScore, timeStr, finalCurrentScore);
             }
             
             localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
-            btn.disabled = false; btn.textContent = "🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀";
+            btn.disabled = false; btn.textContent = "🚀 SUBMIT SKÓRE DO TABULKY 🚀";
             document.getElementById('btn-refresh-lb').click();
         });
 
-        function saveLocally(nick, score, timeStr) {
+        function saveLocally(nick, score, timeStr, current) {
             let existing = localLeaderboard.find(entry => entry.name === nick);
             if (existing) {
                 if (score > existing.score) {
                     existing.score = score;
                     existing.time = timeStr;
+                    existing.current = current;
                 }
             } else {
-                localLeaderboard.push({ name: nick, score: score, time: timeStr });
+                localLeaderboard.push({ name: nick, score: score, time: timeStr, current: current });
             }
             localLeaderboard.sort((a,b) => b.score - a.score);
             localStorage.setItem('meme_lb_local', JSON.stringify(localLeaderboard));
@@ -798,7 +803,7 @@
             const gain = getBPS() * dt;
             if (gain > 0) {
                 game.score += gain;
-                game.totalScore += gain; // PŘIČÍTÁNÍ Z BPS K TOTALU
+                game.totalScore += gain;
             }
             
             updateUI();
