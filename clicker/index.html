@@ -103,6 +103,8 @@
                 <li>Více achievementů (hranice skóre i množství budov)</li>
                 <li>Achievementy teď dávají bonusy (+0.1% BPS za každý)</li>
                 <li>Zlevněný giga chad prst</li>
+                <li><b>NOVÉ: Sledování celkového zisku</b></li>
+                <li><b>NOVÉ: Achievementy za koupené skiny</b></li>
             </ul>
         </div>
     </div>
@@ -135,13 +137,14 @@
             <h2>🔥 Meme Clicker Simulator 2026 🔥</h2>
             <div id="timer" class="timer-display" title="Schválně na mě klikej">00:00:00</div>
             <div class="score-display"><span id="score">0</span></div>
-            <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">Produkce: <span id="bps">0</span> bodů/s</div>
+            <div style="font-size: 16px; font-weight: bold; margin-bottom: 2px;">Produkce: <span id="bps">0</span> bodů/s</div>
+            <div style="font-size: 14px; color: #666; font-weight: bold; margin-bottom: 5px;">Celkový zisk: <span id="total-score-display">0</span></div>
             <div id="multiplier-display" style="font-size: 14px; color: #9b59b6; font-weight: bold; margin-bottom: 15px; display: block;">🌌 Multiplikátor: x<span id="mult-val">1.000</span></div>
             
             <div id="click-btn">🔴</div>
 
             <button id="btn-submit" class="btn submit-btn">🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀</button>
-            <p style="font-size: 12px; color: #777;">(Neuloží se, pokud už tam máš víc)</p>
+            <p style="font-size: 12px; color: #777;">(Do tabulky se nahrává tvůj celkový zisk)</p>
 
             <button id="btn-ascend" class="btn submit-btn ascend-btn">
                 🌌 ASCEND (Získáš <span id="ascend-gain">0</span> AP) 🌌<br>
@@ -260,7 +263,10 @@
 
         const defaultState = {
             nick: "",
-            score: 0, clicks: 0, clickPower: 1, 
+            score: 0,
+            totalScore: 0, // NOVÉ: Sledování celkového zisku
+            clicks: 0, 
+            clickPower: 1, 
             buildings: { auto: 0, factory: 0, mine: 0, ai: 0, tiktok: 0, elon: 0, matrix: 0, crypto: 0, metaverse: 0, alien: 0 },
             costs: { click: 10, auto: 50, factory: 500, mine: 3000, ai: 15000, tiktok: 100000, elon: 1000000, matrix: 15000000, crypto: 100000000, metaverse: 1000000000, alien: 50000000000 },
             startTime: null, lastTime: Date.now(),
@@ -279,6 +285,8 @@
 
         let game = JSON.parse(localStorage.getItem('meme_clicker_fb')) || JSON.parse(JSON.stringify(defaultState));
         
+        // Zajištění dat pro nové featury
+        if(game.totalScore === undefined) game.totalScore = game.score;
         if(!game.unlockedAchievements) game.unlockedAchievements = [];
         game.unlockedAchievements = game.unlockedAchievements.filter(a => !['easter_timer', 'easter_jicin', 'easter_sigma'].includes(a));
 
@@ -334,7 +342,12 @@
             { id: 'bld_metaverse_100', name: '🕶️ Stvořitel (100x Metaverse)', req: () => game.buildings.metaverse >= 100 },
             { id: 'bld_alien_10', name: '🛸 Area 51 (10x UFO)', req: () => game.buildings.alien >= 10 },
             { id: 'bld_alien_50', name: '🛸 Mezigalaktický vládce (50x UFO)', req: () => game.buildings.alien >= 50 },
-            { id: 'bld_alien_100', name: '🛸 Vládce multivesmíru (100x UFO)', req: () => game.buildings.alien >= 100 }
+            { id: 'bld_alien_100', name: '🛸 Vládce multivesmíru (100x UFO)', req: () => game.buildings.alien >= 100 },
+            // NOVÉ: Achievementy za skiny a pozadí
+            { id: 'skin_doge_unlocked', name: '🐕 Wow Such Click (Doge Skin)', req: () => game.cosmetics.skinsUnlocked.includes('doge') },
+            { id: 'skin_custom_unlocked', name: '🎨 Umělec (Vlastní Skin)', req: () => game.cosmetics.skinsUnlocked.includes('custom') },
+            { id: 'bg_rainbow_unlocked', name: '🌈 Párty (RGB Pozadí)', req: () => game.cosmetics.bgsUnlocked.includes('rainbow') },
+            { id: 'bg_dark_unlocked', name: '🕶️ Hacker (Dark Pozadí)', req: () => game.cosmetics.bgsUnlocked.includes('dark') }
         ];
 
         function getMultiplier() {
@@ -497,6 +510,7 @@
 
         function updateUI() {
             document.getElementById('score').textContent = formatNumber(game.score);
+            document.getElementById('total-score-display').textContent = formatNumber(game.totalScore); // NOVÉ: Zobrazení total
             document.getElementById('bps').textContent = formatNumber(getBPS());
             
             document.getElementById('cost-click').textContent = formatNumber(game.costs.click);
@@ -562,7 +576,9 @@
         document.getElementById('click-btn').addEventListener('click', (e) => {
             if (!game.startTime) game.startTime = Date.now();
             const gain = game.clickPower * getMultiplier();
-            game.score += gain; game.clicks++;
+            game.score += gain; 
+            game.totalScore += gain; // PŘIDÁNO K CELKOVÉMU ZISKU
+            game.clicks++;
             
             let soundKey = 'click_' + game.cosmetics.currentSkin;
             if(game.cosmetics.currentSkin === 'custom') soundKey = 'click_custom';
@@ -613,6 +629,7 @@
                     const savedNick = game.nick;
                     const savedCosmetics = game.cosmetics;
                     const savedAch = game.unlockedAchievements;
+                    const savedTotal = game.totalScore; // NOVÉ: Zachovat celkový zisk při ascendu
 
                     game = JSON.parse(JSON.stringify(defaultState));
                     
@@ -620,6 +637,7 @@
                     game.nick = savedNick;
                     game.cosmetics = savedCosmetics;
                     game.unlockedAchievements = savedAch;
+                    game.totalScore = savedTotal; // Obnova celkového zisku
 
                     localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
                     updateUI();
@@ -698,12 +716,12 @@
         });
 
         document.getElementById('btn-submit').addEventListener('click', async () => {
-            if(game.score < 100) { playSound('error'); alert('Nahraj aspoň 100 bodů kámo, ať neděláš ostudu.'); return; }
+            if(game.totalScore < 100) { playSound('error'); alert('Nahraj aspoň 100 celkových bodů kámo.'); return; }
             playSound('submit');
             
             let nick = game.nick;
             if (!nick || nick.trim() === '') {
-                const inputNick = prompt("Zadej svůj první a trvalý meme nick pro Leaderboard:");
+                const inputNick = prompt("Zadej svůj nick pro tabulku:");
                 if(inputNick && inputNick.trim() !== '') {
                     nick = inputNick.substring(0,15);
                     game.nick = nick;
@@ -714,7 +732,7 @@
             
             const elapsed = game.startTime ? (Date.now() - game.startTime) : 0;
             const timeStr = formatTime(elapsed);
-            const finalScore = game.score;
+            const finalScore = game.totalScore; // POUŽITÍ CELKOVÉHO ZISKU PRO LEADERBOARD
             
             const btn = document.getElementById('btn-submit');
             btn.disabled = true; btn.textContent = "⏳ ODESÍLÁM...";
@@ -725,7 +743,7 @@
                     const docSnap = await getDoc(docRef);
                     
                     if (docSnap.exists() && docSnap.data().score >= finalScore) {
-                        alert('V databázi už máš stejné nebo vyšší skóre. Nekaž si průměr!');
+                        alert('V databázi už máš stejné nebo vyšší skóre.');
                         btn.disabled = false; btn.textContent = "🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀";
                         return;
                     }
@@ -733,25 +751,17 @@
                     await setDoc(docRef, {
                         name: nick, score: finalScore, time: timeStr, timestamp: Date.now()
                     });
-                    alert('Zapsáno/Aktualizováno ve Firebase! Skóre letí ke hvězdám.');
+                    alert('Zapsán tvůj CELKOVÝ ZISK do Firebase!');
                 } catch(e) {
-                    alert("Firebase zápis selhal, ukládám lokálně.");
+                    alert("Chyba při zápisu, ukládám lokálně.");
                     saveLocally(nick, finalScore, timeStr);
                 }
             } else {
-                let existing = localLeaderboard.find(entry => entry.name === nick);
-                if (existing && existing.score >= finalScore) {
-                    alert('Lokálně už máš stejné nebo vyšší skóre.');
-                } else {
-                    saveLocally(nick, finalScore, timeStr);
-                    alert('Zapsáno lokálně!');
-                }
+                saveLocally(nick, finalScore, timeStr);
             }
             
             localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
-            
             btn.disabled = false; btn.textContent = "🚀 SUBMIT DO FIREBASE LEADERBOARDU 🚀";
-            
             document.getElementById('btn-refresh-lb').click();
         });
 
@@ -786,7 +796,10 @@
             game.lastTime = now;
             
             const gain = getBPS() * dt;
-            if (gain > 0) game.score += gain;
+            if (gain > 0) {
+                game.score += gain;
+                game.totalScore += gain; // PŘIČÍTÁNÍ Z BPS K TOTALU
+            }
             
             updateUI();
             localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
