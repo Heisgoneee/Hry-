@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meme Clicker Simulator 2026 - Modular Edition</title>
+    <title>Meme Clicker Simulator 2026 - Ultimate Edition</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body id="game-body">
@@ -17,17 +17,19 @@
             
             <div class="version-title">Aktuální verze</div>
             <ul class="changelog-list">
-                <li><b>NOVÉ: Ascend Reset Systém!</b> Skóre se přeměňuje na AP po resetu.</li>
-                <li><b>NOVÉ: Ascend Tree Upgrady</b> (např. +50% k síle kliku).</li>
-                <li>Všechny panely viditelné najednou pomocí rozdělených souborů.</li>
-                <li>Anti-Cheat systém (Proti Console injection a časovým skipům).</li>
-                <li>Ukazatel koupených věcí ve shopu.</li>
+                <li><b>NOVÉ: Random Meme Drop (Frenzy)!</b></li>
+                <li><b>NOVÉ: Krypto Burza (Za 2 AP)!</b></li>
+                <li>Oddělená tabulka Vylepšení (10%, 25%, 50%, 100%).</li>
+                <li>Achievementy dávají 1% BPS!</li>
+                <li>Ascend Reset Systém. Skóre se přeměňuje na AP po resetu.</li>
+                <li>Všechny panely viditelné najednou bez překlikávání.</li>
+                <li>Původní design vrácen zpět!</li>
             </ul>
         </div>
     </div>
 
     <div id="ascend-modal" class="modal">
-        <div class="modal-content" style="border-color: #9b59b6;">
+        <div class="modal-content" style="border-color: #8e44ad;">
             <span class="close-btn" id="close-ascend">&times;</span>
             <h2 style="margin-top: 0; color: #8e44ad; text-align: center;">🌌 Ascend Tree 🌌</h2>
             
@@ -35,15 +37,25 @@
                 <p style="font-size: 18px; margin: 0 0 10px 0;">Máš <strong><span id="ap-display" style="color: #e74c3c;">0</span> AP</strong></p>
                 <p style="font-size: 14px; margin: 0 0 10px 0; color: #333;">K dispozici po resetu: <strong><span id="ap-pending" style="color: #2ecc71;">0</span> AP</strong></p>
                 <p style="font-size: 12px; margin: 0 0 15px 0; color: #777;">Zbývá <span id="ap-next-req" style="font-weight:bold;">100k</span> skóre do dalšího bodu.</p>
-                <button id="btn-ascend-reset" class="submit-btn" style="width: 100%; font-size: 16px; padding: 10px; animation: none; background-color: #8e44ad; border-color: #732d91;">🔥 PROVÉST ASCEND RESET 🔥</button>
+                <button id="btn-ascend-reset" class="btn submit-btn" style="width: 100%; font-size: 16px; padding: 10px; animation: none; background-color: #8e44ad; border-color: #732d91;">🔥 PROVÉST ASCEND RESET 🔥</button>
             </div>
 
-            <h3 style="margin-top: 0;">Upgrady</h3>
+            <h3 style="margin-top: 0;">Trvalé Upgrady (Za AP)</h3>
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button id="buy-ascend-click" class="btn" style="background-color: #3498db; color: white; border-color: #2980b9;">
                     👆 Zisk z klikání +50%
                     <span style="color: black;">Cena: <span id="cost-ascend-click">1</span> AP</span>
                     <small style="color: #ddd;">Level: <span id="lvl-ascend-click">0</span></small>
+                </button>
+                <button id="buy-ascend-bps" class="btn" style="background-color: #2ecc71; color: white; border-color: #27ae60;">
+                    📈 Zisk z budov (BPS) +25%
+                    <span style="color: black;">Cena: <span id="cost-ascend-bps">1</span> AP</span>
+                    <small style="color: #ddd;">Level: <span id="lvl-ascend-bps">0</span></small>
+                </button>
+                <button id="buy-ascend-crypto" class="btn" style="background-color: #f39c12; color: white; border-color: #d35400;">
+                    📊 Odemknout Krypto Burzu
+                    <span style="color: black;">Cena: 2 AP</span>
+                    <small style="color: #eee;">Stav: <span id="status-ascend-crypto">Zamčeno</span></small>
                 </button>
             </div>
         </div>
@@ -53,9 +65,13 @@
     <input type="file" id="custom-image-upload" accept="image/*" style="display: none;">
 
     <div class="container" id="app-container">
-        <div id="upgrades-wrapper"></div>
-        <div id="clicker-wrapper"></div>
-        <div id="shop-wrapper"></div>
+        <div id="wrapper-upgrades"></div>
+        <div id="wrapper-clicker"></div>
+        <div id="wrapper-improvements"></div>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div id="wrapper-crypto"></div>
+            <div id="wrapper-shop"></div>
+        </div>
     </div>
 
     <script type="module" src="main.js"></script>
