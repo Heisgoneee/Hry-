@@ -17,11 +17,10 @@
             <span class="close-btn" id="close-changelog">&times;</span>
             <h2 style="margin-top: 0; text-align: center;">📜 Co je nového?</h2>
             <ul style="padding-left: 20px; line-height: 1.6;">
-                <li><b>NOVÉ: Export a Import Savu (Stahování)!</b></li>
-                <li><b>NOVÉ: Šifrované Save soubory! (Anti-Cheat)</b></li>
-                <li>Super Klik přidán do hry.</li>
-                <li>Krach burzy (0.1% šance na smazání MemeCoinů).</li>
-                <li>Random Meme Drop (Frenzy x Budovy).</li>
+                <li><b>NOVÉ: Meme Casino (Gamba)!</b> Přidáno do Ascend Tree. Zkus své štěstí!</li>
+                <li><b>Optimalizace výkonu:</b> Hra nyní běží 10x plynuleji (Smart DOM Updates).</li>
+                <li>Opraveno blikání vylepšení.</li>
+                <li>Hardcore Anti-Cheat (Base64 + XOR šifrování).</li>
             </ul>
         </div>
     </div>
@@ -40,12 +39,12 @@
 
             <h3>Trvalé Upgrady (Za AP)</h3>
             <div style="display: flex; flex-direction: column; gap: 12px;">
-                <button id="buy-ascend-click" class="btn" style="background-color: #2980b9; color: white; border-color: #21618c;">
+                <button id="buy-ascend-click" class="btn" style="background-color: #3498db; color: white; border-color: #2980b9;">
                     👆 Výnos z klikání +50%
                     <span style="color: black;">Cena: <span id="cost-ascend-click">1</span> AP</span>
                     <small style="color: #eee;">Level: <span id="lvl-ascend-click">0</span></small>
                 </button>
-                <button id="buy-ascend-bps" class="btn" style="background-color: #27ae60; color: white; border-color: #1e8449;">
+                <button id="buy-ascend-bps" class="btn" style="background-color: #2ecc71; color: white; border-color: #27ae60;">
                     📈 Výnos z budov (BPS) +25%
                     <span style="color: black;">Cena: <span id="cost-ascend-bps">1</span> AP</span>
                     <small style="color: #eee;">Level: <span id="lvl-ascend-bps">0</span></small>
@@ -54,6 +53,11 @@
                     📊 Odemknout Krypto Burzu
                     <span style="color: black;">Cena: 2 AP</span>
                     <small style="color: #eee;">Stav: <span id="status-ascend-crypto">Zamčeno</span></small>
+                </button>
+                <button id="buy-ascend-casino" class="btn" style="background-color: #9b59b6; color: white; border-color: #8e44ad;">
+                    🎰 Odemknout Meme Casino
+                    <span style="color: black;">Cena: 2 AP</span>
+                    <small style="color: #eee;">Stav: <span id="status-ascend-casino">Zamčeno</span></small>
                 </button>
             </div>
         </div>
@@ -70,6 +74,7 @@
         
         <div style="display: flex; flex-direction: column; gap: 20px;">
             <div id="wrapper-crypto"></div>
+            <div id="wrapper-casino"></div>
             <div id="wrapper-shop"></div>
         </div>
     </div>

@@ -30,6 +30,7 @@ function playSound(type) {
         case 'submit': playTone(300, 'square', 0.5, 0.3); setTimeout(() => playTone(200, 'square', 1.0, 0.3), 100); break;
         case 'ascend': playTone(200, 'sine', 0.5, 0.3); setTimeout(() => playTone(400, 'sine', 0.5, 0.3), 200); setTimeout(() => playTone(800, 'sine', 1.0, 0.4), 400); break;
         case 'crash': playTone(150, 'sawtooth', 1.0, 0.3); setTimeout(() => playTone(100, 'sawtooth', 1.5, 0.3), 300); break;
+        case 'spin': playTone(600, 'square', 0.05, 0.1); break;
     }
 }
 
@@ -48,86 +49,111 @@ let db = null;
 try { const app = initializeApp(firebaseConfig); db = getFirestore(app); } catch(e) {}
 
 const bldKeys = ["auto", "factory", "mine", "ai", "tiktok", "elon", "matrix", "crypto", "metaverse", "alien"];
-const bldNames = { click: "Klikání", click2: "Super Klik", auto: "Trol", factory: "Farma", mine: "Důl", ai: "AI", tiktok: "TikTok", elon: "Elon", matrix: "Matrix", crypto: "Krypto", metaverse: "Metaverse", alien: "UFO" };
-const bpsRates = { auto: 1, factory: 10, mine: 50, ai: 250, tiktok: 1500, elon: 10000, matrix: 50000, crypto: 300000, metaverse: 2000000, alien: 50000000 };
+const bldNames = { click: "Klikání", click2: "Super Klik", klikator: "Klikátor", auto: "Trol", factory: "Farma", mine: "Důl", ai: "AI", tiktok: "TikTok", elon: "Elon", matrix: "Matrix", crypto: "Krypto", metaverse: "Metaverse", alien: "UFO" };
+const bpsRates = { auto: 1.5, factory: 15, mine: 75, ai: 375, tiktok: 2250, elon: 15000, matrix: 75000, crypto: 450000, metaverse: 3000000, alien: 75000000 };
 
 const impMilestones = [10, 25, 50, 100];
 const impBonuses = [0, 0.10, 0.25, 0.50, 1.00];
 const impLabels = [0, 10, 25, 50, 100]; 
 const impClickBonuses = [0, 1.00, 2.00, 3.00, 4.00];
 const impClickLabels = [0, 100, 200, 300, 400];
-const impBaseCosts = { click: 100, click2: 1000, auto: 500, factory: 5000, mine: 30000, ai: 150000, tiktok: 1000000, elon: 10000000, matrix: 150000000, crypto: 1000000000, metaverse: 10000000000, alien: 500000000000 };
+const impBaseCosts = { click: 100, click2: 1000, klikator: 5000, auto: 500, factory: 5000, mine: 30000, ai: 150000, tiktok: 1000000, elon: 10000000, matrix: 150000000, crypto: 1000000000, metaverse: 10000000000, alien: 500000000000 };
 
 const skinMap = { 'default': { type: 'text', val: '🔴' }, 'doge': { type: 'img', val: 'https://upload.wikimedia.org/wikipedia/en/5/5f/Original_Doge_meme.jpg' }, 'custom': { type: 'custom', val: '' } };
 
 const defaultState = {
-    nick: "", score: 0, totalScore: 0, clicks: 0, clickPower: 1, click2Level: 0, click2Power: 0,
+    nick: "", score: 0, totalScore: 0, clicks: 0, clickPower: 1, click2Level: 0, click2Power: 0, klikatorCount: 0, casinoSpins: 0,
     buildings: { auto: 0, factory: 0, mine: 0, ai: 0, tiktok: 0, elon: 0, matrix: 0, crypto: 0, metaverse: 0, alien: 0 },
-    improvements: { click: 0, click2: 0, auto: 0, factory: 0, mine: 0, ai: 0, tiktok: 0, elon: 0, matrix: 0, crypto: 0, metaverse: 0, alien: 0 },
-    costs: { click: 10, click2: 100, auto: 50, factory: 500, mine: 3000, ai: 15000, tiktok: 100000, elon: 1000000, matrix: 15000000, crypto: 100000000, metaverse: 1000000000, alien: 50000000000 },
+    improvements: { click: 0, click2: 0, klikator: 0, auto: 0, factory: 0, mine: 0, ai: 0, tiktok: 0, elon: 0, matrix: 0, crypto: 0, metaverse: 0, alien: 0 },
+    costs: { click: 10, click2: 100, klikator: 500, auto: 50, factory: 500, mine: 3000, ai: 15000, tiktok: 100000, elon: 1000000, matrix: 15000000, crypto: 100000000, metaverse: 1000000000, alien: 50000000000 },
     startTime: null, lastTime: Date.now(),
     cosmetics: { skinsUnlocked: ['default'], currentSkin: 'default', bgsUnlocked: ['default'], currentBg: 'default', customImage: null },
     unlockedAchievements: [],
-    ascend: { points: 0, totalPointsClaimed: 0, upgrades: { click: 0, bps: 0, cryptoUnlocked: 0 } },
-    crypto: { coins: 0, price: 100 },
+    ascend: { points: 0, totalPointsClaimed: 0, upgrades: { click: 0, bps: 0, cryptoUnlocked: 0, casinoUnlocked: 0 } },
+    crypto: { coins: 0, price: 100, history: [100], totalProfit: 0 },
     frenzy: { active: false, type: null, multiplier: 1, duration: 0, endTime: 0 },
     checksum: ""
 };
 
-// --- ANTI-CHEAT: ŠIFROVÁNÍ SAVE SOUBORU ---
-const SECRET_SALT = "sigma_chad_2026_anticheat_v3";
-function generateChecksum(score, total) { return btoa(Math.floor(score) + "_" + Math.floor(total) + "_" + SECRET_SALT); }
-
-function encryptSave(obj) {
-    const str = JSON.stringify(obj);
-    const utf8Str = unescape(encodeURIComponent(str));
-    let xor = "";
-    for(let i=0; i<utf8Str.length; i++) {
-        xor += String.fromCharCode(utf8Str.charCodeAt(i) ^ SECRET_SALT.charCodeAt(i % SECRET_SALT.length));
+// --- STABILNÍ ŠIFROVÁNÍ (Opravuje pád při ukládání) ---
+const SECRET_SALT = "sigma_chad_2026";
+function generateHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
     }
-    return btoa(xor);
+    return hash.toString(36);
 }
 
-function decryptSave(b64) {
+function saveGameData() {
+    localStorage.setItem('meme_clicker_backup_total', game.totalScore);
     try {
-        const xor = atob(b64);
-        let utf8Str = "";
-        for(let i=0; i<xor.length; i++) {
-            utf8Str += String.fromCharCode(xor.charCodeAt(i) ^ SECRET_SALT.charCodeAt(i % SECRET_SALT.length));
+        const clone = JSON.parse(JSON.stringify(game));
+        delete clone.checksum;
+        clone.checksum = generateHash(JSON.stringify(clone) + SECRET_SALT);
+        const str = JSON.stringify(clone);
+        const b64 = btoa(unescape(encodeURIComponent(str)));
+        localStorage.setItem('meme_clicker_fb', b64);
+    } catch (err) {
+        console.error("Chyba při ukládání:", err);
+    }
+}
+
+let game = null;
+const rawLocal = localStorage.getItem('meme_clicker_fb');
+if (rawLocal) {
+    if (rawLocal.startsWith('{')) {
+        game = JSON.parse(rawLocal);
+    } else {
+        try {
+            const str = decodeURIComponent(escape(atob(rawLocal)));
+            const obj = JSON.parse(str);
+            const clone = JSON.parse(JSON.stringify(obj));
+            delete clone.checksum;
+            if (obj.checksum === generateHash(JSON.stringify(clone) + SECRET_SALT)) {
+                game = obj;
+            } else {
+                alert("⚠️ Ochrana proti podvádění: Neplatný kontrolní součet. Save byl resetován.");
+                game = JSON.parse(JSON.stringify(defaultState));
+            }
+        } catch(e) {
+            game = JSON.parse(JSON.stringify(defaultState));
         }
-        return JSON.parse(decodeURIComponent(escape(utf8Str)));
-    } catch(e) {
-        return null;
     }
-}
-// -----------------------------------------
-
-let game = JSON.parse(localStorage.getItem('meme_clicker_fb')) || JSON.parse(JSON.stringify(defaultState));
-
-if (game.score > 0 || game.totalScore > 0) {
-    if (game.checksum !== generateChecksum(game.score, game.totalScore)) {
-        console.warn("⚠️ Zjištěna manuální úprava LocalStorage. Skóre zresetováno.");
-        game.score = 0; game.totalScore = 0;
-    }
+} else {
+    game = JSON.parse(JSON.stringify(defaultState));
 }
 
-// ANTI-NAN
+// Ochrana před ztrátou totalScore
+let backupTotalScore = parseFloat(localStorage.getItem('meme_clicker_backup_total')) || 0;
+if (game.totalScore < backupTotalScore) {
+    game.totalScore = backupTotalScore; 
+}
+
+// ANTI-NAN Inicializace
 if (isNaN(game.score) || game.score == null) game.score = 0;
 if (isNaN(game.totalScore) || game.totalScore == null) game.totalScore = game.score;
 if (isNaN(game.clicks) || game.clicks == null) game.clicks = 0;
 if (isNaN(game.clickPower) || game.clickPower == null) game.clickPower = 1;
 if (isNaN(game.click2Level) || game.click2Level == null) game.click2Level = 0;
 if (isNaN(game.click2Power) || game.click2Power == null) game.click2Power = 0;
+if (isNaN(game.klikatorCount) || game.klikatorCount == null) game.klikatorCount = 0;
+if (isNaN(game.casinoSpins) || game.casinoSpins == null) game.casinoSpins = 0;
+
 if (!game.buildings) game.buildings = {};
 if (!game.improvements) game.improvements = {};
 if (!game.costs) game.costs = {};
 if (!game.unlockedAchievements) game.unlockedAchievements = [];
 if (!game.cosmetics) game.cosmetics = defaultState.cosmetics;
-if (!game.ascend) game.ascend = { points: 0, totalPointsClaimed: 0, upgrades: { click: 0, bps: 0, cryptoUnlocked: 0 } };
-if (game.ascend.upgrades === undefined) game.ascend.upgrades = { click: 0, bps: 0, cryptoUnlocked: 0 };
+if (!game.ascend) game.ascend = { points: 0, totalPointsClaimed: 0, upgrades: { click: 0, bps: 0, cryptoUnlocked: 0, casinoUnlocked: 0 } };
+if (game.ascend.upgrades === undefined) game.ascend.upgrades = { click: 0, bps: 0, cryptoUnlocked: 0, casinoUnlocked: 0 };
 if (game.ascend.upgrades.bps === undefined) game.ascend.upgrades.bps = 0;
 if (game.ascend.upgrades.cryptoUnlocked === undefined) game.ascend.upgrades.cryptoUnlocked = 0;
-if (!game.crypto) game.crypto = { coins: 0, price: 100 };
+if (game.ascend.upgrades.casinoUnlocked === undefined) game.ascend.upgrades.casinoUnlocked = 0;
+if (!game.crypto) game.crypto = { coins: 0, price: 100, history: [100], totalProfit: 0 };
+if (game.crypto.history === undefined) game.crypto.history = [game.crypto.price || 100];
+if (game.crypto.totalProfit === undefined) game.crypto.totalProfit = 0;
 if (!game.frenzy) game.frenzy = { active: false, type: null, multiplier: 1, duration: 0, endTime: 0 };
 
 game.unlockedAchievements = game.unlockedAchievements.filter(a => !['easter_timer', 'easter_jicin', 'easter_sigma'].includes(a));
@@ -135,8 +161,11 @@ if (!game.cosmetics.customImage) game.cosmetics.customImage = null;
 if (!skinMap[game.cosmetics.currentSkin]) game.cosmetics.currentSkin = 'default';
 if (!game.startTime && game.score > 0) game.startTime = Date.now();
 if (game.nick === undefined) game.nick = "";
+
 if (isNaN(game.costs.click2) || game.costs.click2 == null) game.costs.click2 = 100;
+if (isNaN(game.costs.klikator) || game.costs.klikator == null) game.costs.klikator = 500;
 if (isNaN(game.improvements.click2) || game.improvements.click2 == null) game.improvements.click2 = 0;
+if (isNaN(game.improvements.klikator) || game.improvements.klikator == null) game.improvements.klikator = 0;
 
 for (const key of bldKeys) {
     if (isNaN(game.buildings[key])) game.buildings[key] = 0;
@@ -154,6 +183,29 @@ let currentViewsLoaded = false;
 let goldenTimer = 0;
 let nextGolden = Math.random() * 60000 + 60000;
 let cryptoTimer = 0;
+let lastSaveTime = Date.now();
+
+const domTextCache = {};
+function fastText(id, text) {
+    if (domTextCache[id] !== text) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = text;
+            domTextCache[id] = text;
+        }
+    }
+}
+function fastHTML(id, html) {
+    if (domTextCache[id] !== html) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerHTML = html;
+            domTextCache[id] = html;
+        }
+    }
+}
+
+window.addEventListener('beforeunload', saveGameData);
 
 const allAchievements = [
     { id: 'first', name: '👶 První krůčky (1 klik)', req: () => game.clicks >= 1 },
@@ -161,6 +213,12 @@ const allAchievements = [
     { id: 'click2_10', name: '🖱️ Silný klik (10x Super Klik)', req: () => (game.click2Level || 0) >= 10 },
     { id: 'click2_50', name: '🖱️ God klik (50x Super Klik)', req: () => (game.click2Level || 0) >= 50 },
     { id: 'click2_100', name: '🖱️ Titan klik (100x Super Klik)', req: () => (game.click2Level || 0) >= 100 },
+    { id: 'klikator_10', name: '🤖 Pomocná ruka (10x Klikátor)', req: () => (game.klikatorCount || 0) >= 10 },
+    { id: 'klikator_50', name: '🤖 Autoclicker armáda (50x Klikátor)', req: () => (game.klikatorCount || 0) >= 50 },
+    { id: 'klikator_100', name: '🤖 Úl Klikátorů (100x Klikátor)', req: () => (game.klikatorCount || 0) >= 100 },
+    { id: 'casino_10', name: '🎰 Gambler (10 zatočení)', req: () => (game.casinoSpins || 0) >= 10 },
+    { id: 'casino_50', name: '🎰 Závislák (50 zatočení)', req: () => (game.casinoSpins || 0) >= 50 },
+    { id: 'casino_100', name: '🎰 VIP Zákazník (100 zatočení)', req: () => (game.casinoSpins || 0) >= 100 },
     { id: '1k_score', name: '💸 Drobné (1k bodů)', req: () => game.score >= 1000 },
     { id: '10k_score', name: '💸 Kapesné (10k bodů)', req: () => game.score >= 10000 },
     { id: '100k_score', name: '💸 Výplata (100k bodů)', req: () => game.score >= 100000 },
@@ -169,6 +227,10 @@ const allAchievements = [
     { id: 'trillionaire', name: '👑 Vládce Vesmíru (1T bodů)', req: () => game.score >= 1000000000000 },
     { id: 'collector', name: '🛍️ Shopaholik (Všechny skiny)', req: () => game.cosmetics.skinsUnlocked.length >= Object.keys(skinMap).length },
     { id: 'ascended', name: '🌌 Nanebevstoupení', req: () => game.ascend.totalPointsClaimed >= 1 },
+    { id: 'ap_10', name: '🌌 Ascend Master (10 AP celkem)', req: () => game.ascend.totalPointsClaimed >= 10 },
+    { id: 'ap_50', name: '🌌 Ascend God (50 AP celkem)', req: () => game.ascend.totalPointsClaimed >= 50 },
+    { id: 'crypto_profit_1', name: '📈 Stonks (Zisk 1M z Krypto)', req: () => (game.crypto.totalProfit || 0) >= 1000000 },
+    { id: 'crypto_profit_2', name: '🐺 Wolf of Wall Street (Zisk 1B z Krypto)', req: () => (game.crypto.totalProfit || 0) >= 1000000000 },
     { id: 'bld_auto_10', name: '🧌 Armáda Trolů (10x)', req: () => game.buildings.auto >= 10 },
     { id: 'bld_auto_50', name: '🧌 Generál Trolů (50x)', req: () => game.buildings.auto >= 50 },
     { id: 'bld_auto_100', name: '🧌 Král Trolů (100x)', req: () => game.buildings.auto >= 100 },
@@ -198,11 +260,7 @@ const allAchievements = [
     { id: 'bld_metaverse_100', name: '🕶️ Stvořitel (100x Metaverse)', req: () => game.buildings.metaverse >= 100 },
     { id: 'bld_alien_10', name: '🛸 Area 51 (10x UFO)', req: () => game.buildings.alien >= 10 },
     { id: 'bld_alien_50', name: '🛸 Mezigalaktický vládce (50x UFO)', req: () => game.buildings.alien >= 50 },
-    { id: 'bld_alien_100', name: '🛸 Vládce multivesmíru (100x UFO)', req: () => game.buildings.alien >= 100 },
-    { id: 'skin_doge_unlocked', name: '🐕 Wow Such Click (Doge Skin)', req: () => game.cosmetics.skinsUnlocked.includes('doge') },
-    { id: 'skin_custom_unlocked', name: '🎨 Umělec (Vlastní Skin)', req: () => game.cosmetics.skinsUnlocked.includes('custom') },
-    { id: 'bg_rainbow_unlocked', name: '🌈 Párty (RGB Pozadí)', req: () => game.cosmetics.bgsUnlocked.includes('rainbow') },
-    { id: 'bg_dark_unlocked', name: '🕶️ Hacker (Dark Pozadí)', req: () => game.cosmetics.bgsUnlocked.includes('dark') }
+    { id: 'bld_alien_100', name: '🛸 Vládce multivesmíru (100x UFO)', req: () => game.buildings.alien >= 100 }
 ];
 
 function calculatePendingAP() {
@@ -287,57 +345,112 @@ function checkAchievements() {
 function renderAchievements() {
     const list = document.getElementById('achievements-list');
     if (!list) return;
-    list.innerHTML = '';
+    let html = '';
     allAchievements.forEach(a => {
         const unlocked = game.unlockedAchievements.includes(a.id);
-        list.innerHTML += `<div class="achievement ${unlocked ? 'unlocked' : ''}">
+        html += `<div class="achievement ${unlocked ? 'unlocked' : ''}">
             <span>${a.name}</span><span>${unlocked ? '✔️' : '🔒'}</span>
         </div>`;
     });
+    fastHTML('achievements-list', html);
 }
 
-function generateImprovementsHTML() {
+function renderCryptoChart() {
+    const svg = document.getElementById('crypto-chart-polyline');
+    if (!svg) return;
+    const history = game.crypto.history || [100];
+    if (history.length < 2) {
+        svg.setAttribute('points', `0,40 300,40`);
+        return;
+    }
+    
+    const maxP = Math.max(...history) * 1.1;
+    const minP = Math.min(...history) * 0.9;
+    const range = maxP - minP || 1;
+    
+    let points = history.map((val, i) => {
+        let x = (i / (history.length - 1)) * 300; 
+        let y = 80 - (((val - minP) / range) * 80); 
+        return `${x},${y}`;
+    }).join(" ");
+    
+    svg.setAttribute('points', points);
+    const isUp = history[history.length - 1] >= history[Math.max(0, history.length - 2)];
+    svg.setAttribute('stroke', isUp ? '#2ecc71' : '#e74c3c');
+}
+
+function initImprovementsUI() {
     const list = document.getElementById('improvements-list');
     if (!list) return;
     let html = '';
-    const keys = ["click", "click2", ...bldKeys];
+    const keys = ["click", "click2", "klikator", ...bldKeys];
     
     for (const key of keys) {
+        html += `<button class="btn buy-imp" id="imp-btn-${key}" data-key="${key}">
+                    <span class="imp-name"></span> <span class="imp-cost" style="background:white; color:black; float:right; padding: 2px 6px; border-radius: 5px; font-size:12px;"></span>
+                    <small class="imp-desc"></small>
+                 </button>`;
+    }
+    list.innerHTML = html;
+}
+
+function updateImprovementsUI() {
+    const keys = ["click", "click2", "klikator", ...bldKeys];
+    for (const key of keys) {
+        const btn = document.getElementById(`imp-btn-${key}`);
+        if (!btn) continue;
+
         const currentLvl = game.improvements[key] || 0;
-        
         let count = 0;
         if (key === 'click') count = game.clickPower;
         else if (key === 'click2') count = game.click2Level || 0;
+        else if (key === 'klikator') count = game.klikatorCount || 0;
         else count = game.buildings[key] || 0;
-        
+
+        const nameEl = btn.querySelector('.imp-name');
+        const costEl = btn.querySelector('.imp-cost');
+        const descEl = btn.querySelector('.imp-desc');
+
         if (currentLvl < 4) {
             const reqAmount = impMilestones[currentLvl];
             const hasReq = count >= reqAmount;
             const cost = impBaseCosts[key] * Math.pow(10, currentLvl);
             const canAfford = game.score >= cost;
+
+            if (btn.disabled !== (!hasReq || !canAfford)) btn.disabled = !hasReq || !canAfford;
             
-            let btnClass = "btn buy-imp";
-            let btnStyle = hasReq ? "" : "background: #eee; color: #999; border-color: #ddd; cursor: not-allowed;";
-            let currentLabel = (key === 'click' || key === 'click2') ? impClickLabels[currentLvl + 1] : impLabels[currentLvl + 1];
+            const newBg = hasReq ? "#f1c40f" : "#eee";
+            if (btn.style.background !== newBg) btn.style.background = newBg;
             
-            let btnContent = "";
+            let currentLabel = (key === 'click' || key === 'click2' || key === 'klikator') ? impClickLabels[currentLvl + 1] : impLabels[currentLvl + 1];
+
             if (hasReq) {
-                btnContent = `${bldNames[key]} Vylepšení <span>${formatNumber(cost)}</span>
-                              <small>Stav: ${currentLvl}/4 (+${currentLabel}% zisk)</small>`;
+                fastText(nameEl.id || (nameEl.id = `imp-name-${key}`), `${bldNames[key]} Vylepšení`);
+                fastText(costEl.id || (costEl.id = `imp-cost-${key}`), formatNumber(cost));
+                if (costEl.style.display !== 'inline-block') costEl.style.display = 'inline-block';
+                fastHTML(descEl.id || (descEl.id = `imp-desc-${key}`), `Stav: ${currentLvl}/4 (+${currentLabel}% zisk)`);
             } else {
-                btnContent = `??? (Zamčeno) <span style="background:transparent; color:#999;">🔒</span>
-                              <small style="color:#e74c3c; font-weight:bold;">Vyžaduje: ${reqAmount}x ${bldNames[key]}</small>`;
+                fastText(nameEl.id || (nameEl.id = `imp-name-${key}`), `??? (Zamčeno)`);
+                if (costEl.style.display !== 'none') costEl.style.display = 'none';
+                fastHTML(descEl.id || (descEl.id = `imp-desc-${key}`), `<span style="color:#e74c3c; font-weight:bold;">Vyžaduje: ${reqAmount}x ${bldNames[key]}</span>`);
             }
-            html += `<button class="${btnClass}" data-key="${key}" style="${btnStyle}" ${(!hasReq || !canAfford) ? 'disabled' : ''}>${btnContent}</button>`;
         } else {
-            let maxLabel = (key === 'click' || key === 'click2') ? "400" : "100";
-            html += `<button class="btn" style="background: #27ae60; color: white; border-color: #1e8449;" disabled>
-                        ${bldNames[key]} Vylepšení <span style="background:transparent; color:white;">MAX</span>
-                        <small>Stav: 4/4 (+${maxLabel}% zisk)</small>
-                     </button>`;
+            if (!btn.disabled) btn.disabled = true;
+            if (btn.style.background !== "#2ecc71") btn.style.background = "#2ecc71";
+            
+            let maxLabel = (key === 'click' || key === 'click2' || key === 'klikator') ? "400" : "100";
+            fastText(nameEl.id || (nameEl.id = `imp-name-${key}`), `${bldNames[key]} Vylepšení`);
+            fastText(costEl.id || (costEl.id = `imp-cost-${key}`), "MAX");
+            if (costEl.style.background !== 'transparent') {
+                costEl.style.display = 'inline-block';
+                costEl.style.background = 'transparent';
+                costEl.style.color = 'white';
+                btn.style.color = 'white';
+                btn.style.borderColor = '#27ae60';
+            }
+            fastHTML(descEl.id || (descEl.id = `imp-desc-${key}`), `Stav: 4/4 (+${maxLabel}% zisk)`);
         }
     }
-    list.innerHTML = html;
 }
 
 function spawnParticle(x, y, text) {
@@ -355,14 +468,17 @@ function applyCosmetics() {
     const skinData = skinMap[game.cosmetics.currentSkin] || skinMap['default'];
     if (btn) {
         if (skinData.type === 'img') {
-            btn.textContent = ''; btn.style.backgroundImage = `url('${skinData.val}')`;
+            if(btn.textContent !== '') btn.textContent = ''; 
+            if(btn.style.backgroundImage !== `url('${skinData.val}')`) btn.style.backgroundImage = `url('${skinData.val}')`;
             btn.style.backgroundColor = 'transparent'; btn.style.border = 'none';
         } else if (skinData.type === 'custom') {
-            btn.textContent = ''; btn.style.backgroundImage = game.cosmetics.customImage ? `url('${game.cosmetics.customImage}')` : 'none';
+            if(btn.textContent !== '') btn.textContent = ''; 
+            btn.style.backgroundImage = game.cosmetics.customImage ? `url('${game.cosmetics.customImage}')` : 'none';
             btn.style.backgroundColor = 'transparent'; btn.style.border = 'none';
         } else {
-            btn.textContent = skinData.val; btn.style.backgroundImage = 'none';
-            btn.style.backgroundColor = 'var(--secondary)'; btn.style.border = '6px solid #fff';
+            if(btn.textContent !== skinData.val) btn.textContent = skinData.val; 
+            btn.style.backgroundImage = 'none';
+            btn.style.backgroundColor = 'var(--btn-color)'; btn.style.border = '5px solid #fff';
         }
     }
 
@@ -379,13 +495,13 @@ function applyCosmetics() {
         const isEquipped = type === 'skin' ? game.cosmetics.currentSkin === id : game.cosmetics.currentBg === id;
 
         if (id === 'custom') {
-            if (isEquipped) { b.textContent = 'Vybaveno'; b.disabled = false; }
-            else if (isUnlocked) { b.textContent = 'Vybavit'; b.disabled = false; }
-            else { b.textContent = formatNumber(cost); b.disabled = game.score < cost; }
+            if (isEquipped) { fastText(b.id, 'Vybaveno'); b.disabled = false; }
+            else if (isUnlocked) { fastText(b.id, 'Vybavit'); b.disabled = false; }
+            else { fastText(b.id, formatNumber(cost)); b.disabled = game.score < cost; }
         } else {
-            if (isEquipped) { b.textContent = 'Vybaveno'; b.disabled = false; }
-            else if (isUnlocked) { b.textContent = 'Vybavit'; b.disabled = false; }
-            else { b.textContent = formatNumber(cost); b.disabled = game.score < cost; }
+            if (isEquipped) { fastText(b.id, 'Vybaveno'); b.disabled = false; }
+            else if (isUnlocked) { fastText(b.id, 'Vybavit'); b.disabled = false; }
+            else { fastText(b.id, formatNumber(cost)); b.disabled = game.score < cost; }
         }
     });
 }
@@ -414,6 +530,7 @@ function spawnGoldenMeme() {
         }
         document.body.classList.add('frenzy-active');
         updateUI();
+        saveGameData();
     });
 
     setTimeout(() => {
@@ -424,66 +541,92 @@ function spawnGoldenMeme() {
 function updateUI() {
     if(!currentViewsLoaded) return;
 
-    const scoreEl = document.getElementById('score');
-    if (scoreEl) scoreEl.textContent = formatNumber(game.score);
-    
-    const totalScoreEl = document.getElementById('total-score-display');
-    if (totalScoreEl) totalScoreEl.textContent = formatNumber(game.totalScore);
-    
-    const bpsEl = document.getElementById('bps');
-    if (bpsEl) bpsEl.textContent = formatNumber(getBPS());
+    fastText('score', formatNumber(game.score));
+    fastText('total-score-display', formatNumber(game.totalScore));
+    fastText('bps', formatNumber(getBPS()));
+    fastText('mult-val', getMultiplier().toFixed(3));
+    fastText('total-clicks', formatNumber(game.clicks));
 
-    const multEl = document.getElementById('mult-val');
-    if (multEl) multEl.textContent = getMultiplier().toFixed(3);
-
-    const clickCostEl = document.getElementById('cost-click');
-    if (clickCostEl) {
-        clickCostEl.textContent = formatNumber(game.costs.click);
-        document.getElementById('lvl-click').textContent = `[${game.clickPower}]`;
-        document.getElementById('upg-click').disabled = game.score < game.costs.click;
+    const clickBtnUI = document.getElementById('upg-click');
+    if (clickBtnUI) {
+        fastText('cost-click', formatNumber(game.costs.click));
+        fastText('lvl-click', `[${game.clickPower}]`);
+        clickBtnUI.disabled = game.score < game.costs.click;
     }
 
-    const click2CostEl = document.getElementById('cost-click2');
-    if (click2CostEl) {
-        click2CostEl.textContent = formatNumber(game.costs.click2);
-        document.getElementById('lvl-click2').textContent = `[${game.click2Level || 0}]`;
-        document.getElementById('upg-click2').disabled = game.score < game.costs.click2;
+    const click2BtnUI = document.getElementById('upg-click2');
+    if (click2BtnUI) {
+        fastText('cost-click2', formatNumber(game.costs.click2));
+        fastText('lvl-click2', `[${game.click2Level || 0}]`);
+        click2BtnUI.disabled = game.score < game.costs.click2;
+    }
+
+    const klikatorBtnUI = document.getElementById('upg-klikator');
+    if (klikatorBtnUI) {
+        fastText('cost-klikator', formatNumber(game.costs.klikator));
+        fastText('count-klikator', `[${game.klikatorCount || 0}]`);
+        klikatorBtnUI.disabled = game.score < game.costs.klikator;
+    }
+
+    const orbitContainer = document.getElementById('klikator-orbit-container');
+    if (orbitContainer) {
+        const currentKlikators = game.klikatorCount || 0;
+        const visualCount = Math.min(currentKlikators, 10);
+        const spawnedRounds = orbitContainer.querySelectorAll('.klikator-mini-hand').length;
+        
+        if (visualCount !== spawnedRounds) {
+            orbitContainer.innerHTML = '';
+            const radius = 135; 
+            const center = 150; 
+
+            for (let i = 0; i < visualCount; i++) {
+                const hand = document.createElement('div');
+                hand.className = 'klikator-mini-hand';
+                hand.textContent = '🤖'; 
+                
+                const angle = (i / visualCount) * 2 * Math.PI;
+                const x = center + radius * Math.cos(angle) - 15; 
+                const y = center + radius * Math.sin(angle) - 15; 
+                
+                hand.style.left = x + 'px';
+                hand.style.top = y + 'px';
+                
+                const degrees = angle * (180 / Math.PI) + 90; 
+                hand.style.transform = `rotate(${degrees}deg)`;
+                hand.dataset.baseTransform = `rotate(${degrees}deg)`;
+
+                orbitContainer.appendChild(hand);
+            }
+        }
     }
 
     for(const key in game.buildings) {
-        const costEl = document.getElementById(`cost-${key}`);
         const btnEl = document.getElementById(`bld-${key}`);
-        const countEl = document.getElementById(`count-${key}`);
-        if(costEl && btnEl) { 
-            costEl.textContent = formatNumber(game.costs[key]); 
+        if(btnEl) { 
+            fastText(`cost-${key}`, formatNumber(game.costs[key])); 
             btnEl.disabled = game.score < game.costs[key]; 
         }
-        if(countEl) countEl.textContent = `[${game.buildings[key]}]`;
+        fastText(`count-${key}`, `[${game.buildings[key]}]`);
     }
 
-    generateImprovementsHTML();
+    updateImprovementsUI();
 
     const pendingAP = calculatePendingAP();
     const remainingScore = getNextAPScoreRequired();
 
-    const apDisplay = document.getElementById('ap-display');
-    if (apDisplay) apDisplay.textContent = formatNumber(game.ascend.points);
-
-    const apPendingEl = document.getElementById('ap-pending');
-    if (apPendingEl) apPendingEl.textContent = formatNumber(pendingAP);
+    fastText('ap-display', formatNumber(game.ascend.points));
+    fastText('ap-pending', formatNumber(pendingAP));
+    fastText('ap-next-req', formatNumber(remainingScore));
 
     const btnAscendReset = document.getElementById('btn-ascend-reset');
     if (btnAscendReset) btnAscendReset.disabled = pendingAP === 0;
-
-    const apNextReq = document.getElementById('ap-next-req');
-    if (apNextReq) apNextReq.textContent = formatNumber(remainingScore);
 
     const clickLvl = game.ascend.upgrades.click || 0;
     const clickCost = Math.ceil(1 * Math.pow(1.5, clickLvl));
     const btnAscendClick = document.getElementById('buy-ascend-click');
     if (btnAscendClick) {
-        document.getElementById('cost-ascend-click').textContent = formatNumber(clickCost);
-        document.getElementById('lvl-ascend-click').textContent = clickLvl;
+        fastText('cost-ascend-click', formatNumber(clickCost));
+        fastText('lvl-ascend-click', clickLvl);
         btnAscendClick.disabled = game.ascend.points < clickCost;
     }
 
@@ -491,30 +634,59 @@ function updateUI() {
     const bpsCost = Math.ceil(1 * Math.pow(1.5, bpsLvl));
     const btnAscendBps = document.getElementById('buy-ascend-bps');
     if (btnAscendBps) {
-        document.getElementById('cost-ascend-bps').textContent = formatNumber(bpsCost);
-        document.getElementById('lvl-ascend-bps').textContent = bpsLvl;
+        fastText('cost-ascend-bps', formatNumber(bpsCost));
+        fastText('lvl-ascend-bps', bpsLvl);
         btnAscendBps.disabled = game.ascend.points < bpsCost;
     }
 
     const cryptoPanel = document.getElementById('crypto-panel-ui');
     if (cryptoPanel) {
-        cryptoPanel.style.display = game.ascend.upgrades.cryptoUnlocked ? 'block' : 'none';
-        document.getElementById('crypto-price').textContent = formatNumber(game.crypto.price);
-        document.getElementById('crypto-owned').textContent = formatNumber(game.crypto.coins);
+        if (game.ascend.upgrades.cryptoUnlocked) {
+            if(cryptoPanel.style.display !== 'block') cryptoPanel.style.display = 'block';
+            fastText('crypto-price', formatNumber(game.crypto.price));
+            fastText('crypto-owned', formatNumber(game.crypto.coins));
+            
+            const profitEl = document.getElementById('crypto-profit');
+            if (profitEl) {
+                let prof = game.crypto.totalProfit || 0;
+                profitEl.style.color = prof >= 0 ? '#2ecc71' : '#e74c3c';
+                fastText('crypto-profit', (prof >= 0 ? '+' : '-') + formatNumber(Math.abs(prof)));
+            }
+        } else {
+            if(cryptoPanel.style.display !== 'none') cryptoPanel.style.display = 'none';
+        }
     }
 
     const btnAscendCrypto = document.getElementById('buy-ascend-crypto');
     if (btnAscendCrypto) {
         if (game.ascend.upgrades.cryptoUnlocked) {
             btnAscendCrypto.disabled = true;
-            document.getElementById('status-ascend-crypto').textContent = "Odemčeno";
+            fastText('status-ascend-crypto', "Odemčeno");
         } else {
             btnAscendCrypto.disabled = game.ascend.points < 2;
         }
     }
 
+    const casinoPanel = document.getElementById('casino-panel-ui');
+    if (casinoPanel) {
+        if (game.ascend.upgrades.casinoUnlocked) {
+            if(casinoPanel.style.display !== 'block') casinoPanel.style.display = 'block';
+        } else {
+            if(casinoPanel.style.display !== 'none') casinoPanel.style.display = 'none';
+        }
+    }
+
+    const btnAscendCasino = document.getElementById('buy-ascend-casino');
+    if (btnAscendCasino) {
+        if (game.ascend.upgrades.casinoUnlocked) {
+            btnAscendCasino.disabled = true;
+            fastText('status-ascend-casino', "Odemčeno");
+        } else {
+            btnAscendCasino.disabled = game.ascend.points < 2;
+        }
+    }
+
     applyCosmetics();
-    checkAchievements();
 }
 
 async function fetchLeaderboard() {
@@ -532,7 +704,7 @@ async function fetchLeaderboard() {
         try {
             const q = query(collection(db, "clicker_leaderboard"), orderBy("score", "desc"), limit(10));
             const snapshot = await getDocs(q);
-            if(snapshot.empty) { tbody.innerHTML = '<tr><td colspan="3">Firebase tabulka je prázdná.</td></tr>'; return; }
+            if(snapshot.empty) { tbody.innerHTML = '<tr><td colspan="4">Firebase tabulka je prázdná.</td></tr>'; return; }
             let lbData = [];
             snapshot.forEach((doc) => lbData.push(doc.data()));
             sessionStorage.setItem('cached_lb', JSON.stringify({ timestamp: now, data: lbData }));
@@ -544,38 +716,43 @@ async function fetchLeaderboard() {
 function renderLeaderboardData(data) {
     const tbody = document.getElementById('lb-body');
     if (!tbody) return;
-    tbody.innerHTML = '';
+    let html = '';
     data.forEach((d) => {
-        tbody.innerHTML += `<tr>
+        html += `<tr>
             <td>${d.name}</td>
+            <td>${d.achievements || 0}</td>
             <td style="font-weight:bold;color:#e67e22;">${formatNumber(d.score)}</td>
             <td>${formatNumber(d.current || 0)}</td>
         </tr>`;
     });
+    fastHTML('lb-body', html);
 }
 
 function renderLocalLeaderboard() {
     const tbody = document.getElementById('lb-body');
     if (!tbody) return;
-    tbody.innerHTML = '';
+    let html = '';
     localLeaderboard.slice(0, 10).forEach(entry => {
-        tbody.innerHTML += `<tr>
+        html += `<tr>
             <td>${entry.name}</td>
+            <td>${entry.achievements || 0}</td>
             <td>${formatNumber(entry.score)}</td>
             <td>${formatNumber(entry.current || 0)}</td>
         </tr>`;
     });
-    if(localLeaderboard.length === 0) tbody.innerHTML = '<tr><td colspan="3">Žádná data. Zkus nahrát skóre!</td></tr>';
+    if(localLeaderboard.length === 0) html = '<tr><td colspan="4">Žádná data. Zkus nahrát skóre!</td></tr>';
+    fastHTML('lb-body', html);
 }
 
 function saveLocally(nick, score, timeStr, current) {
+    let ach = game.unlockedAchievements ? game.unlockedAchievements.length : 0;
     let existing = localLeaderboard.find(entry => entry.name === nick);
     if (existing) {
         if (score > existing.score) {
-            existing.score = score; existing.time = timeStr; existing.current = current;
+            existing.score = score; existing.time = timeStr; existing.current = current; existing.achievements = ach;
         }
     } else {
-        localLeaderboard.push({ name: nick, score: score, time: timeStr, current: current });
+        localLeaderboard.push({ name: nick, score: score, time: timeStr, current: current, achievements: ach });
     }
     localLeaderboard.sort((a,b) => b.score - a.score);
     localStorage.setItem('meme_lb_local', JSON.stringify(localLeaderboard));
@@ -587,11 +764,11 @@ document.addEventListener('click', async (e) => {
     if (e.target.closest('#btn-open-ascend')) { document.getElementById('ascend-modal').style.display = 'flex'; updateUI(); return; }
     if (e.target.closest('#close-ascend') || e.target === document.getElementById('ascend-modal')) { document.getElementById('ascend-modal').style.display = 'none'; return; }
 
-    // --- EXPORT SAVU ---
     if (e.target.closest('#btn-export-save')) {
         playSound('buy_upgrade');
-        game.frenzy.active = false; // Vypneme frenzy pro ulozeni
-        const saveString = encryptSave(game);
+        game.frenzy.active = false;
+        saveGameData();
+        const saveString = localStorage.getItem('meme_clicker_fb');
         const blob = new Blob([saveString], {type: "text/plain;charset=utf-8"});
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -601,7 +778,6 @@ document.addEventListener('click', async (e) => {
         return;
     }
 
-    // --- IMPORT SAVU BUTTON ---
     if (e.target.closest('#btn-import-save')) {
         document.getElementById('import-save-upload').click();
         return;
@@ -619,6 +795,7 @@ document.addEventListener('click', async (e) => {
                 game.improvements[key] = currentLvl + 1;
                 playSound('buy_upgrade');
                 updateUI();
+                saveGameData(); // OKAMŽITÉ ULOŽENÍ
             } else { playSound('error'); }
         }
         return;
@@ -639,6 +816,8 @@ document.addEventListener('click', async (e) => {
                 const savedAch = game.unlockedAchievements; 
                 const savedTotal = game.totalScore;
                 const savedCrypto = game.crypto;
+                const savedFrenzy = game.frenzy;
+                const savedSpins = game.casinoSpins;
                 
                 game = JSON.parse(JSON.stringify(defaultState));
                 
@@ -648,13 +827,13 @@ document.addEventListener('click', async (e) => {
                 game.unlockedAchievements = savedAch; 
                 game.totalScore = savedTotal;
                 game.crypto = savedCrypto;
+                game.frenzy = savedFrenzy;
+                game.casinoSpins = savedSpins;
                 
                 expectedScore = 0; 
                 expectedTotalScore = game.totalScore; 
                 
-                game.checksum = generateChecksum(game.score, game.totalScore);
-                localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
-                
+                saveGameData(); // OKAMŽITÉ ULOŽENÍ
                 document.getElementById('ascend-modal').style.display = 'none';
                 updateUI();
             }
@@ -666,7 +845,16 @@ document.addEventListener('click', async (e) => {
         if (!game.ascend.upgrades.cryptoUnlocked && game.ascend.points >= 2) {
             game.ascend.points -= 2;
             game.ascend.upgrades.cryptoUnlocked = 1;
-            playSound('buy_upgrade'); updateUI();
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+        } else { playSound('error'); }
+        return;
+    }
+
+    if (e.target.closest('#buy-ascend-casino')) {
+        if (!game.ascend.upgrades.casinoUnlocked && game.ascend.points >= 2) {
+            game.ascend.points -= 2;
+            game.ascend.upgrades.casinoUnlocked = 1;
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
         return;
     }
@@ -677,7 +865,7 @@ document.addEventListener('click', async (e) => {
         if (game.ascend.points >= cost) {
             game.ascend.points -= cost;
             game.ascend.upgrades.click = lvl + 1;
-            playSound('buy_upgrade'); updateUI();
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
         return;
     }
@@ -688,7 +876,7 @@ document.addEventListener('click', async (e) => {
         if (game.ascend.points >= cost) {
             game.ascend.points -= cost;
             game.ascend.upgrades.bps = lvl + 1;
-            playSound('buy_upgrade'); updateUI();
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
         return;
     }
@@ -699,17 +887,20 @@ document.addEventListener('click', async (e) => {
             game.score -= game.crypto.price;
             expectedScore -= game.crypto.price;
             game.crypto.coins += 1;
-            playSound('buy_upgrade'); updateUI();
+            game.crypto.totalProfit -= game.crypto.price; 
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
         return;
     }
     if (e.target.closest('#btn-crypto-buy-max')) {
         const amount = Math.floor(game.score / game.crypto.price);
         if (amount > 0) {
-            game.score -= (amount * game.crypto.price);
-            expectedScore -= (amount * game.crypto.price);
+            const cost = amount * game.crypto.price;
+            game.score -= cost;
+            expectedScore -= cost;
             game.crypto.coins += amount;
-            playSound('buy_upgrade'); updateUI();
+            game.crypto.totalProfit -= cost; 
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
         return;
     }
@@ -717,12 +908,78 @@ document.addEventListener('click', async (e) => {
         if (game.crypto.coins > 0) {
             const gain = game.crypto.coins * game.crypto.price;
             game.score += gain;
-            game.totalScore += gain;
             expectedScore += gain;
-            expectedTotalScore += gain;
+            game.crypto.totalProfit += gain; 
             game.crypto.coins = 0;
-            playSound('buy_cosmetic'); updateUI();
+            playSound('buy_cosmetic'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
+        return;
+    }
+
+    // CASINO
+    if (e.target.closest('#btn-bet-10')) { document.getElementById('casino-bet').value = Math.floor(game.score * 0.1); return; }
+    if (e.target.closest('#btn-bet-50')) { document.getElementById('casino-bet').value = Math.floor(game.score * 0.5); return; }
+    if (e.target.closest('#btn-bet-max')) { document.getElementById('casino-bet').value = Math.floor(game.score); return; }
+
+    if (e.target.closest('#btn-casino-spin')) {
+        const betInput = document.getElementById('casino-bet');
+        let bet = parseInt(betInput.value);
+        if (isNaN(bet) || bet <= 0 || bet > game.score) {
+            playSound('error');
+            showToast("Neplatná sázka nebo nemáš dost bodů!");
+            return;
+        }
+
+        game.casinoSpins = (game.casinoSpins || 0) + 1;
+        game.score -= bet;
+        expectedScore -= bet;
+        updateUI();
+        saveGameData(); 
+        playSound('buy_upgrade');
+
+        const btn = document.getElementById('btn-casino-spin');
+        btn.disabled = true;
+
+        const rand = Math.random();
+        let mult = 0;
+        let symbols = ['💩', '💩', '🤡'];
+
+        if (rand < 0.01) { mult = 10; symbols = ['💎', '💎', '💎']; } 
+        else if (rand < 0.05) { mult = 5; symbols = ['🚀', '🚀', '🚀']; } 
+        else if (rand < 0.20) { mult = 2; symbols = ['🐸', '🐸', '🐸']; } 
+        else {
+            const pool = ['💩', '🤡', '💀', '📉'];
+            symbols = [pool[Math.floor(Math.random()*pool.length)], pool[Math.floor(Math.random()*pool.length)], pool[Math.floor(Math.random()*pool.length)]];
+            if(symbols[0] === symbols[1] && symbols[1] === symbols[2]) symbols[2] = '💀'; 
+        }
+
+        const reels = document.getElementById('slot-reels');
+        let spins = 0;
+        const pool = ['💩', '🤡', '💀', '📉', '🐸', '🚀', '💎'];
+        const interval = setInterval(() => {
+            reels.innerHTML = `<span>${pool[Math.floor(Math.random()*pool.length)]}</span><span>${pool[Math.floor(Math.random()*pool.length)]}</span><span>${pool[Math.floor(Math.random()*pool.length)]}</span>`;
+            playSound('spin');
+            spins++;
+            
+            if (spins > 10) {
+                clearInterval(interval);
+                reels.innerHTML = `<span>${symbols[0]}</span><span>${symbols[1]}</span><span>${symbols[2]}</span>`;
+                btn.disabled = false;
+
+                if (mult > 0) {
+                    const win = bet * mult;
+                    game.score += win;
+                    expectedScore += win;
+                    playSound('achievement');
+                    showToast(`🎰 VÝHRA! Získáváš ${formatNumber(win)} bodů!`);
+                } else {
+                    playSound('error');
+                    showToast(`🎰 Prohra... Zkus to znovu!`);
+                }
+                updateUI();
+                saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            }
+        }, 100);
         return;
     }
 
@@ -737,19 +994,28 @@ document.addEventListener('click', async (e) => {
 
         if (!game.startTime) game.startTime = Date.now();
 
+        const frenzyMult = (game.frenzy && game.frenzy.active && game.frenzy.type === 'click') ? game.frenzy.multiplier : 1;
+        const globalMult = getMultiplier();
+        const ascendClickMult = 1 + ((game.ascend.upgrades.click || 0) * 0.50);
+        const totalMult = globalMult * ascendClickMult * frenzyMult;
+
         const clickImpLvl = game.improvements.click || 0;
         const clickImpMult = 1 + (impClickBonuses[clickImpLvl] || 0); 
         
         const click2ImpLvl = game.improvements.click2 || 0;
         const click2ImpMult = 1 + (impClickBonuses[click2ImpLvl] || 0); 
 
-        const ascendClickLvl = game.ascend.upgrades.click || 0;
-        const ascendClickMult = 1 + (ascendClickLvl * 0.50);
+        const playerBasePower = (game.clickPower * clickImpMult) + ((game.click2Power || 0) * click2ImpMult);
+        const playerGain = playerBasePower * totalMult;
         
-        const frenzyMult = (game.frenzy && game.frenzy.active && game.frenzy.type === 'click') ? game.frenzy.multiplier : 1;
+        const klikatorCount = game.klikatorCount || 0;
+        const klikatorImpLvl = game.improvements.klikator || 0;
+        const klikatorImpMult = 1 + (impClickBonuses[klikatorImpLvl] || 0);
+        
+        const klikatorSingleGain = playerBasePower * klikatorImpMult * totalMult;
+        const klikatorTotalGain = klikatorCount * klikatorSingleGain;
 
-        const baseClickGain = (game.clickPower * clickImpMult) + ((game.click2Power || 0) * click2ImpMult);
-        const gain = baseClickGain * getMultiplier() * ascendClickMult * frenzyMult;
+        const gain = playerGain + klikatorTotalGain;
         
         game.score += gain; game.totalScore += gain;
         expectedScore += gain; expectedTotalScore += gain;
@@ -761,11 +1027,21 @@ document.addEventListener('click', async (e) => {
         playSound(soundKey);
         
         const rect = clickBtn.getBoundingClientRect();
-        const x = e.pageX !== undefined ? e.pageX : rect.left + window.scrollX + rect.width / 2;
-        const y = e.pageY !== undefined ? e.pageY : rect.top + window.scrollY + rect.height / 2;
-        
-        const texts = ['BOOP', 'STONKS', '+'+formatNumber(gain), 'SHEESH', 'W', 'FR FR', 'CHAD'];
-        spawnParticle(x, y, texts[Math.floor(Math.random()*texts.length)]);
+        const texts = ['BOOP', 'STONKS', 'SHEESH', 'W', 'FR FR', 'CHAD'];
+        spawnParticle(rect.left + window.scrollX + rect.width/2, rect.top + window.scrollY + rect.height/2, texts[Math.floor(Math.random()*texts.length)] + ' +'+formatNumber(playerGain));
+
+        const miniHands = document.querySelectorAll('.klikator-mini-hand');
+        miniHands.forEach((hand) => {
+            const base = hand.dataset.baseTransform;
+            hand.style.transform = base + ' scale(1.5)';
+            setTimeout(() => { if(hand) hand.style.transform = base; }, 50);
+
+            if (klikatorCount <= 10 || Math.random() < (10 / klikatorCount)) {
+                 const handRect = hand.getBoundingClientRect();
+                 spawnParticle(handRect.left + window.scrollX + handRect.width/2, handRect.top + window.scrollY + handRect.height/2, '🤖 +'+formatNumber(klikatorSingleGain));
+            }
+        });
+
         updateUI();
         return;
     }
@@ -776,7 +1052,7 @@ document.addEventListener('click', async (e) => {
         if (game.score >= game.costs[id]) {
             game.score -= game.costs[id]; expectedScore -= game.costs[id];
             game.buildings[id]++; game.costs[id] = Math.floor(game.costs[id] * 1.15);
-            playSound('buy_upgrade'); updateUI();
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
         return;
     }
@@ -785,7 +1061,7 @@ document.addEventListener('click', async (e) => {
         if (game.score >= game.costs.click) {
             game.score -= game.costs.click; expectedScore -= game.costs.click;
             game.clickPower += 1; game.costs.click = Math.floor(game.costs.click * 1.15);
-            playSound('buy_upgrade'); updateUI();
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
         return;
     }
@@ -796,7 +1072,17 @@ document.addEventListener('click', async (e) => {
             game.click2Level = (game.click2Level || 0) + 1; 
             game.click2Power = (game.click2Power || 0) + 5;
             game.costs.click2 = Math.floor(game.costs.click2 * 1.15);
-            playSound('buy_upgrade'); updateUI();
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+        } else { playSound('error'); }
+        return;
+    }
+
+    if (e.target.closest('#upg-klikator')) {
+        if (game.score >= game.costs.klikator) {
+            game.score -= game.costs.klikator; expectedScore -= game.costs.klikator;
+            game.klikatorCount = (game.klikatorCount || 0) + 1;
+            game.costs.klikator = Math.floor(game.costs.klikator * 1.15);
+            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
         } else { playSound('error'); }
         return;
     }
@@ -811,21 +1097,25 @@ document.addEventListener('click', async (e) => {
                 game.cosmetics.currentSkin = id;
                 document.getElementById('custom-image-upload')?.click();
                 playSound('buy_cosmetic');
+                saveGameData(); // OKAMŽITÉ ULOŽENÍ
             } else if (game.score >= cost) {
                 game.score -= cost; expectedScore -= cost;
                 unlockedList.push(id); game.cosmetics.currentSkin = id;
                 document.getElementById('custom-image-upload')?.click();
                 playSound('buy_cosmetic');
+                saveGameData(); // OKAMŽITÉ ULOŽENÍ
             } else { playSound('error'); }
         } else {
             if (unlockedList.includes(id)) {
                 if (type === 'skin') game.cosmetics.currentSkin = id; else game.cosmetics.currentBg = id;
                 playSound('buy_cosmetic');
+                saveGameData(); // OKAMŽITÉ ULOŽENÍ
             } else if (game.score >= cost) {
                 game.score -= cost; expectedScore -= cost;
                 unlockedList.push(id);
                 if (type === 'skin') game.cosmetics.currentSkin = id; else game.cosmetics.currentBg = id;
                 playSound('buy_cosmetic');
+                saveGameData(); // OKAMŽITÉ ULOŽENÍ
             } else { playSound('error'); }
         }
         updateUI();
@@ -843,30 +1133,29 @@ document.addEventListener('click', async (e) => {
         const elapsed = game.startTime ? (Date.now() - game.startTime) : 0;
         const timeStr = formatTime(elapsed);
         const finalTotalScore = game.totalScore; const finalCurrentScore = game.score;
+        let ach = game.unlockedAchievements ? game.unlockedAchievements.length : 0;
         const btn = document.getElementById('btn-submit');
-        btn.disabled = true; btn.textContent = "⏳ ODESÍLÁM...";
+        btn.disabled = true; fastText('btn-submit', "⏳ ODESÍLÁM...");
 
         if(db) {
             try {
                 const docRef = doc(db, "clicker_leaderboard", nick);
-                await setDoc(docRef, { name: nick, score: finalTotalScore, current: finalCurrentScore, time: timeStr, timestamp: Date.now() });
+                await setDoc(docRef, { name: nick, score: finalTotalScore, current: finalCurrentScore, time: timeStr, achievements: ach, timestamp: Date.now() });
                 showToast('Zapsáno do Firebase! Ostatní uvidí tvůj celkový i nynější zisk.');
             } catch(err) { showToast("Chyba při zápisu, ukládám lokálně."); saveLocally(nick, finalTotalScore, timeStr, finalCurrentScore); }
         } else { saveLocally(nick, finalTotalScore, timeStr, finalCurrentScore); }
         
-        game.checksum = generateChecksum(game.score, game.totalScore);
-        localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
-        btn.disabled = false; btn.textContent = "🚀 SUBMIT DO LEADERBOARDU 🚀";
+        saveGameData();
+        btn.disabled = false; fastText('btn-submit', "🚀 SUBMIT DO LEADERBOARDU 🚀");
         document.getElementById('btn-refresh-lb')?.click();
         return;
     }
 
     if (e.target.closest('#btn-refresh-lb')) {
-        const loadingLb = document.getElementById('loading-lb');
-        if (loadingLb) loadingLb.textContent = "⏳ Načítám...";
+        fastText('loading-lb', "⏳ Načítám...");
         sessionStorage.removeItem('cached_lb'); 
         fetchLeaderboard().then(() => {
-            if (loadingLb) loadingLb.textContent = db ? "(Připojeno)" : "(Lokální mód)";
+            fastText('loading-lb', db ? "(Připojeno)" : "(Lokální mód)");
         });
         return;
     }
@@ -874,6 +1163,7 @@ document.addEventListener('click', async (e) => {
     if (e.target.closest('#btn-hard-reset')) {
         if(confirm('Chceš fakt smazat i skóre a lokální data? Není cesty zpět!')) {
             clearInterval(gameLoop);
+            localStorage.removeItem('meme_clicker_backup_total'); 
             game = JSON.parse(JSON.stringify(defaultState));
             localStorage.removeItem('meme_clicker_fb'); localStorage.removeItem('meme_lb_local'); 
             window.location.reload();
@@ -883,7 +1173,6 @@ document.addEventListener('click', async (e) => {
 });
 
 document.addEventListener('change', (e) => {
-    // KOSMETIKA
     if (e.target.id === 'custom-image-upload') {
         const file = e.target.files[0];
         if (file) {
@@ -891,14 +1180,12 @@ document.addEventListener('change', (e) => {
             reader.onload = function(readerEvent) {
                 game.cosmetics.customImage = readerEvent.target.result;
                 applyCosmetics();
-                game.checksum = generateChecksum(game.score, game.totalScore);
-                localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
+                saveGameData();
             }
             reader.readAsDataURL(file);
         }
     }
     
-    // --- ZPRACOVÁNÍ IMPORTU SAVU ---
     if (e.target.id === 'import-save-upload') {
         const file = e.target.files[0];
         if (!file) return;
@@ -911,8 +1198,14 @@ document.addEventListener('change', (e) => {
                 game = importedGame;
                 expectedScore = game.score;
                 expectedTotalScore = game.totalScore;
-                game.checksum = generateChecksum(game.score, game.totalScore);
-                localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
+                
+                let backupTotalScore = parseFloat(localStorage.getItem('meme_clicker_backup_total')) || 0;
+                if (game.totalScore < backupTotalScore) {
+                    game.totalScore = backupTotalScore;
+                    expectedTotalScore = backupTotalScore;
+                }
+
+                saveGameData();
                 playSound('achievement');
                 alert("✅ Save úspěšně načten!");
                 window.location.reload();
@@ -928,12 +1221,13 @@ document.addEventListener('change', (e) => {
 
 async function loadHTML() {
     try {
-        const [upgradesHTML, clickerHTML, impHTML, shopHTML, cryptoHTML] = await Promise.all([
+        const [upgradesHTML, clickerHTML, impHTML, shopHTML, cryptoHTML, casinoHTML] = await Promise.all([
             fetch('views/upgrades.html').then(res => res.text()),
             fetch('views/clicker.html').then(res => res.text()),
             fetch('views/improvements.html').then(res => res.text()),
             fetch('views/shop.html').then(res => res.text()),
-            fetch('views/crypto.html').then(res => res.text())
+            fetch('views/crypto.html').then(res => res.text()),
+            fetch('views/casino.html').then(res => res.text())
         ]);
 
         document.getElementById('wrapper-upgrades').innerHTML = upgradesHTML;
@@ -942,14 +1236,17 @@ async function loadHTML() {
         document.getElementById('wrapper-shop').innerHTML = shopHTML;
         document.getElementById('wrapper-crypto').innerHTML = cryptoHTML;
         
+        const casinoWrapper = document.getElementById('wrapper-casino');
+        if (casinoWrapper) casinoWrapper.innerHTML = casinoHTML;
+        
         currentViewsLoaded = true;
 
-        const loadingLb = document.getElementById('loading-lb');
-        if (loadingLb) {
-            loadingLb.textContent = db ? "(Připojeno)" : "(Lokální mód)";
-            loadingLb.style.color = db ? "#2ecc71" : "#e74c3c";
+        if (document.getElementById('loading-lb')) {
+            fastText('loading-lb', db ? "(Připojeno)" : "(Lokální mód)");
+            document.getElementById('loading-lb').style.color = db ? "#2ecc71" : "#e74c3c";
         }
 
+        initImprovementsUI();
         fetchLeaderboard();
         renderAchievements();
         applyCosmetics();
@@ -957,8 +1254,7 @@ async function loadHTML() {
 
         gameLoop = setInterval(() => {
             const now = Date.now();
-            const timerEl = document.getElementById('timer');
-            if (game.startTime && timerEl) timerEl.textContent = formatTime(now - game.startTime);
+            fastText('timer', formatTime(now - game.startTime));
             
             let dt = (now - game.lastTime) / 1000;
             if (dt < 0) dt = 0; 
@@ -987,6 +1283,12 @@ async function loadHTML() {
                         let change = (Math.random() * 0.35) - 0.15;
                         game.crypto.price = Math.max(10, Math.floor(game.crypto.price * (1 + change)));
                     }
+                    
+                    if (!game.crypto.history) game.crypto.history = [];
+                    game.crypto.history.push(game.crypto.price);
+                    if (game.crypto.history.length > 20) game.crypto.history.shift();
+                    
+                    renderCryptoChart();
                 }
             }
 
@@ -1009,9 +1311,9 @@ async function loadHTML() {
                     document.body.classList.add('frenzy-active');
                     if(fd) {
                         fd.style.display = 'block';
-                        document.getElementById('frenzy-name').textContent = game.frenzy.type === 'click' ? '🌟 CLICK FRENZY 🌟' : '🌟 BUILDING FRENZY 🌟';
+                        fastText('frenzy-name', game.frenzy.type === 'click' ? '🌟 CLICK FRENZY 🌟' : '🌟 BUILDING FRENZY 🌟');
                         let timeLeft = game.frenzy.endTime - now;
-                        document.getElementById('frenzy-time').textContent = (timeLeft / 1000).toFixed(1) + 's';
+                        fastText('frenzy-time', (timeLeft / 1000).toFixed(1) + 's');
                         document.getElementById('frenzy-bar').style.width = (timeLeft / game.frenzy.duration * 100) + '%';
                     }
                 }
@@ -1030,8 +1332,10 @@ async function loadHTML() {
             
             updateUI();
             
-            game.checksum = generateChecksum(game.score, game.totalScore);
-            localStorage.setItem('meme_clicker_fb', JSON.stringify(game));
+            if (now - lastSaveTime > 1000) {
+                saveGameData();
+                lastSaveTime = now;
+            }
         }, 100);
 
     } catch (error) {}
