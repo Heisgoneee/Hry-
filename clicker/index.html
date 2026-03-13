@@ -8,22 +8,20 @@
 </head>
 <body id="game-body">
 
-    <button id="btn-changelog" class="changelog-btn">📜 Changelog</button>
+    <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100;">
+        <button id="btn-changelog" class="btn" style="width:auto; margin:0; background: #e67e22; color: white;">📜 Changelog</button>
+    </div>
 
     <div id="changelog-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="close-changelog">&times;</span>
             <h2 style="margin-top: 0; text-align: center;">📜 Co je nového?</h2>
-            
-            <div class="version-title">Aktuální verze</div>
-            <ul class="changelog-list">
-                <li><b>NOVÉ: Random Meme Drop (Frenzy)!</b></li>
-                <li><b>NOVÉ: Krypto Burza (Za 2 AP)!</b></li>
-                <li>Oddělená tabulka Vylepšení (10%, 25%, 50%, 100%).</li>
-                <li>Achievementy dávají 1% BPS!</li>
-                <li>Ascend Reset Systém. Skóre se přeměňuje na AP po resetu.</li>
-                <li>Všechny panely viditelné najednou bez překlikávání.</li>
-                <li>Původní design vrácen zpět!</li>
+            <ul style="padding-left: 20px; line-height: 1.6;">
+                <li><b>NOVÉ: Export a Import Savu (Stahování)!</b></li>
+                <li><b>NOVÉ: Šifrované Save soubory! (Anti-Cheat)</b></li>
+                <li>Super Klik přidán do hry.</li>
+                <li>Krach burzy (0.1% šance na smazání MemeCoinů).</li>
+                <li>Random Meme Drop (Frenzy x Budovy).</li>
             </ul>
         </div>
     </div>
@@ -33,24 +31,24 @@
             <span class="close-btn" id="close-ascend">&times;</span>
             <h2 style="margin-top: 0; color: #8e44ad; text-align: center;">🌌 Ascend Tree 🌌</h2>
             
-            <div style="background: rgba(155,89,182,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; border: 2px dashed #9b59b6;">
-                <p style="font-size: 18px; margin: 0 0 10px 0;">Máš <strong><span id="ap-display" style="color: #e74c3c;">0</span> AP</strong></p>
-                <p style="font-size: 14px; margin: 0 0 10px 0; color: #333;">K dispozici po resetu: <strong><span id="ap-pending" style="color: #2ecc71;">0</span> AP</strong></p>
-                <p style="font-size: 12px; margin: 0 0 15px 0; color: #777;">Zbývá <span id="ap-next-req" style="font-weight:bold;">100k</span> skóre do dalšího bodu.</p>
-                <button id="btn-ascend-reset" class="btn submit-btn" style="width: 100%; font-size: 16px; padding: 10px; animation: none; background-color: #8e44ad; border-color: #732d91;">🔥 PROVÉST ASCEND RESET 🔥</button>
+            <div style="background: rgba(155,89,182,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px; text-align: center; border: 2px dashed #9b59b6;">
+                <p style="font-size: 20px; margin: 0 0 10px 0;">Máš <strong><span id="ap-display" style="color: #e74c3c; font-size: 24px;">0</span> AP</strong></p>
+                <p style="font-size: 15px; margin: 0 0 10px 0; color: inherit;">K dispozici po resetu: <strong><span id="ap-pending" style="color: #27ae60;">0</span> AP</strong></p>
+                <p style="font-size: 13px; margin: 0 0 20px 0; opacity: 0.7;">Zbývá <span id="ap-next-req" style="font-weight:bold;">100k</span> skóre do dalšího bodu.</p>
+                <button id="btn-ascend-reset" class="btn" style="background-color: #8e44ad; color: white; border-color: #732d91; text-align: center; font-size: 16px; padding: 15px;">🔥 PROVÉST ASCEND RESET 🔥</button>
             </div>
 
-            <h3 style="margin-top: 0;">Trvalé Upgrady (Za AP)</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button id="buy-ascend-click" class="btn" style="background-color: #3498db; color: white; border-color: #2980b9;">
-                    👆 Zisk z klikání +50%
+            <h3>Trvalé Upgrady (Za AP)</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button id="buy-ascend-click" class="btn" style="background-color: #2980b9; color: white; border-color: #21618c;">
+                    👆 Výnos z klikání +50%
                     <span style="color: black;">Cena: <span id="cost-ascend-click">1</span> AP</span>
-                    <small style="color: #ddd;">Level: <span id="lvl-ascend-click">0</span></small>
+                    <small style="color: #eee;">Level: <span id="lvl-ascend-click">0</span></small>
                 </button>
-                <button id="buy-ascend-bps" class="btn" style="background-color: #2ecc71; color: white; border-color: #27ae60;">
-                    📈 Zisk z budov (BPS) +25%
+                <button id="buy-ascend-bps" class="btn" style="background-color: #27ae60; color: white; border-color: #1e8449;">
+                    📈 Výnos z budov (BPS) +25%
                     <span style="color: black;">Cena: <span id="cost-ascend-bps">1</span> AP</span>
-                    <small style="color: #ddd;">Level: <span id="lvl-ascend-bps">0</span></small>
+                    <small style="color: #eee;">Level: <span id="lvl-ascend-bps">0</span></small>
                 </button>
                 <button id="buy-ascend-crypto" class="btn" style="background-color: #f39c12; color: white; border-color: #d35400;">
                     📊 Odemknout Krypto Burzu
@@ -63,11 +61,13 @@
 
     <div id="toast" class="toast"></div>
     <input type="file" id="custom-image-upload" accept="image/*" style="display: none;">
+    <input type="file" id="import-save-upload" accept=".txt" style="display: none;">
 
     <div class="container" id="app-container">
         <div id="wrapper-upgrades"></div>
         <div id="wrapper-clicker"></div>
         <div id="wrapper-improvements"></div>
+        
         <div style="display: flex; flex-direction: column; gap: 20px;">
             <div id="wrapper-crypto"></div>
             <div id="wrapper-shop"></div>
