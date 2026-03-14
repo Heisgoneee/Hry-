@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Isaac JS - Upravený pohyb a střelba</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; cursor: crosshair; }
+        canvas { background: #36281f; box-shadow: 0 0 20px rgba(0,0,0,1); max-width: 100%; max-height: 100vh; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.9); z-index: 10; }
+        .overlay h1 { color: #ffcccc; font-size: 40px; text-shadow: 2px 2px 0 #000; margin-bottom: 20px; text-align: center; }
+        .overlay button { padding: 15px 40px; font-size: 24px; font-weight: bold; cursor: pointer; background: #900; color: white; border: 3px solid #400; border-radius: 10px; text-transform: uppercase; }
+        .overlay button:active { background: #d00; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="menu-layer" class="overlay">
+        <h1>Isaac JS</h1>
+        <button id="start-btn">Hrát</button>
+    </div>
+
+    <div id="game-over-layer" class="overlay hidden">
+        <h1 style="color: #ff0000;">Zemřel jsi</h1>
+        <button id="restart-btn">Zkusit znovu</button>
+    </div>
+
+    <canvas id="game" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const aspect = 800 / 600;
+            let windowAspect = window.innerWidth / window.innerHeight;
+            if (windowAspect < aspect) {
+                canvas.style.width = window.innerWidth + 'px'; canvas.style.height = (window.innerWidth / aspect) + 'px';
+            } else {
+                canvas.style.height = window.innerHeight + 'px'; canvas.style.width = (window.innerHeight * aspect) + 'px';
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameState = 'MENU'; 
+        const input = { w: false, a: false, s: false, d: false, ' ': false };
+        const mouse = { x: 0, y: 0, down: false };
+
+        const player = { x: 400, y: 300, radius: 16, z: 15, speed: 2.5, hp: 3, maxHp: 3, iFrames: 0, coins: 0, passive: null, active: null };
+        const tears = [];
+        let tearCooldown = 0;
+        let enemies = [];
+        const mapSize = 7;
+        let mapGrid = [];
+        let curRx = 3, curRy = 3;
+
+        function initGame() {
+            player.hp = player.maxHp; player.coins = 0; player.passive = null; player.active = null;
+            player.x = 400; player.y = 300; player.iFrames = 0;
+            generateDungeon();
+            gameState = 'PLAY';
+            document.getElementById('menu-layer').classList.add('hidden');
+            document.getElementById('game-over-layer').classList.add('hidden');
+        }
+
+        function generateDungeon() {
+            mapGrid = Array(mapSize).fill(null).map(() => Array(mapSize).fill(null));
+            const startRoom = { x: 3, y: 3, doors: {}, enemies: [], chests: [], items: [], visited: true, isStart: true };
+            mapGrid[3][3] = startRoom;
+            
+            let rooms = [startRoom], roomCount = 1;
+            const targetRooms = 8 + Math.floor(Math.random() * 5);
+
+            while(roomCount < targetRooms && rooms.length > 0) {
+                let r = rooms[Math.floor(Math.random() * rooms.length)];
+                let dirs = [ {dx: 0, dy: -1, dir: 'n', opp: 's'}, {dx: 0, dy: 1, dir: 's', opp: 'n'}, {dx: -1, dy: 0, dir: 'w', opp: 'e'}, {dx: 1, dy: 0, dir: 'e', opp: 'w'} ].sort(() => Math.random() - 0.5);
+
+                let added = false;
+                for (let d of dirs) {
+                    let nx = r.x + d.dx, ny = r.y + d.dy;
+                    if (nx >= 0 && nx < mapSize && ny >= 0 && ny < mapSize && !mapGrid[ny][nx]) {
+                        let newRoom = { 
+                            x: nx, y: ny, doors: {}, visited: false, isStart: false, items: [],
+                            enemies: Array.from({length: Math.floor(Math.random()*3) + 1}, () => ({
+                                x: 200 + Math.random() * 400, y: 200 + Math.random() * 200, radius: 14, z: 12, speed: 1.5 + Math.random(), hp: 3, kbX: 0, kbY: 0
+                            })),
+                            chests: Math.random() < 0.3 ? [{x: 400, y: 300, opened: false, radius: 20}] : []
+                        };
+                        r.doors[d.dir] = true; newRoom.doors[d.opp] = true;
+                        mapGrid[ny][nx] = newRoom; rooms.push(newRoom); roomCount++; added = true; break;
+                    }
+                }
+                if (!added) rooms = rooms.filter(rm => rm !== r);
+            }
+            curRx = 3; curRy = 3; loadRoom(curRx, curRy);
+        }
+
+        function loadRoom(rx, ry) {
+            let room = mapGrid[ry][rx];
+            room.visited = true;
+            enemies = room.enemies; 
+            tears.length = 0;
+        }
+
+        function checkDoorTransition() {
+            let room = mapGrid[curRy][curRx];
+            if (enemies.length > 0) return; 
+
+            const b = { minX: 60, maxX: 740, minY: 80, maxY: 520 }, ds = 80;
+            if (room.doors.n && player.y <= b.minY + 10 && Math.abs(player.x - 400) < ds/2) { curRy--; player.y = b.maxY - 20; loadRoom(curRx, curRy); }
+            else if (room.doors.s && player.y >= b.maxY - 10 && Math.abs(player.x - 400) < ds/2) { curRy++; player.y = b.minY + 20; loadRoom(curRx, curRy); }
+            else if (room.doors.w && player.x <= b.minX + 10 && Math.abs(player.y - 300) < ds/2) { curRx--; player.x = b.maxX - 20; loadRoom(curRx, curRy); }
+            else if (room.doors.e && player.x >= b.maxX - 10 && Math.abs(player.y - 300) < ds/2) { curRx++; player.x = b.minX + 20; loadRoom(curRx, curRy); }
+        }
+
+        document.getElementById('start-btn').addEventListener('click', initGame);
+        document.getElementById('restart-btn').addEventListener('click', initGame);
+
+        function handleKey(e, state) {
+            if (e.key.toLowerCase() === 'w') input.w = state;
+            if (e.key.toLowerCase() === 'a') input.a = state;
+            if (e.key.toLowerCase() === 's') input.s = state;
+            if (e.key.toLowerCase() === 'd') input.d = state;
+            if (e.key === ' ') input[' '] = state;
+        }
+        window.addEventListener('keydown', e => handleKey(e, true));
+        window.addEventListener('keyup', e => handleKey(e, false));
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+        });
+        canvas.addEventListener('mousedown', () => mouse.down = true);
+        window.addEventListener('mouseup', () => mouse.down = false);
+
+        function spawnTear(dx, dy, ox=0, oy=0) {
+            tears.push({ x: player.x + ox, y: player.y + oy, dx: dx, dy: dy, radius: 7, z: 10 });
+        }
+
+        function update() {
+            if (gameState !== 'PLAY') return;
+            let room = mapGrid[curRy][curRx];
+
+            if (player.iFrames > 0) player.iFrames--;
+
+            if (input[' '] && player.active === 'heal') {
+                if (player.hp < player.maxHp) { player.hp++; player.active = null; }
+                input[' '] = false;
+            }
+
+            let nx = player.x, ny = player.y;
+            if (input.w) ny -= player.speed; if (input.s) ny += player.speed;
+            if (input.a) nx -= player.speed; if (input.d) nx += player.speed;
+
+            const b = { minX: 60, maxX: 740, minY: 80, maxY: 520 };
+            player.x = Math.max(b.minX, Math.min(b.maxX, nx));
+            player.y = Math.max(b.minY, Math.min(b.maxY, ny));
+
+            checkDoorTransition();
+
+            if (tearCooldown <= 0 && mouse.down) {
+                let distX = mouse.x - player.x;
+                let distY = mouse.y - player.y;
+                let speed = 8;
+                let dx = 0, dy = 0;
+
+                if (Math.abs(distX) > Math.abs(distY)) {
+                    dx = distX > 0 ? speed : -speed;
+                } else {
+                    dy = distY > 0 ? speed : -speed;
+                }
+
+                spawnTear(dx, dy);
+                if (player.passive === 'spread') {
+                    if (dx !== 0) { spawnTear(dx, -3); spawnTear(dx, 3); }
+                    if (dy !== 0) { spawnTear(-3, dy); spawnTear(3, dy); }
+                }
+                tearCooldown = 35; 
+            } else tearCooldown--;
+
+            for (let i = tears.length - 1; i >= 0; i--) {
+                tears[i].x += tears[i].dx; tears[i].y += tears[i].dy;
+                if (tears[i].x < b.minX || tears[i].x > b.maxX || tears[i].y < b.minY || tears[i].y > b.maxY) tears.splice(i, 1);
+            }
+
+            for (let c of room.chests) {
+                if (!c.opened && Math.hypot(player.x - c.x, player.y - c.y) < player.radius + c.radius) {
+                    c.opened = true;
+                    let rnd = Math.random();
+                    if (rnd < 0.4) room.items.push({type: 'passive_spread', x: c.x, y: c.y + 30, radius: 10});
+                    else if (rnd < 0.8) room.items.push({type: 'active_heal', x: c.x, y: c.y + 30, radius: 10});
+                    else room.items.push({type: 'coin', x: c.x, y: c.y + 30, radius: 8});
+                }
+            }
+
+            for (let i = room.items.length - 1; i >= 0; i--) {
+                let item = room.items[i];
+                if (Math.hypot(player.x - item.x, player.y - item.y) < player.radius + item.radius) {
+                    if (item.type === 'coin') player.coins++;
+                    else if (item.type === 'passive_spread') player.passive = 'spread';
+                    else if (item.type === 'active_heal') player.active = 'heal';
+                    room.items.splice(i, 1);
+                }
+            }
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                let ex = player.x - e.x, ey = player.y - e.y, dist = Math.hypot(ex, ey);
+                
+                e.x += e.kbX || 0; e.y += e.kbY || 0;
+                e.kbX *= 0.85; e.kbY *= 0.85;
+                if (Math.abs(e.kbX) < 0.1) e.kbX = 0; if (Math.abs(e.kbY) < 0.1) e.kbY = 0;
+                e.x = Math.max(b.minX, Math.min(b.maxX, e.x)); e.y = Math.max(b.minY, Math.min(b.maxY, e.y));
+
+                if (dist > 0 && Math.abs(e.kbX) < 1 && Math.abs(e.kbY) < 1) {
+                    e.x += (ex / dist) * e.speed; e.y += (ey / dist) * e.speed;
+                }
+
+                if (dist < player.radius + e.radius && player.iFrames <= 0) {
+                    player.hp--; player.iFrames = 60;
+                    if (player.hp <= 0) { gameState = 'GAMEOVER'; document.getElementById('game-over-layer').classList.remove('hidden'); }
+                }
+
+                for (let j = tears.length - 1; j >= 0; j--) {
+                    let t = tears[j];
+                    if (Math.hypot(t.x - e.x, t.y - e.y) < e.radius + t.radius) {
+                        e.hp--; e.kbX = t.dx * 1.5; e.kbY = t.dy * 1.5; tears.splice(j, 1);
+                    }
+                }
+
+                if (e.hp <= 0) {
+                    if (Math.random() < 0.3) room.items.push({type: 'coin', x: e.x, y: e.y, radius: 8});
+                    enemies.splice(i, 1);
+                }
+            }
+        }
+
+        function drawEntity(x, y, z, radius, color, isShadow = false, isPlayer = false) {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath(); ctx.ellipse(x, y, radius, radius * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+            if (!isShadow) {
+                if (isPlayer && player.iFrames > 0 && Math.floor(Date.now() / 100) % 2 === 0) return; 
+                ctx.fillStyle = color;
+                ctx.beginPath(); ctx.arc(x, y - z, radius, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+            }
+        }
+
+        function drawHeart(x, y, filled) {
+            ctx.save(); ctx.translate(x, y); ctx.scale(1.2, 1.2);
+            ctx.beginPath(); ctx.moveTo(0, 5); ctx.bezierCurveTo(-10, -5, -15, 5, 0, 15); ctx.bezierCurveTo(15, 5, 10, -5, 0, 5);
+            if (filled) { ctx.fillStyle = '#ff0000'; ctx.fill(); }
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+        }
+
+        function draw() {
+            if (gameState === 'MENU') return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#1e1410'; ctx.fillRect(0, 0, canvas.width, 80); 
+            ctx.fillStyle = '#2b1d16'; ctx.fillRect(0, 50, canvas.width, 30); 
+            ctx.fillStyle = '#2b1d16'; ctx.fillRect(0, 0, 60, canvas.height); ctx.fillRect(740, 0, 60, canvas.height); ctx.fillRect(0, 520, canvas.width, 80); 
+
+            let room = mapGrid[curRy][curRx];
+            ctx.fillStyle = enemies.length > 0 ? '#111' : '#0a0a0a'; 
+            if (room.doors.n) ctx.fillRect(360, 40, 80, 40); if (room.doors.s) ctx.fillRect(360, 520, 80, 40);
+            if (room.doors.w) ctx.fillRect(20, 260, 40, 80); if (room.doors.e) ctx.fillRect(740, 260, 40, 80);
+            
+            if (enemies.length > 0) {
+                ctx.fillStyle = '#440000';
+                if (room.doors.n) ctx.fillRect(360, 60, 80, 20); if (room.doors.s) ctx.fillRect(360, 520, 80, 20);
+                if (room.doors.w) ctx.fillRect(40, 260, 20, 80); if (room.doors.e) ctx.fillRect(740, 260, 20, 80);
+            }
+
+            for (let c of room.chests) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath(); ctx.ellipse(c.x, c.y, c.radius, c.radius * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = c.opened ? '#533' : '#853';
+                ctx.fillRect(c.x - 15, c.y - 25, 30, 25);
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(c.x - 15, c.y - 25, 30, 25);
+            }
+
+            for (let item of room.items) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath(); ctx.ellipse(item.x, item.y, item.radius, item.radius * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+                if (item.type === 'coin') {
+                    ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(item.x, item.y - 5, item.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                } else if (item.type === 'passive_spread') {
+                    ctx.fillStyle = '#a020f0'; ctx.fillRect(item.x - 8, item.y - 15, 16, 16); ctx.strokeRect(item.x - 8, item.y - 15, 16, 16);
+                } else if (item.type === 'active_heal') {
+                    ctx.fillStyle = '#00ff00'; ctx.fillRect(item.x - 8, item.y - 15, 16, 16); ctx.strokeRect(item.x - 8, item.y - 15, 16, 16);
+                }
+            }
+
+            let renderList = [ { type: 'player', ...player }, ...enemies.map(e => ({ type: 'enemy', ...e })), ...tears.map(t => ({ type: 'tear', ...t })) ];
+            renderList.sort((a, b) => a.y - b.y);
+
+            for (let obj of renderList) {
+                if (obj.type === 'player') drawEntity(obj.x, obj.y, obj.z, obj.radius, '#ffcccc', false, true);
+                else if (obj.type === 'enemy') drawEntity(obj.x, obj.y, obj.z, obj.radius, '#cc0000');
+                else if (obj.type === 'tear') { ctx.fillStyle = '#88ccff'; ctx.beginPath(); ctx.arc(obj.x, obj.y - obj.z, obj.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+            }
+
+            const mmSize = 12, mmX = 680, mmY = 20;
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(mmX - 5, mmY - 5, mapSize * mmSize + 10, mapSize * mmSize + 10);
+            for (let y = 0; y < mapSize; y++) {
+                for (let x = 0; x < mapSize; x++) {
+                    let r = mapGrid[y][x];
+                    if (r && r.visited) {
+                        ctx.fillStyle = (x === curRx && y === curRy) ? '#fff' : (r.isStart ? '#aaa' : '#555');
+                        ctx.fillRect(mmX + x * mmSize, mmY + y * mmSize, mmSize - 1, mmSize - 1);
+                        ctx.fillStyle = '#333';
+                        if(r.doors.n) ctx.fillRect(mmX + x*mmSize + mmSize/2 - 1, mmY + y*mmSize - 1, 2, 2);
+                        if(r.doors.s) ctx.fillRect(mmX + x*mmSize + mmSize/2 - 1, mmY + y*mmSize + mmSize - 1, 2, 2);
+                        if(r.doors.w) ctx.fillRect(mmX + x*mmSize - 1, mmY + y*mmSize + mmSize/2 - 1, 2, 2);
+                        if(r.doors.e) ctx.fillRect(mmX + x*mmSize + mmSize - 1, mmY + y*mmSize + mmSize/2 - 1, 2, 2);
+                    }
+                }
+            }
+
+            for(let i = 0; i < player.maxHp; i++) drawHeart(40 + i * 35, 30, i < player.hp);
+
+            ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(40, 70, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.font = '20px sans-serif'; ctx.fillText(`x ${player.coins}`, 55, 76);
+
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(20, 100, 40, 40); ctx.strokeStyle = '#fff'; ctx.strokeRect(20, 100, 40, 40);
+            if (player.passive === 'spread') { ctx.fillStyle = '#a020f0'; ctx.fillRect(25, 105, 30, 30); }
+
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(20, 150, 40, 40); ctx.strokeStyle = '#fff'; ctx.strokeRect(20, 150, 40, 40);
+            if (player.active === 'heal') { ctx.fillStyle = '#00ff00'; ctx.fillRect(25, 155, 30, 30); }
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+</html>

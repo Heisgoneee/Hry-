@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, orderBy, limit, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
@@ -31,6 +31,7 @@ function playSound(type) {
         case 'ascend': playTone(200, 'sine', 0.5, 0.3); setTimeout(() => playTone(400, 'sine', 0.5, 0.3), 200); setTimeout(() => playTone(800, 'sine', 1.0, 0.4), 400); break;
         case 'crash': playTone(150, 'sawtooth', 1.0, 0.3); setTimeout(() => playTone(100, 'sawtooth', 1.5, 0.3), 300); break;
         case 'spin': playTone(600, 'square', 0.05, 0.1); break;
+        case 'hit': playTone(150 + Math.random() * 50, 'sawtooth', 0.1, 0.2); break; 
     }
 }
 
@@ -63,6 +64,12 @@ const skinMap = { 'default': { type: 'text', val: '🔴' }, 'doge': { type: 'img
 
 const defaultState = {
     nick: "", score: 0, totalScore: 0, clicks: 0, clickPower: 1, click2Level: 0, click2Power: 0, klikatorCount: 0, casinoSpins: 0,
+    bossUnlocked: false, 
+    boss: { 
+        money: 0, xp: 0, level: 1, totalDmg: 0,
+        weaponDmg: 1, weaponCount: 1, enchantMult: 1, goldMult: 1, xpMult: 1, 
+        costs: { weaponDmg: 10, goldMult: 50, xpMult: 100, weaponCount: 500, enchantMult: 1000 } 
+    },
     buildings: { auto: 0, factory: 0, mine: 0, ai: 0, tiktok: 0, elon: 0, matrix: 0, crypto: 0, metaverse: 0, alien: 0 },
     improvements: { click: 0, click2: 0, klikator: 0, auto: 0, factory: 0, mine: 0, ai: 0, tiktok: 0, elon: 0, matrix: 0, crypto: 0, metaverse: 0, alien: 0 },
     costs: { click: 10, click2: 100, klikator: 500, auto: 50, factory: 500, mine: 3000, ai: 15000, tiktok: 100000, elon: 1000000, matrix: 15000000, crypto: 100000000, metaverse: 1000000000, alien: 50000000000 },
@@ -71,33 +78,14 @@ const defaultState = {
     unlockedAchievements: [],
     ascend: { points: 0, totalPointsClaimed: 0, upgrades: { click: 0, bps: 0, cryptoUnlocked: 0, casinoUnlocked: 0 } },
     crypto: { coins: 0, price: 100, history: [100], totalProfit: 0 },
-    frenzy: { active: false, type: null, multiplier: 1, duration: 0, endTime: 0 },
-    checksum: ""
+    frenzy: { active: false, type: null, multiplier: 1, duration: 0, endTime: 0 }
 };
-
-// --- STABILNÍ ŠIFROVÁNÍ (Opravuje pád při ukládání) ---
-const SECRET_SALT = "sigma_chad_2026";
-function generateHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-    }
-    return hash.toString(36);
-}
 
 function saveGameData() {
     localStorage.setItem('meme_clicker_backup_total', game.totalScore);
-    try {
-        const clone = JSON.parse(JSON.stringify(game));
-        delete clone.checksum;
-        clone.checksum = generateHash(JSON.stringify(clone) + SECRET_SALT);
-        const str = JSON.stringify(clone);
-        const b64 = btoa(unescape(encodeURIComponent(str)));
-        localStorage.setItem('meme_clicker_fb', b64);
-    } catch (err) {
-        console.error("Chyba při ukládání:", err);
-    }
+    const str = JSON.stringify(game);
+    const b64 = btoa(unescape(encodeURIComponent(str)));
+    localStorage.setItem('meme_clicker_fb', b64);
 }
 
 let game = null;
@@ -108,15 +96,7 @@ if (rawLocal) {
     } else {
         try {
             const str = decodeURIComponent(escape(atob(rawLocal)));
-            const obj = JSON.parse(str);
-            const clone = JSON.parse(JSON.stringify(obj));
-            delete clone.checksum;
-            if (obj.checksum === generateHash(JSON.stringify(clone) + SECRET_SALT)) {
-                game = obj;
-            } else {
-                alert("⚠️ Ochrana proti podvádění: Neplatný kontrolní součet. Save byl resetován.");
-                game = JSON.parse(JSON.stringify(defaultState));
-            }
+            game = JSON.parse(str);
         } catch(e) {
             game = JSON.parse(JSON.stringify(defaultState));
         }
@@ -125,13 +105,11 @@ if (rawLocal) {
     game = JSON.parse(JSON.stringify(defaultState));
 }
 
-// Ochrana před ztrátou totalScore
 let backupTotalScore = parseFloat(localStorage.getItem('meme_clicker_backup_total')) || 0;
 if (game.totalScore < backupTotalScore) {
     game.totalScore = backupTotalScore; 
 }
 
-// ANTI-NAN Inicializace
 if (isNaN(game.score) || game.score == null) game.score = 0;
 if (isNaN(game.totalScore) || game.totalScore == null) game.totalScore = game.score;
 if (isNaN(game.clicks) || game.clicks == null) game.clicks = 0;
@@ -156,6 +134,23 @@ if (game.crypto.history === undefined) game.crypto.history = [game.crypto.price 
 if (game.crypto.totalProfit === undefined) game.crypto.totalProfit = 0;
 if (!game.frenzy) game.frenzy = { active: false, type: null, multiplier: 1, duration: 0, endTime: 0 };
 
+if (game.bossUnlocked === undefined) game.bossUnlocked = false;
+if (!game.boss) {
+    game.boss = JSON.parse(JSON.stringify(defaultState.boss));
+} else {
+    if (game.boss.xp === undefined) game.boss.xp = 0;
+    if (game.boss.level === undefined) game.boss.level = 1;
+    if (game.boss.totalDmg === undefined) game.boss.totalDmg = 0; 
+    if (game.boss.weaponDmg === undefined) game.boss.weaponDmg = game.boss.clickPower || 1;
+    if (game.boss.weaponCount === undefined) game.boss.weaponCount = 1;
+    if (game.boss.enchantMult === undefined) game.boss.enchantMult = 1;
+    if (game.boss.goldMult === undefined) game.boss.goldMult = 1;
+    if (game.boss.xpMult === undefined) game.boss.xpMult = 1;
+    if (!game.boss.costs) {
+        game.boss.costs = { weaponDmg: game.boss.clickCost || 10, goldMult: 50, xpMult: 100, weaponCount: 500, enchantMult: 1000 };
+    }
+}
+
 game.unlockedAchievements = game.unlockedAchievements.filter(a => !['easter_timer', 'easter_jicin', 'easter_sigma'].includes(a));
 if (!game.cosmetics.customImage) game.cosmetics.customImage = null;
 if (!skinMap[game.cosmetics.currentSkin]) game.cosmetics.currentSkin = 'default';
@@ -174,9 +169,6 @@ for (const key of bldKeys) {
 }
 if (isNaN(game.improvements.click)) game.improvements.click = 0;
 
-let expectedScore = game.score;
-let expectedTotalScore = game.totalScore;
-let clickTimes = [];
 let localLeaderboard = JSON.parse(localStorage.getItem('meme_lb_local')) || [];
 let gameLoop;
 let currentViewsLoaded = false;
@@ -185,27 +177,23 @@ let nextGolden = Math.random() * 60000 + 60000;
 let cryptoTimer = 0;
 let lastSaveTime = Date.now();
 
+let globalBoss = JSON.parse(localStorage.getItem('meme_boss_local')) || { currentHp: 1000000, maxHp: 1000000, level: 1 };
+let pendingBossDamage = 0;
+let isBossSyncing = false;
+
 const domTextCache = {};
 function fastText(id, text) {
     if (domTextCache[id] !== text) {
         const el = document.getElementById(id);
-        if (el) {
-            el.textContent = text;
-            domTextCache[id] = text;
-        }
+        if (el) { el.textContent = text; domTextCache[id] = text; }
     }
 }
 function fastHTML(id, html) {
     if (domTextCache[id] !== html) {
         const el = document.getElementById(id);
-        if (el) {
-            el.innerHTML = html;
-            domTextCache[id] = html;
-        }
+        if (el) { el.innerHTML = html; domTextCache[id] = html; }
     }
 }
-
-window.addEventListener('beforeunload', saveGameData);
 
 const allAchievements = [
     { id: 'first', name: '👶 První krůčky (1 klik)', req: () => game.clicks >= 1 },
@@ -262,6 +250,10 @@ const allAchievements = [
     { id: 'bld_alien_50', name: '🛸 Mezigalaktický vládce (50x UFO)', req: () => game.buildings.alien >= 50 },
     { id: 'bld_alien_100', name: '🛸 Vládce multivesmíru (100x UFO)', req: () => game.buildings.alien >= 100 }
 ];
+
+function getBossReqXp(level) {
+    return Math.floor(100 * Math.pow(1.3, level - 1));
+}
 
 function calculatePendingAP() {
     let cumulativeScore = game.totalScore || 0;
@@ -538,6 +530,100 @@ function spawnGoldenMeme() {
     }, 12000);
 }
 
+function updateBossUI() {
+    if (!currentViewsLoaded) return;
+
+    if (!game.bossUnlocked) {
+        if (document.getElementById('boss-panel-locked')) document.getElementById('boss-panel-locked').style.display = 'block';
+        if (document.getElementById('boss-panel-ui')) document.getElementById('boss-panel-ui').style.display = 'none';
+    } else {
+        if (document.getElementById('boss-panel-locked')) document.getElementById('boss-panel-locked').style.display = 'none';
+        if (document.getElementById('boss-panel-ui')) document.getElementById('boss-panel-ui').style.display = 'block';
+        
+        fastText('boss-level', `Lvl ${globalBoss.level}`);
+        let currentHp = Math.max(0, globalBoss.currentHp);
+        fastText('boss-hp-text', `${formatNumber(currentHp)} / ${formatNumber(globalBoss.maxHp)}`);
+        let pct = Math.max(0, (currentHp / globalBoss.maxHp) * 100);
+        const bar = document.getElementById('boss-hp-bar');
+        if (bar) bar.style.width = pct + '%';
+        
+        fastText('player-boss-lvl', game.boss.level);
+        const reqXp = getBossReqXp(game.boss.level);
+        fastText('player-boss-xp', `${formatNumber(game.boss.xp)} / ${formatNumber(reqXp)}`);
+        const xpBar = document.getElementById('player-boss-xp-bar');
+        if (xpBar) xpBar.style.width = Math.min(100, (game.boss.xp / reqXp) * 100) + '%';
+
+        fastText('boss-money', formatNumber(game.boss.money));
+        
+        const upgDmgBtn = document.getElementById('btn-boss-upg-dmg');
+        if (upgDmgBtn) {
+            fastText('boss-lvl-dmg', `[${game.boss.weaponDmg}]`);
+            fastText('boss-cost-dmg', formatNumber(game.boss.costs.weaponDmg));
+            upgDmgBtn.disabled = game.boss.money < game.boss.costs.weaponDmg;
+        }
+
+        const upgGoldBtn = document.getElementById('btn-boss-upg-gold');
+        if (upgGoldBtn) {
+            if (game.boss.level >= 2) {
+                fastText('boss-lvl-gold', `[${game.boss.goldMult}]`);
+                fastText('boss-cost-gold', formatNumber(game.boss.costs.goldMult));
+                fastText('boss-req-gold', `Zisk mincí z bosse +1`);
+                upgGoldBtn.disabled = game.boss.money < game.boss.costs.goldMult;
+            } else {
+                fastText('boss-lvl-gold', `[🔒]`);
+                fastText('boss-cost-gold', `Lvl 2`);
+                fastText('boss-req-gold', `Vyžaduje tvůj level 2`);
+                upgGoldBtn.disabled = true;
+            }
+        }
+
+        const upgXpBtn = document.getElementById('btn-boss-upg-xp');
+        if (upgXpBtn) {
+            if (game.boss.level >= 3) {
+                fastText('boss-lvl-xp', `[${game.boss.xpMult}]`);
+                fastText('boss-cost-xp', formatNumber(game.boss.costs.xpMult));
+                fastText('boss-req-xp', `Zisk XP z bosse +1`);
+                upgXpBtn.disabled = game.boss.money < game.boss.costs.xpMult;
+            } else {
+                fastText('boss-lvl-xp', `[🔒]`);
+                fastText('boss-cost-xp', `Lvl 3`);
+                fastText('boss-req-xp', `Vyžaduje tvůj level 3`);
+                upgXpBtn.disabled = true;
+            }
+        }
+
+        const upgCountBtn = document.getElementById('btn-boss-upg-count');
+        if (upgCountBtn) {
+            if (game.boss.level >= 5) {
+                fastText('boss-lvl-count', `[${game.boss.weaponCount}]`);
+                fastText('boss-cost-count', formatNumber(game.boss.costs.weaponCount));
+                fastText('boss-req-count', `Počet útoků naráz +1`);
+                upgCountBtn.disabled = game.boss.money < game.boss.costs.weaponCount;
+            } else {
+                fastText('boss-lvl-count', `[🔒]`);
+                fastText('boss-cost-count', `Lvl 5`);
+                fastText('boss-req-count', `Vyžaduje tvůj level 5`);
+                upgCountBtn.disabled = true;
+            }
+        }
+
+        const upgEnchantBtn = document.getElementById('btn-boss-upg-enchant');
+        if (upgEnchantBtn) {
+            if (game.boss.level >= 10) {
+                fastText('boss-lvl-enchant', `[${game.boss.enchantMult}]`);
+                fastText('boss-cost-enchant', formatNumber(game.boss.costs.enchantMult));
+                fastText('boss-req-enchant', `Násobič celkového DMG +1x`);
+                upgEnchantBtn.disabled = game.boss.money < game.boss.costs.enchantMult;
+            } else {
+                fastText('boss-lvl-enchant', `[🔒]`);
+                fastText('boss-cost-enchant', `Lvl 10`);
+                fastText('boss-req-enchant', `Vyžaduje tvůj level 10`);
+                upgEnchantBtn.disabled = true;
+            }
+        }
+    }
+}
+
 function updateUI() {
     if(!currentViewsLoaded) return;
 
@@ -687,6 +773,7 @@ function updateUI() {
     }
 
     applyCosmetics();
+    updateBossUI();
 }
 
 async function fetchLeaderboard() {
@@ -704,7 +791,7 @@ async function fetchLeaderboard() {
         try {
             const q = query(collection(db, "clicker_leaderboard"), orderBy("score", "desc"), limit(10));
             const snapshot = await getDocs(q);
-            if(snapshot.empty) { tbody.innerHTML = '<tr><td colspan="4">Firebase tabulka je prázdná.</td></tr>'; return; }
+            if(snapshot.empty) { tbody.innerHTML = '<tr><td colspan="5">Firebase tabulka je prázdná.</td></tr>'; return; }
             let lbData = [];
             snapshot.forEach((doc) => lbData.push(doc.data()));
             sessionStorage.setItem('cached_lb', JSON.stringify({ timestamp: now, data: lbData }));
@@ -723,6 +810,7 @@ function renderLeaderboardData(data) {
             <td>${d.achievements || 0}</td>
             <td style="font-weight:bold;color:#e67e22;">${formatNumber(d.score)}</td>
             <td>${formatNumber(d.current || 0)}</td>
+            <td style="font-weight:bold;color:#c0392b;">${formatNumber(d.bossDmg || 0)}</td>
         </tr>`;
     });
     fastHTML('lb-body', html);
@@ -736,30 +824,125 @@ function renderLocalLeaderboard() {
         html += `<tr>
             <td>${entry.name}</td>
             <td>${entry.achievements || 0}</td>
-            <td>${formatNumber(entry.score)}</td>
+            <td style="font-weight:bold;color:#e67e22;">${formatNumber(entry.score)}</td>
             <td>${formatNumber(entry.current || 0)}</td>
+            <td style="font-weight:bold;color:#c0392b;">${formatNumber(entry.bossDmg || 0)}</td>
         </tr>`;
     });
-    if(localLeaderboard.length === 0) html = '<tr><td colspan="4">Žádná data. Zkus nahrát skóre!</td></tr>';
+    if(localLeaderboard.length === 0) html = '<tr><td colspan="5">Žádná data. Zkus nahrát skóre!</td></tr>';
     fastHTML('lb-body', html);
 }
 
 function saveLocally(nick, score, timeStr, current) {
     let ach = game.unlockedAchievements ? game.unlockedAchievements.length : 0;
+    let bDmg = game.boss && game.boss.totalDmg ? game.boss.totalDmg : 0;
     let existing = localLeaderboard.find(entry => entry.name === nick);
     if (existing) {
         if (score > existing.score) {
-            existing.score = score; existing.time = timeStr; existing.current = current; existing.achievements = ach;
+            existing.score = score; existing.time = timeStr; existing.current = current; existing.achievements = ach; existing.bossDmg = bDmg;
         }
     } else {
-        localLeaderboard.push({ name: nick, score: score, time: timeStr, current: current, achievements: ach });
+        localLeaderboard.push({ name: nick, score: score, time: timeStr, current: current, achievements: ach, bossDmg: bDmg });
     }
     localLeaderboard.sort((a,b) => b.score - a.score);
     localStorage.setItem('meme_lb_local', JSON.stringify(localLeaderboard));
 }
 
+document.addEventListener('change', (e) => {
+    // Ukládání stavu Checkboxu pro changelog
+    if (e.target.id === 'hide-changelog-checkbox') {
+        if (e.target.checked) {
+            localStorage.setItem('meme_changelog_v2', 'true');
+        } else {
+            localStorage.removeItem('meme_changelog_v2');
+        }
+    }
+
+    if (e.target.id === 'custom-image-upload') {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(readerEvent) {
+                game.cosmetics.customImage = readerEvent.target.result;
+                applyCosmetics();
+                saveGameData();
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+    
+    if (e.target.id === 'import-save-upload') {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const contents = evt.target.result.trim();
+            let importedGame = null;
+
+            try {
+                importedGame = JSON.parse(decodeURIComponent(escape(atob(contents))));
+            } catch(err) {}
+
+            if (!importedGame) {
+                const salts = [
+                    "sigma_chad_2026_anticheat_max_security",
+                    "sigma_chad_2026", 
+                    "sigma_chad_2026_anticheat_v3", 
+                    "sigma_chad_2026_anticheat_v2"
+                ];
+                for (let salt of salts) {
+                    try {
+                        const xor = atob(contents);
+                        let decodedStr = "";
+                        for(let i = 0; i < xor.length; i++) {
+                            decodedStr += String.fromCharCode(xor.charCodeAt(i) ^ salt.charCodeAt(i % salt.length));
+                        }
+                        let finalStr = "";
+                        try { finalStr = decodeURIComponent(decodedStr); } 
+                        catch(err2) { finalStr = decodeURIComponent(escape(decodedStr)); }
+                        
+                        const obj = JSON.parse(finalStr);
+                        if (obj && obj.score !== undefined) {
+                            importedGame = obj;
+                            break;
+                        }
+                    } catch(err3) {}
+                }
+            }
+
+            if (!importedGame && contents.startsWith('{')) {
+                try { importedGame = JSON.parse(contents); } catch(err4) {}
+            }
+
+            if (importedGame && importedGame.score !== undefined) {
+                game = importedGame;
+                
+                let backupTotalScore = parseFloat(localStorage.getItem('meme_clicker_backup_total')) || 0;
+                if (game.totalScore < backupTotalScore) {
+                    game.totalScore = backupTotalScore;
+                }
+
+                saveGameData();
+                playSound('achievement');
+                alert("✅ Save úspěšně načten!");
+                window.location.reload();
+            } else {
+                playSound('error');
+                alert("❌ Neplatný nebo poškozený save soubor!");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    }
+});
+
 document.addEventListener('click', async (e) => {
-    if (e.target.closest('#btn-changelog')) { document.getElementById('changelog-modal').style.display = 'flex'; return; }
+    if (e.target.closest('#btn-changelog')) { 
+        document.getElementById('changelog-modal').style.display = 'flex'; 
+        const cb = document.getElementById('hide-changelog-checkbox');
+        if (cb) cb.checked = (localStorage.getItem('meme_changelog_v2') === 'true');
+        return; 
+    }
     if (e.target.closest('#close-changelog') || e.target === document.getElementById('changelog-modal')) { document.getElementById('changelog-modal').style.display = 'none'; return; }
     if (e.target.closest('#btn-open-ascend')) { document.getElementById('ascend-modal').style.display = 'flex'; updateUI(); return; }
     if (e.target.closest('#close-ascend') || e.target === document.getElementById('ascend-modal')) { document.getElementById('ascend-modal').style.display = 'none'; return; }
@@ -783,6 +966,133 @@ document.addEventListener('click', async (e) => {
         return;
     }
 
+    if (e.target.closest('#btn-refresh-boss')) {
+        const btn = e.target.closest('#btn-refresh-boss');
+        btn.innerHTML = "⏳";
+        btn.disabled = true;
+
+        if (db) {
+            try {
+                const bossRef = doc(db, "global_events", "boss");
+                const docSnap = await getDoc(bossRef);
+                if (docSnap.exists()) {
+                    globalBoss = docSnap.data();
+                    localStorage.setItem('meme_boss_local', JSON.stringify(globalBoss));
+                    updateBossUI();
+                    showToast("✅ Boss data aktualizována!");
+                }
+            } catch(err) {
+                showToast("❌ Chyba při aktualizaci!");
+            }
+        }
+
+        setTimeout(() => {
+            btn.innerHTML = "🔄 Aktualizovat";
+            btn.disabled = false;
+        }, 1000);
+        return;
+    }
+
+    if (e.target.closest('#btn-unlock-boss')) {
+        if (game.score >= 1000000) {
+            game.score -= 1000000;
+            game.bossUnlocked = true;
+            playSound('achievement');
+            updateUI();
+            saveGameData();
+        } else {
+            playSound('error');
+            showToast("Nemáš dostatek bodů (1M)!");
+        }
+        return;
+    }
+
+    if (e.target.closest('#boss-click-btn')) {
+        const dmg = game.boss.weaponDmg * game.boss.weaponCount * game.boss.enchantMult;
+        const moneyDrop = 1 * game.boss.goldMult;
+        const xpDrop = 1 * game.boss.xpMult;
+
+        pendingBossDamage += dmg;
+        game.boss.money += moneyDrop;
+        game.boss.xp += xpDrop;
+        game.boss.totalDmg = (game.boss.totalDmg || 0) + dmg;
+        
+        let reqXp = getBossReqXp(game.boss.level);
+        while (game.boss.xp >= reqXp) {
+            game.boss.xp -= reqXp;
+            game.boss.level++;
+            reqXp = getBossReqXp(game.boss.level);
+            playSound('achievement');
+            showToast(`🔥 Level UP! Jsi na Boss Lvl ${game.boss.level}`);
+        }
+
+        globalBoss.currentHp -= dmg; 
+        playSound('hit');
+        
+        const btnNode = document.getElementById('boss-click-btn');
+        btnNode.style.transform = 'scale(0.85)';
+        setTimeout(() => btnNode.style.transform = 'scale(1)', 50);
+
+        const rect = btnNode.getBoundingClientRect();
+        spawnParticle(rect.left + window.scrollX + rect.width/2, rect.top + window.scrollY + rect.height/2, `⚔️ -${formatNumber(dmg)}`);
+        
+        if (Math.random() > 0.5) spawnParticle(rect.left + window.scrollX + rect.width/2, rect.top + window.scrollY + rect.height/2 + 20, `💰 +${moneyDrop}`);
+        if (Math.random() > 0.5) spawnParticle(rect.left + window.scrollX + rect.width/2, rect.top + window.scrollY + rect.height/2 - 20, `✨ +${xpDrop}`);
+        
+        updateBossUI();
+        return;
+    }
+
+    if (e.target.closest('#btn-boss-upg-dmg')) {
+        if (game.boss.money >= game.boss.costs.weaponDmg) {
+            game.boss.money -= game.boss.costs.weaponDmg;
+            game.boss.weaponDmg += 1;
+            game.boss.costs.weaponDmg = Math.floor(game.boss.costs.weaponDmg * 1.5);
+            playSound('buy_upgrade'); updateBossUI(); saveGameData();
+        } else { playSound('error'); }
+        return;
+    }
+
+    if (e.target.closest('#btn-boss-upg-gold') && game.boss.level >= 2) {
+        if (game.boss.money >= game.boss.costs.goldMult) {
+            game.boss.money -= game.boss.costs.goldMult;
+            game.boss.goldMult += 1;
+            game.boss.costs.goldMult = Math.floor(game.boss.costs.goldMult * 2);
+            playSound('buy_upgrade'); updateBossUI(); saveGameData();
+        } else { playSound('error'); }
+        return;
+    }
+
+    if (e.target.closest('#btn-boss-upg-xp') && game.boss.level >= 3) {
+        if (game.boss.money >= game.boss.costs.xpMult) {
+            game.boss.money -= game.boss.costs.xpMult;
+            game.boss.xpMult += 1;
+            game.boss.costs.xpMult = Math.floor(game.boss.costs.xpMult * 2);
+            playSound('buy_upgrade'); updateBossUI(); saveGameData();
+        } else { playSound('error'); }
+        return;
+    }
+
+    if (e.target.closest('#btn-boss-upg-count') && game.boss.level >= 5) {
+        if (game.boss.money >= game.boss.costs.weaponCount) {
+            game.boss.money -= game.boss.costs.weaponCount;
+            game.boss.weaponCount += 1;
+            game.boss.costs.weaponCount = Math.floor(game.boss.costs.weaponCount * 3);
+            playSound('buy_upgrade'); updateBossUI(); saveGameData();
+        } else { playSound('error'); }
+        return;
+    }
+
+    if (e.target.closest('#btn-boss-upg-enchant') && game.boss.level >= 10) {
+        if (game.boss.money >= game.boss.costs.enchantMult) {
+            game.boss.money -= game.boss.costs.enchantMult;
+            game.boss.enchantMult += 1;
+            game.boss.costs.enchantMult = Math.floor(game.boss.costs.enchantMult * 5);
+            playSound('buy_upgrade'); updateBossUI(); saveGameData();
+        } else { playSound('error'); }
+        return;
+    }
+
     const impBtn = e.target.closest('.buy-imp');
     if (impBtn) {
         const key = impBtn.dataset.key;
@@ -791,11 +1101,10 @@ document.addEventListener('click', async (e) => {
             const cost = impBaseCosts[key] * Math.pow(10, currentLvl);
             if (game.score >= cost) {
                 game.score -= cost;
-                expectedScore -= cost;
                 game.improvements[key] = currentLvl + 1;
                 playSound('buy_upgrade');
                 updateUI();
-                saveGameData(); // OKAMŽITÉ ULOŽENÍ
+                saveGameData(); 
             } else { playSound('error'); }
         }
         return;
@@ -806,7 +1115,6 @@ document.addEventListener('click', async (e) => {
         if (pending > 0) {
             if (confirm(`Opravdu chceš udělat Ascend Reset? Ztratíš budovy a aktuální skóre, ale získáš ${pending} AP pro Ascend Tree!`)) {
                 playSound('ascend');
-                
                 game.ascend.points += pending;
                 game.ascend.totalPointsClaimed += pending;
                 
@@ -818,6 +1126,8 @@ document.addEventListener('click', async (e) => {
                 const savedCrypto = game.crypto;
                 const savedFrenzy = game.frenzy;
                 const savedSpins = game.casinoSpins;
+                const savedBoss = game.boss;
+                const savedBossUnlocked = game.bossUnlocked;
                 
                 game = JSON.parse(JSON.stringify(defaultState));
                 
@@ -829,11 +1139,10 @@ document.addEventListener('click', async (e) => {
                 game.crypto = savedCrypto;
                 game.frenzy = savedFrenzy;
                 game.casinoSpins = savedSpins;
+                game.boss = savedBoss;
+                game.bossUnlocked = savedBossUnlocked;
                 
-                expectedScore = 0; 
-                expectedTotalScore = game.totalScore; 
-                
-                saveGameData(); // OKAMŽITÉ ULOŽENÍ
+                saveGameData(); 
                 document.getElementById('ascend-modal').style.display = 'none';
                 updateUI();
             }
@@ -845,7 +1154,7 @@ document.addEventListener('click', async (e) => {
         if (!game.ascend.upgrades.cryptoUnlocked && game.ascend.points >= 2) {
             game.ascend.points -= 2;
             game.ascend.upgrades.cryptoUnlocked = 1;
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
@@ -854,7 +1163,7 @@ document.addEventListener('click', async (e) => {
         if (!game.ascend.upgrades.casinoUnlocked && game.ascend.points >= 2) {
             game.ascend.points -= 2;
             game.ascend.upgrades.casinoUnlocked = 1;
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
@@ -865,7 +1174,7 @@ document.addEventListener('click', async (e) => {
         if (game.ascend.points >= cost) {
             game.ascend.points -= cost;
             game.ascend.upgrades.click = lvl + 1;
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
@@ -876,19 +1185,17 @@ document.addEventListener('click', async (e) => {
         if (game.ascend.points >= cost) {
             game.ascend.points -= cost;
             game.ascend.upgrades.bps = lvl + 1;
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
 
-    // KRYPTO
     if (e.target.closest('#btn-crypto-buy')) {
         if (game.score >= game.crypto.price) {
             game.score -= game.crypto.price;
-            expectedScore -= game.crypto.price;
-            game.crypto.coins += 1;
+            game.crypto.coins += 1; 
             game.crypto.totalProfit -= game.crypto.price; 
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
@@ -897,10 +1204,9 @@ document.addEventListener('click', async (e) => {
         if (amount > 0) {
             const cost = amount * game.crypto.price;
             game.score -= cost;
-            expectedScore -= cost;
-            game.crypto.coins += amount;
+            game.crypto.coins += amount; 
             game.crypto.totalProfit -= cost; 
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
@@ -908,15 +1214,13 @@ document.addEventListener('click', async (e) => {
         if (game.crypto.coins > 0) {
             const gain = game.crypto.coins * game.crypto.price;
             game.score += gain;
-            expectedScore += gain;
             game.crypto.totalProfit += gain; 
-            game.crypto.coins = 0;
-            playSound('buy_cosmetic'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            game.crypto.coins = 0; 
+            playSound('buy_cosmetic'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
 
-    // CASINO
     if (e.target.closest('#btn-bet-10')) { document.getElementById('casino-bet').value = Math.floor(game.score * 0.1); return; }
     if (e.target.closest('#btn-bet-50')) { document.getElementById('casino-bet').value = Math.floor(game.score * 0.5); return; }
     if (e.target.closest('#btn-bet-max')) { document.getElementById('casino-bet').value = Math.floor(game.score); return; }
@@ -932,7 +1236,6 @@ document.addEventListener('click', async (e) => {
 
         game.casinoSpins = (game.casinoSpins || 0) + 1;
         game.score -= bet;
-        expectedScore -= bet;
         updateUI();
         saveGameData(); 
         playSound('buy_upgrade');
@@ -969,7 +1272,6 @@ document.addEventListener('click', async (e) => {
                 if (mult > 0) {
                     const win = bet * mult;
                     game.score += win;
-                    expectedScore += win;
                     playSound('achievement');
                     showToast(`🎰 VÝHRA! Získáváš ${formatNumber(win)} bodů!`);
                 } else {
@@ -977,7 +1279,7 @@ document.addEventListener('click', async (e) => {
                     showToast(`🎰 Prohra... Zkus to znovu!`);
                 }
                 updateUI();
-                saveGameData(); // OKAMŽITÉ ULOŽENÍ
+                saveGameData(); 
             }
         }, 100);
         return;
@@ -985,13 +1287,6 @@ document.addEventListener('click', async (e) => {
 
     const clickBtn = e.target.closest('#click-btn');
     if (clickBtn) {
-        const now = Date.now();
-        clickTimes = clickTimes.filter(t => now - t < 1000);
-        
-        let limit = (game.frenzy && game.frenzy.active && game.frenzy.type === 'click') ? 30 : 15;
-        if (clickTimes.length >= limit) { showToast("⚠️ Zpomal! Autoclicker limit dosažen!"); playSound('error'); return; }
-        clickTimes.push(now);
-
         if (!game.startTime) game.startTime = Date.now();
 
         const frenzyMult = (game.frenzy && game.frenzy.active && game.frenzy.type === 'click') ? game.frenzy.multiplier : 1;
@@ -1018,7 +1313,6 @@ document.addEventListener('click', async (e) => {
         const gain = playerGain + klikatorTotalGain;
         
         game.score += gain; game.totalScore += gain;
-        expectedScore += gain; expectedTotalScore += gain;
         game.clicks++;
         
         let soundKey = 'click_' + game.cosmetics.currentSkin;
@@ -1050,39 +1344,39 @@ document.addEventListener('click', async (e) => {
     if (bldBtn) {
         const id = bldBtn.id.replace('bld-', '');
         if (game.score >= game.costs[id]) {
-            game.score -= game.costs[id]; expectedScore -= game.costs[id];
+            game.score -= game.costs[id];
             game.buildings[id]++; game.costs[id] = Math.floor(game.costs[id] * 1.15);
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
 
     if (e.target.closest('#upg-click')) {
         if (game.score >= game.costs.click) {
-            game.score -= game.costs.click; expectedScore -= game.costs.click;
+            game.score -= game.costs.click;
             game.clickPower += 1; game.costs.click = Math.floor(game.costs.click * 1.15);
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
 
     if (e.target.closest('#upg-click2')) {
         if (game.score >= game.costs.click2) {
-            game.score -= game.costs.click2; expectedScore -= game.costs.click2;
+            game.score -= game.costs.click2;
             game.click2Level = (game.click2Level || 0) + 1; 
             game.click2Power = (game.click2Power || 0) + 5;
             game.costs.click2 = Math.floor(game.costs.click2 * 1.15);
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
 
     if (e.target.closest('#upg-klikator')) {
         if (game.score >= game.costs.klikator) {
-            game.score -= game.costs.klikator; expectedScore -= game.costs.klikator;
+            game.score -= game.costs.klikator;
             game.klikatorCount = (game.klikatorCount || 0) + 1;
             game.costs.klikator = Math.floor(game.costs.klikator * 1.15);
-            playSound('buy_upgrade'); updateUI(); saveGameData(); // OKAMŽITÉ ULOŽENÍ
+            playSound('buy_upgrade'); updateUI(); saveGameData(); 
         } else { playSound('error'); }
         return;
     }
@@ -1097,25 +1391,25 @@ document.addEventListener('click', async (e) => {
                 game.cosmetics.currentSkin = id;
                 document.getElementById('custom-image-upload')?.click();
                 playSound('buy_cosmetic');
-                saveGameData(); // OKAMŽITÉ ULOŽENÍ
+                saveGameData(); 
             } else if (game.score >= cost) {
-                game.score -= cost; expectedScore -= cost;
+                game.score -= cost;
                 unlockedList.push(id); game.cosmetics.currentSkin = id;
                 document.getElementById('custom-image-upload')?.click();
                 playSound('buy_cosmetic');
-                saveGameData(); // OKAMŽITÉ ULOŽENÍ
+                saveGameData(); 
             } else { playSound('error'); }
         } else {
             if (unlockedList.includes(id)) {
                 if (type === 'skin') game.cosmetics.currentSkin = id; else game.cosmetics.currentBg = id;
                 playSound('buy_cosmetic');
-                saveGameData(); // OKAMŽITÉ ULOŽENÍ
+                saveGameData(); 
             } else if (game.score >= cost) {
-                game.score -= cost; expectedScore -= cost;
+                game.score -= cost;
                 unlockedList.push(id);
                 if (type === 'skin') game.cosmetics.currentSkin = id; else game.cosmetics.currentBg = id;
                 playSound('buy_cosmetic');
-                saveGameData(); // OKAMŽITÉ ULOŽENÍ
+                saveGameData(); 
             } else { playSound('error'); }
         }
         updateUI();
@@ -1140,7 +1434,7 @@ document.addEventListener('click', async (e) => {
         if(db) {
             try {
                 const docRef = doc(db, "clicker_leaderboard", nick);
-                await setDoc(docRef, { name: nick, score: finalTotalScore, current: finalCurrentScore, time: timeStr, achievements: ach, timestamp: Date.now() });
+                await setDoc(docRef, { name: nick, score: finalTotalScore, current: finalCurrentScore, time: timeStr, achievements: ach, bossDmg: game.boss.totalDmg || 0, timestamp: Date.now() });
                 showToast('Zapsáno do Firebase! Ostatní uvidí tvůj celkový i nynější zisk.');
             } catch(err) { showToast("Chyba při zápisu, ukládám lokálně."); saveLocally(nick, finalTotalScore, timeStr, finalCurrentScore); }
         } else { saveLocally(nick, finalTotalScore, timeStr, finalCurrentScore); }
@@ -1164,6 +1458,7 @@ document.addEventListener('click', async (e) => {
         if(confirm('Chceš fakt smazat i skóre a lokální data? Není cesty zpět!')) {
             clearInterval(gameLoop);
             localStorage.removeItem('meme_clicker_backup_total'); 
+            localStorage.removeItem('meme_boss_local');
             game = JSON.parse(JSON.stringify(defaultState));
             localStorage.removeItem('meme_clicker_fb'); localStorage.removeItem('meme_lb_local'); 
             window.location.reload();
@@ -1172,62 +1467,16 @@ document.addEventListener('click', async (e) => {
     }
 });
 
-document.addEventListener('change', (e) => {
-    if (e.target.id === 'custom-image-upload') {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(readerEvent) {
-                game.cosmetics.customImage = readerEvent.target.result;
-                applyCosmetics();
-                saveGameData();
-            }
-            reader.readAsDataURL(file);
-        }
-    }
-    
-    if (e.target.id === 'import-save-upload') {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const contents = evt.target.result;
-            const importedGame = decryptSave(contents);
-            
-            if (importedGame && importedGame.score !== undefined) {
-                game = importedGame;
-                expectedScore = game.score;
-                expectedTotalScore = game.totalScore;
-                
-                let backupTotalScore = parseFloat(localStorage.getItem('meme_clicker_backup_total')) || 0;
-                if (game.totalScore < backupTotalScore) {
-                    game.totalScore = backupTotalScore;
-                    expectedTotalScore = backupTotalScore;
-                }
-
-                saveGameData();
-                playSound('achievement');
-                alert("✅ Save úspěšně načten!");
-                window.location.reload();
-            } else {
-                playSound('error');
-                alert("❌ Neplatný nebo upravený save soubor! Pěkný pokus o podvádění 😉");
-            }
-        };
-        reader.readAsText(file);
-        e.target.value = '';
-    }
-});
-
 async function loadHTML() {
     try {
-        const [upgradesHTML, clickerHTML, impHTML, shopHTML, cryptoHTML, casinoHTML] = await Promise.all([
+        const [upgradesHTML, clickerHTML, impHTML, shopHTML, cryptoHTML, casinoHTML, bossHTML] = await Promise.all([
             fetch('views/upgrades.html').then(res => res.text()),
             fetch('views/clicker.html').then(res => res.text()),
             fetch('views/improvements.html').then(res => res.text()),
             fetch('views/shop.html').then(res => res.text()),
             fetch('views/crypto.html').then(res => res.text()),
-            fetch('views/casino.html').then(res => res.text())
+            fetch('views/casino.html').then(res => res.text()),
+            fetch('views/boss.html').then(res => res.text())
         ]);
 
         document.getElementById('wrapper-upgrades').innerHTML = upgradesHTML;
@@ -1239,11 +1488,44 @@ async function loadHTML() {
         const casinoWrapper = document.getElementById('wrapper-casino');
         if (casinoWrapper) casinoWrapper.innerHTML = casinoHTML;
         
+        const bossWrapper = document.getElementById('wrapper-boss');
+        if (bossWrapper) bossWrapper.innerHTML = bossHTML;
+        
         currentViewsLoaded = true;
 
         if (document.getElementById('loading-lb')) {
             fastText('loading-lb', db ? "(Připojeno)" : "(Lokální mód)");
             document.getElementById('loading-lb').style.color = db ? "#2ecc71" : "#e74c3c";
+        }
+
+        if (db) {
+            onSnapshot(doc(db, "global_events", "boss"), (docSnap) => {
+                if (docSnap.exists()) {
+                    globalBoss = docSnap.data();
+                    localStorage.setItem('meme_boss_local', JSON.stringify(globalBoss));
+                    if (globalBoss.currentHp <= 0 && !isBossSyncing) {
+                        isBossSyncing = true;
+                        const newLevel = globalBoss.level + 1;
+                        const newMax = 1000000 * Math.pow(1.5, newLevel - 1);
+                        updateDoc(doc(db, "global_events", "boss"), {
+                            level: newLevel,
+                            maxHp: newMax,
+                            currentHp: newMax
+                        }).then(() => {
+                            isBossSyncing = false;
+                        }).catch(() => isBossSyncing = false);
+                        showToast(`🔥 Boss poražen všemi hráči! Přichází Lvl ${newLevel}! 🔥`);
+                        playSound('ascend');
+                    }
+                    updateBossUI();
+                } else {
+                    setDoc(doc(db, "global_events", "boss"), {
+                        level: 1,
+                        maxHp: 1000000,
+                        currentHp: 1000000
+                    });
+                }
+            });
         }
 
         initImprovementsUI();
@@ -1252,22 +1534,32 @@ async function loadHTML() {
         applyCosmetics();
         updateUI();
 
-        gameLoop = setInterval(() => {
+        // --- ZOBRAZENÍ CHANGELOGU PO STARTU ---
+        if (localStorage.getItem('meme_changelog_v2') !== 'true') {
+            setTimeout(() => {
+                const modal = document.getElementById('changelog-modal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    const cb = document.getElementById('hide-changelog-checkbox');
+                    if (cb) cb.checked = false;
+                }
+            }, 500);
+        }
+
+        gameLoop = setInterval(async () => {
             const now = Date.now();
             fastText('timer', formatTime(now - game.startTime));
             
-            let dt = (now - game.lastTime) / 1000;
-            if (dt < 0) dt = 0; 
-            if (dt > 86400) dt = 86400; 
-            
+            let realDt = (now - game.lastTime) / 1000;
+            if (realDt > 86400) realDt = 86400;
+            if (realDt < 0) realDt = 0;
+
             game.lastTime = now;
             
-            const gain = getBPS() * dt;
+            const gain = getBPS() * realDt;
             if (gain > 0 && !isNaN(gain)) { 
                 game.score += gain; 
                 game.totalScore += gain;
-                expectedScore += gain; 
-                expectedTotalScore += gain; 
             }
 
             cryptoTimer += 100;
@@ -1279,6 +1571,7 @@ async function loadHTML() {
                         game.crypto.price = 10;
                         showToast("📉 KRYPTO BURZA ZKRACHOVALA! Všechny tvé MemeCoiny jsou pryč!");
                         playSound('crash');
+                        saveGameData();
                     } else {
                         let change = (Math.random() * 0.35) - 0.15;
                         game.crypto.price = Math.max(10, Math.floor(game.crypto.price * (1 + change)));
@@ -1299,6 +1592,32 @@ async function loadHTML() {
                 spawnGoldenMeme();
             }
 
+            if (pendingBossDamage > 0 && db && !isBossSyncing) {
+                isBossSyncing = true;
+                let dmgToSend = pendingBossDamage;
+                pendingBossDamage = 0;
+                try {
+                    await updateDoc(doc(db, "global_events", "boss"), {
+                        currentHp: increment(-dmgToSend)
+                    });
+                } catch(e) {
+                    pendingBossDamage += dmgToSend; 
+                }
+                isBossSyncing = false;
+            } else if (pendingBossDamage > 0 && !db) {
+                globalBoss.currentHp -= pendingBossDamage;
+                pendingBossDamage = 0;
+                if (globalBoss.currentHp <= 0) {
+                    globalBoss.level += 1;
+                    globalBoss.maxHp = 1000000 * Math.pow(1.5, globalBoss.level - 1);
+                    globalBoss.currentHp = globalBoss.maxHp;
+                    showToast(`🔥 Boss poražen! Přichází Lvl ${globalBoss.level}! 🔥`);
+                    playSound('ascend');
+                }
+                localStorage.setItem('meme_boss_local', JSON.stringify(globalBoss));
+                updateBossUI();
+            }
+
             const fd = document.getElementById('frenzy-display');
             if (game.frenzy && game.frenzy.active) {
                 if (now > game.frenzy.endTime) {
@@ -1307,6 +1626,7 @@ async function loadHTML() {
                     document.body.classList.remove('frenzy-active');
                     if(fd) fd.style.display = 'none';
                     showToast("Frenzy skončilo!");
+                    saveGameData();
                 } else {
                     document.body.classList.add('frenzy-active');
                     if(fd) {
@@ -1322,17 +1642,10 @@ async function loadHTML() {
                 if(fd) fd.style.display = 'none';
             }
 
-            if (game.score > expectedScore + 5) {
-                game.score = expectedScore;
-                showToast("⚠️ Kde jsi vzal ty body? Console hack detekován!");
-                playSound('error');
-            } else { expectedScore = game.score; }
-
-            if (game.totalScore > expectedTotalScore + 5) { game.totalScore = expectedTotalScore; } else { expectedTotalScore = game.totalScore; }
-            
             updateUI();
+            if(!db) updateBossUI();
             
-            if (now - lastSaveTime > 1000) {
+            if (now - lastSaveTime > 3000) {
                 saveGameData();
                 lastSaveTime = now;
             }
