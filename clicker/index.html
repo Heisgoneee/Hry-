@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com;">
     <title>Meme Clicker Simulator 2026 - Ultimate Edition</title>
-    <link rel="stylesheet" href="style.css?v=1.4">
+    <link rel="stylesheet" href="style.css?v=2.2">
 </head>
 <body id="game-body">
 
@@ -15,42 +15,64 @@
 
     <div id="changelog-modal" class="modal" onclick="if(event.target === this) this.style.display='none';" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(5px); justify-content: center; align-items: center; margin: 0; padding: 0;">
         
-        <div class="modal-content" style="border: 4px solid #c0392b; background-color: #1a1a1a; color: white; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 0 30px rgba(192, 57, 43, 0.5); width: 90%; max-width: 500px; display: flex; flex-direction: column; position: relative;">
+        <div class="modal-content" style="border: 4px solid #f1c40f; background-color: #1a1a1a; color: white; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 0 30px rgba(241, 196, 15, 0.4); width: 90%; max-width: 600px; display: flex; flex-direction: column; position: relative;">
             
-            <div style="background-color: #c0392b; padding: 15px; text-align: center; border-bottom: 4px solid #962d22; position: relative;">
-                <h2 style="margin: 0; font-family: 'Press Start 2P', monospace; font-size: 18px; text-transform: uppercase; color: white; text-shadow: 2px 2px 0 #000; letter-spacing: 1px;">
-                    👹 Boss Update V2.0 👹
+            <div style="background-color: #f39c12; padding: 15px; text-align: center; border-bottom: 4px solid #d35400; position: relative;">
+                <h2 style="margin: 0; font-family: 'Press Start 2P', monospace; font-size: 16px; text-transform: uppercase; color: white; text-shadow: 2px 2px 0 #000; letter-spacing: 1px;">
+                    📜 Historie Updatů 📜
                 </h2>
                 <span class="close-btn" onclick="document.getElementById('changelog-modal').style.display='none'" style="position: absolute; top: 10px; right: 15px; color: white; font-size: 28px; opacity: 0.9; cursor: pointer; z-index: 99; font-weight: bold;">&times;</span>
             </div>
 
-            <div style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto;">
-                <div style="background: #2c1a1a; border: 2px solid #e74c3c; padding: 12px; border-radius: 8px; border-left-width: 6px;">
-                    <b style="color: #e74c3c; font-size: 13px; text-transform: uppercase; font-family: monospace;">[⚔️ BOJ]</b>
-                    <span style="font-size: 15px; display: block; margin-top: 4px;"><b>Nová Minihra: Globální Boss</b> - Odemkni ho za 1M bodů a bojuj v reálném čase.</span>
+            <div style="padding: 20px; display: flex; flex-direction: column; gap: 25px; max-height: 60vh; overflow-y: auto;" class="custom-scroll">
+                
+                <div>
+                    <h3 style="color: #9b59b6; border-bottom: 2px solid #9b59b6; padding-bottom: 5px; margin-top: 0; font-size: 18px;">🔥 Verze 2.2 - Boss HP Buff (NOVÉ)</h3>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                        <div style="background: #2a1b2e; border: 1px solid #9b59b6; padding: 10px; border-radius: 6px; border-left-width: 4px;">
+                            <b style="color: #9b59b6; font-family: monospace; font-size: 13px;">[💪 BUFF BOSSE]</b> <span style="font-size: 14px;">Základní životy Bosse na Levelu 1 byly razantně zvýšeny z 1M na <b>5,000,000 HP</b>. Každý další level se počítá z této nové hodnoty!</span>
+                        </div>
+                    </div>
                 </div>
-                <div style="background: #2c1a1a; border: 2px solid #e74c3c; padding: 12px; border-radius: 8px; border-left-width: 6px;">
-                    <b style="color: #e74c3c; font-size: 13px; text-transform: uppercase; font-family: monospace;">[🌐 MULTIPLAYER]</b>
-                    <span style="font-size: 15px; display: block; margin-top: 4px;"><b>Sdílené HP</b> - Boss má stejné životy pro všechny hráče na světě. Spojte síly!</span>
+
+                <div>
+                    <h3 style="color: #2ecc71; border-bottom: 2px solid #2ecc71; padding-bottom: 5px; margin-top: 0; font-size: 16px;">✨ Verze 2.1 - Boss RPG Evoluce</h3>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                        <div style="background: #1e2a22; border: 1px solid #2ecc71; padding: 10px; border-radius: 6px; border-left-width: 4px;">
+                            <b style="color: #2ecc71; font-family: monospace; font-size: 13px;">[⚔️ PRAVIDLO 10%]</b> <span style="font-size: 14px;">Abys po smrti Bosse dostal odměnu, musíš mu ubrat alespoň <b>10 %</b> z jeho max. HP! Ukazatel najdeš pod HP barem.</span>
+                        </div>
+                        <div style="background: #2c291a; border: 1px solid #f1c40f; padding: 10px; border-radius: 6px; border-left-width: 4px;">
+                            <b style="color: #f1c40f; font-family: monospace; font-size: 13px;">[💰 OBŘÍ ODMĚNY]</b> <span style="font-size: 14px;">Pokud splníš limit 10 %, po poražení Bosse dostaneš masivní jednorázový přísun XP a Boss Zlaťáků!</span>
+                        </div>
+                        <div style="background: #1a252c; border: 1px solid #3498db; padding: 10px; border-radius: 6px; border-left-width: 4px;">
+                            <b style="color: #3498db; font-family: monospace; font-size: 13px;">[📈 BPS BONUS]</b> <span style="font-size: 14px;">Za každého úspěšně poraženého bosse (s tvým podílem 10 %) se ti trvale zvedne tvá produkce budov o <b>+10 %</b>.</span>
+                        </div>
+                        <div style="background: #2c1a1a; border: 1px solid #e74c3c; padding: 10px; border-radius: 6px; border-left-width: 4px;">
+                            <b style="color: #e74c3c; font-family: monospace; font-size: 13px;">[🎯 TRUE CRIT]</b> <span style="font-size: 14px;">Kritický zásah (CRIT) nyní <b>kompletně ignoruje</b> obranu (DEF) Bosse.</span>
+                        </div>
+                    </div>
                 </div>
-                <div style="background: #1a252c; border: 2px solid #3498db; padding: 12px; border-radius: 8px; border-left-width: 6px;">
-                    <b style="color: #3498db; font-size: 13px; text-transform: uppercase; font-family: monospace;">[✨ PROGRES]</b>
-                    <span style="font-size: 15px; display: block; margin-top: 4px;"><b>RPG Systém</b> - Získávej XP útočením na Bosse, zvyšuj si Level a vydělávej Boss Goldy.</span>
+
+                <div style="opacity: 0.85;">
+                    <h3 style="color: #e74c3c; border-bottom: 2px solid #e74c3c; padding-bottom: 5px; margin-top: 0; font-size: 16px;">👹 Verze 2.0 - Globální Boss</h3>
+                    <ul style="padding-left: 20px; line-height: 1.6; font-size: 14px; margin-top: 10px; color: #ddd;">
+                        <li><b>Globální Boss:</b> Odemknutí minihry za 1M bodů. Boss má sdílené HP s celým světem.</li>
+                        <li><b>RPG Systém:</b> XP, osobní levely a nová měna Boss Zlaťáky.</li>
+                        <li><b>Boss Shop:</b> Nákup zbraní, Enchantů, Crit šance, Žoldáků (Auto-Attack) a Průrazu zbroje.</li>
+                    </ul>
                 </div>
-                <div style="background: #2c291a; border: 2px solid #f1c40f; padding: 12px; border-radius: 8px; border-left-width: 6px;">
-                    <b style="color: #f1c40f; font-size: 13px; text-transform: uppercase; font-family: monospace;">[🛍️ OBCHOD]</b>
-                    <span style="font-size: 15px; display: block; margin-top: 4px;"><b>Boss Upgrady</b> - Kupuj silnější zbraně, Enchanty a násobiče zisků za Boss Goldy.</span>
-                </div>
+
             </div>
 
             <div style="background-color: #111; padding: 15px; text-align: center; border-top: 2px solid #333; display: flex; flex-direction: column; gap: 15px; align-items: center;">
                 <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 10px; background: #222; padding: 10px 20px; border-radius: 25px; border: 2px solid #444; transition: border-color 0.2s;">
-                    <input type="checkbox" id="hide-changelog-checkbox" style="width: 20px; height: 20px; accent-color: #c0392b; cursor: pointer; margin: 0;">
+                    <input type="checkbox" id="hide-changelog-checkbox" style="width: 20px; height: 20px; accent-color: #f39c12; cursor: pointer; margin: 0;">
                     <span style="font-size: 14px; font-weight: bold; color: #ccc; text-transform: uppercase; letter-spacing: 1px;">
-                        Už příště nezobrazovat
+                        Už příště nezobrazovat (pro V2.2)
                     </span>
                 </label>
-                <button onclick="document.getElementById('changelog-modal').style.display='none'" class="btn" style="background: #e74c3c; color: white; border: none; font-size: 18px; padding: 12px; margin: 0; font-weight: bold; cursor: pointer; border-radius: 8px; width: 100%; box-sizing: border-box;">
+                
+                <button onclick="document.getElementById('changelog-modal').style.display='none'" class="btn" style="background: #f39c12; color: black; border: none; font-size: 18px; padding: 12px; margin: 0; font-weight: bold; cursor: pointer; border-radius: 8px; width: 100%; box-sizing: border-box;">
                     ✅ ZAVŘÍT A HRÁT
                 </button>
             </div>
@@ -118,6 +140,6 @@
 
     </div>
 
-    <script type="module" src="main.js?v=1.5"></script>
+    <script type="module" src="main.js?v=2.2"></script>
 </body>
 </html>
