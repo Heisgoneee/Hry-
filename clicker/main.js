@@ -4,6 +4,12 @@ import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, orderBy,
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
 
+// ==========================================
+// 🔴 HLAVNÍ VYPÍNAČ BOSSE (ÚDRŽBA) 🔴
+// Změň na false, až budeš chtít bosse zítra zase zapnout!
+const BOSS_MAINTENANCE = true; 
+// ==========================================
+
 function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
@@ -198,7 +204,7 @@ let lastSaveTime = Date.now();
 let globalBoss = JSON.parse(localStorage.getItem('meme_boss_local')) || { currentHp: 5000000, maxHp: 5000000, level: 1, lastUpdate: Date.now() };
 let pendingBossDamage = 0;
 let isBossSyncing = false;
-let lastBossSyncTime = 0; // NOVÝ ANTI-SPAM ČASOVAČ
+let lastBossSyncTime = 0; 
 
 if (game.boss && game.boss.lastSeenBossLevel === undefined) {
     game.boss.lastSeenBossLevel = globalBoss.level || 1;
@@ -604,109 +610,6 @@ function updateBossUI() {
         if (autoText) {
             autoText.style.display = game.boss.autoAttack > 0 ? 'block' : 'none';
         }
-
-        const uDmg = document.getElementById('btn-boss-upg-dmg');
-        if (uDmg) {
-            fastText('boss-lvl-dmg', `[${game.boss.weaponDmg}]`);
-            fastText('boss-cost-dmg', formatNumber(game.boss.costs.weaponDmg));
-            uDmg.disabled = game.boss.money < game.boss.costs.weaponDmg;
-        }
-
-        const uGold = document.getElementById('btn-boss-upg-gold');
-        if (uGold) {
-            if (game.boss.level >= 2) {
-                fastText('boss-lvl-gold', `[${game.boss.goldMult}]`);
-                fastText('boss-cost-gold', formatNumber(game.boss.costs.goldMult));
-                fastText('boss-req-gold', `Zisk mincí z bosse +1`);
-                uGold.disabled = game.boss.money < game.boss.costs.goldMult;
-            } else {
-                fastText('boss-lvl-gold', `[🔒]`); fastText('boss-cost-gold', `Lvl 2`); fastText('boss-req-gold', `Vyžaduje tvůj level 2`); uGold.disabled = true;
-            }
-        }
-
-        const uXp = document.getElementById('btn-boss-upg-xp');
-        if (uXp) {
-            if (game.boss.level >= 3) {
-                fastText('boss-lvl-xp', `[${game.boss.xpMult}]`);
-                fastText('boss-cost-xp', formatNumber(game.boss.costs.xpMult));
-                fastText('boss-req-xp', `Zisk XP z bosse +1`);
-                uXp.disabled = game.boss.money < game.boss.costs.xpMult;
-            } else {
-                fastText('boss-lvl-xp', `[🔒]`); fastText('boss-cost-xp', `Lvl 3`); fastText('boss-req-xp', `Vyžaduje tvůj level 3`); uXp.disabled = true;
-            }
-        }
-
-        const uCount = document.getElementById('btn-boss-upg-count');
-        if (uCount) {
-            if (game.boss.level >= 5) {
-                fastText('boss-lvl-count', `[${game.boss.weaponCount}]`);
-                fastText('boss-cost-count', formatNumber(game.boss.costs.weaponCount));
-                fastText('boss-req-count', `Počet útoků naráz +1`);
-                uCount.disabled = game.boss.money < game.boss.costs.weaponCount;
-            } else {
-                fastText('boss-lvl-count', `[🔒]`); fastText('boss-cost-count', `Lvl 5`); fastText('boss-req-count', `Vyžaduje tvůj level 5`); uCount.disabled = true;
-            }
-        }
-        
-        const uCritC = document.getElementById('btn-boss-upg-crit-c');
-        if (uCritC) {
-            if (game.boss.level >= 8) {
-                fastText('boss-lvl-crit-c', `[${game.boss.critChance}%]`);
-                fastText('boss-cost-crit-c', formatNumber(game.boss.costs.critChance));
-                fastText('boss-req-crit-c', `Šance na obří poškození +1%`);
-                uCritC.disabled = game.boss.money < game.boss.costs.critChance;
-            } else {
-                fastText('boss-lvl-crit-c', `[🔒]`); fastText('boss-cost-crit-c', `Lvl 8`); fastText('boss-req-crit-c', `Vyžaduje tvůj level 8`); uCritC.disabled = true;
-            }
-        }
-
-        const uEnchant = document.getElementById('btn-boss-upg-enchant');
-        if (uEnchant) {
-            if (game.boss.level >= 10) {
-                fastText('boss-lvl-enchant', `[${game.boss.enchantMult}]`);
-                fastText('boss-cost-enchant', formatNumber(game.boss.costs.enchantMult));
-                fastText('boss-req-enchant', `Násobič celkového DMG +1x`);
-                uEnchant.disabled = game.boss.money < game.boss.costs.enchantMult;
-            } else {
-                fastText('boss-lvl-enchant', `[🔒]`); fastText('boss-cost-enchant', `Lvl 10`); fastText('boss-req-enchant', `Vyžaduje tvůj level 10`); uEnchant.disabled = true;
-            }
-        }
-
-        const uCritD = document.getElementById('btn-boss-upg-crit-d');
-        if (uCritD) {
-            if (game.boss.level >= 12) {
-                fastText('boss-lvl-crit-d', `[${game.boss.critDmg.toFixed(1)}x]`);
-                fastText('boss-cost-crit-d', formatNumber(game.boss.costs.critDmg));
-                fastText('boss-req-crit-d', `Zvýší poškození CRITu o +0.5x`);
-                uCritD.disabled = game.boss.money < game.boss.costs.critDmg;
-            } else {
-                fastText('boss-lvl-crit-d', `[🔒]`); fastText('boss-cost-crit-d', `Lvl 12`); fastText('boss-req-crit-d', `Vyžaduje tvůj level 12`); uCritD.disabled = true;
-            }
-        }
-
-        const uPen = document.getElementById('btn-boss-upg-pen');
-        if (uPen) {
-            if (game.boss.level >= 15) {
-                fastText('boss-lvl-pen', `[${game.boss.armorPen}]`);
-                fastText('boss-cost-pen', formatNumber(game.boss.costs.armorPen));
-                fastText('boss-req-pen', `Ignoruje 5 DEF z každé rány`);
-                uPen.disabled = game.boss.money < game.boss.costs.armorPen;
-            } else {
-                fastText('boss-lvl-pen', `[🔒]`); fastText('boss-cost-pen', `Lvl 15`); fastText('boss-req-pen', `Vyžaduje tvůj level 15`); uPen.disabled = true;
-            }
-        }
-
-        const uAuto = document.getElementById('btn-boss-upg-auto');
-        if (uAuto) {
-            if (game.boss.level >= 20) {
-                fastText('boss-lvl-auto', `[${game.boss.autoAttack}]`);
-                fastText('boss-cost-auto', formatNumber(game.boss.costs.autoAttack));
-                fastText('boss-req-auto', `Pasivně střílí na Bosse (1x/s)`);
-                uAuto.disabled = game.boss.money < game.boss.costs.autoAttack;
-            } else {
-                fastText('boss-lvl-auto', `[🔒]`); fastText('boss-cost-auto', `Lvl 20`); fastText('boss-req-auto', `Vyžaduje tvůj level 20`); uAuto.disabled = true;
-            }
-        }
     }
 }
 
@@ -1022,6 +925,14 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('click', async (e) => {
+    
+    // --- OCHRANA PŘED KLIKÁNÍM PŘI ÚDRŽBĚ ---
+    if (BOSS_MAINTENANCE && (e.target.closest('#boss-click-btn') || e.target.closest('[id^="btn-boss-upg"]') || e.target.closest('#btn-unlock-boss') || e.target.closest('#btn-refresh-boss'))) {
+        playSound('error');
+        showToast("⚠️ Boss minihra je do zítra pozastavena (údržba DB).");
+        return;
+    }
+
     if (e.target.closest('#btn-changelog')) { 
         document.getElementById('changelog-modal').style.display = 'flex'; 
         const cb = document.getElementById('hide-changelog-checkbox');
@@ -1102,7 +1013,6 @@ document.addEventListener('click', async (e) => {
         return;
     }
 
-    // --- KLIKNUTÍ NA BOSSE (CRIT, ARMOR PENETRACE) ---
     if (e.target.closest('#boss-click-btn')) {
         let rawDmg = game.boss.weaponDmg * game.boss.weaponCount * game.boss.enchantMult;
         
@@ -1661,17 +1571,14 @@ async function loadHTML() {
             document.getElementById('loading-lb').style.color = db ? "#2ecc71" : "#e74c3c";
         }
 
-        if (db) {
+        // --- POKUD NENÍ ÚDRŽBA, ZAPOJÍME FIREBASE LISTENERA ---
+        if (db && !BOSS_MAINTENANCE) {
             onSnapshot(doc(db, "global_events", "boss"), (docSnap) => {
                 if (docSnap.exists()) {
                     let data = docSnap.data();
 
-                    // --- AUTO PATCH PRO ZVÝŠENÍ HP NA 5M ---
                     if (data.level === 1 && data.maxHp === 1000000) {
-                        updateDoc(doc(db, "global_events", "boss"), {
-                            maxHp: 5000000,
-                            currentHp: data.currentHp + 4000000
-                        }).catch(() => {});
+                        updateDoc(doc(db, "global_events", "boss"), { maxHp: 5000000, currentHp: data.currentHp + 4000000 }).catch(() => {});
                         return;
                     }
 
@@ -1692,25 +1599,12 @@ async function loadHTML() {
                         const newLevel = globalBoss.level + 1;
                         const newMax = 5000000 * Math.pow(1.5, newLevel - 1);
                         updateDoc(doc(db, "global_events", "boss"), {
-                            level: newLevel,
-                            maxHp: newMax,
-                            currentHp: newMax,
-                            lastUpdate: Date.now()
-                        }).then(() => {
-                            isBossSyncing = false;
-                        }).catch(() => isBossSyncing = false);
+                            level: newLevel, maxHp: newMax, currentHp: newMax, lastUpdate: Date.now()
+                        }).then(() => { isBossSyncing = false; }).catch(() => isBossSyncing = false);
                     }
                     updateBossUI();
                 } else {
-                    setDoc(doc(db, "global_events", "boss"), {
-                        level: 1,
-                        maxHp: 5000000,
-                        currentHp: 5000000,
-                        lastUpdate: Date.now()
-                    }).catch((err) => {
-                        console.error("Firebase zápis selhal (Pravděpodobně práva DB). Zkontroluj záložku Rules ve Firebase.");
-                        showToast("❌ Chyba Firebase práv! Boss se uložil jen lokálně.");
-                    });
+                    setDoc(doc(db, "global_events", "boss"), { level: 1, maxHp: 5000000, currentHp: 5000000, lastUpdate: Date.now() }).catch(() => {});
                 }
             });
         }
@@ -1753,8 +1647,8 @@ async function loadHTML() {
                 globalBoss.currentHp = Math.min(globalBoss.maxHp, globalBoss.currentHp + regenPerSec * realDt);
             }
 
-            // --- ZABITÍ BOSSE A PŘIDĚLENÍ ODMĚNY (10% PODÍL) ---
-            if (globalBoss.level > game.boss.lastSeenBossLevel) {
+            // --- ZABITÍ BOSSE A PŘIDĚLENÍ ODMĚNY (VYPNUTO PŘI ÚDRŽBĚ) ---
+            if (!BOSS_MAINTENANCE && globalBoss.level > game.boss.lastSeenBossLevel) {
                 let oldLevel = game.boss.lastSeenBossLevel;
                 let oldMaxHp = 5000000 * Math.pow(1.5, oldLevel - 1);
                 let percentDealt = ((game.boss.currentBossDmg || 0) / oldMaxHp) * 100;
@@ -1787,8 +1681,8 @@ async function loadHTML() {
                 updateBossUI();
             }
 
-            // --- AUTO ATTACK BOSS LOGIKA ---
-            if (game.bossUnlocked && game.boss.autoAttack > 0) {
+            // --- AUTO ATTACK BOSS LOGIKA (VYPNUTO PŘI ÚDRŽBĚ) ---
+            if (!BOSS_MAINTENANCE && game.bossUnlocked && game.boss.autoAttack > 0) {
                 let autoHits = game.boss.autoAttack * realDt;
                 if (autoHits > 0) {
                     const rawDmg = game.boss.weaponDmg * game.boss.enchantMult;
@@ -1857,8 +1751,8 @@ async function loadHTML() {
                 spawnGoldenMeme();
             }
 
-            // ANTI-SPAM SYNC: Nyní posílá na Firebase pouze 1x za 1.5 vteřiny
-            if (pendingBossDamage > 0 && db && !isBossSyncing && (now - lastBossSyncTime > 1500)) {
+            // ANTI-SPAM SYNC: Nyní posílá na Firebase pouze 1x za 5 vteřin a JE VYPNUTO PŘI ÚDRŽBĚ
+            if (!BOSS_MAINTENANCE && pendingBossDamage > 0 && db && !isBossSyncing && (now - lastBossSyncTime > 5000)) {
                 isBossSyncing = true;
                 lastBossSyncTime = now;
                 let dmgToSend = pendingBossDamage;
@@ -1870,10 +1764,9 @@ async function loadHTML() {
                     });
                 } catch(e) {
                     pendingBossDamage += dmgToSend; 
-                    console.error("Firebase chyba zápisu (Spam/Práva):", e);
                 }
                 isBossSyncing = false;
-            } else if (pendingBossDamage > 0 && !db) {
+            } else if (!BOSS_MAINTENANCE && pendingBossDamage > 0 && !db) {
                 globalBoss.currentHp -= pendingBossDamage;
                 pendingBossDamage = 0;
                 if (globalBoss.currentHp <= 0) {
