@@ -81,17 +81,6 @@ const defaultState = {
     frenzy: { active: false, type: null, multiplier: 1, duration: 0, endTime: 0 }
 };
 
-// --- STABILNÍ ŠIFROVÁNÍ (Opravuje pád při ukládání) ---
-const SECRET_SALT = "sigma_chad_2026";
-function generateHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-    }
-    return hash.toString(36);
-}
-
 function saveGameData() {
     localStorage.setItem('meme_clicker_backup_total', game.totalScore);
     const str = JSON.stringify(game);
@@ -1475,53 +1464,6 @@ document.addEventListener('click', async (e) => {
             window.location.reload();
         }
         return;
-    }
-});
-
-document.addEventListener('change', (e) => {
-    if (e.target.id === 'custom-image-upload') {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(readerEvent) {
-                game.cosmetics.customImage = readerEvent.target.result;
-                applyCosmetics();
-                saveGameData();
-            }
-            reader.readAsDataURL(file);
-        }
-    }
-    
-    if (e.target.id === 'import-save-upload') {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const contents = evt.target.result;
-            const importedGame = decryptSave(contents);
-            
-            if (importedGame && importedGame.score !== undefined) {
-                game = importedGame;
-                expectedScore = game.score;
-                expectedTotalScore = game.totalScore;
-                
-                let backupTotalScore = parseFloat(localStorage.getItem('meme_clicker_backup_total')) || 0;
-                if (game.totalScore < backupTotalScore) {
-                    game.totalScore = backupTotalScore;
-                    expectedTotalScore = backupTotalScore;
-                }
-
-                saveGameData();
-                playSound('achievement');
-                alert("✅ Save úspěšně načten!");
-                window.location.reload();
-            } else {
-                playSound('error');
-                alert("❌ Neplatný nebo upravený save soubor! Pěkný pokus o podvádění 😉");
-            }
-        };
-        reader.readAsText(file);
-        e.target.value = '';
     }
 });
 
