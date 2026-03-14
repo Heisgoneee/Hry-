@@ -195,10 +195,10 @@ let nextGolden = Math.random() * 60000 + 60000;
 let cryptoTimer = 0;
 let lastSaveTime = Date.now();
 
-// Default inicializace na 5M
 let globalBoss = JSON.parse(localStorage.getItem('meme_boss_local')) || { currentHp: 5000000, maxHp: 5000000, level: 1, lastUpdate: Date.now() };
 let pendingBossDamage = 0;
 let isBossSyncing = false;
+let lastBossSyncTime = 0; // NOVÝ ANTI-SPAM ČASOVAČ
 
 if (game.boss && game.boss.lastSeenBossLevel === undefined) {
     game.boss.lastSeenBossLevel = globalBoss.level || 1;
@@ -1666,15 +1666,14 @@ async function loadHTML() {
                 if (docSnap.exists()) {
                     let data = docSnap.data();
 
-                    // --- AUTO PATCH PRO ZVÝŠENÍ HP NA 5M PRO STARÉ BOSSE LVL 1 ---
+                    // --- AUTO PATCH PRO ZVÝŠENÍ HP NA 5M ---
                     if (data.level === 1 && data.maxHp === 1000000) {
                         updateDoc(doc(db, "global_events", "boss"), {
                             maxHp: 5000000,
                             currentHp: data.currentHp + 4000000
-                        });
-                        return; // Ukončíme a počkáme na nové zavolání onSnapshot
+                        }).catch(() => {});
+                        return;
                     }
-                    // -----------------------------------------------------------
 
                     let now = Date.now();
                     let lastUpdate = data.lastUpdate || now;
@@ -1708,6 +1707,9 @@ async function loadHTML() {
                         maxHp: 5000000,
                         currentHp: 5000000,
                         lastUpdate: Date.now()
+                    }).catch((err) => {
+                        console.error("Firebase zápis selhal (Pravděpodobně práva DB). Zkontroluj záložku Rules ve Firebase.");
+                        showToast("❌ Chyba Firebase práv! Boss se uložil jen lokálně.");
                     });
                 }
             });
@@ -1855,8 +1857,10 @@ async function loadHTML() {
                 spawnGoldenMeme();
             }
 
-            if (pendingBossDamage > 0 && db && !isBossSyncing) {
+            // ANTI-SPAM SYNC: Nyní posílá na Firebase pouze 1x za 1.5 vteřiny
+            if (pendingBossDamage > 0 && db && !isBossSyncing && (now - lastBossSyncTime > 1500)) {
                 isBossSyncing = true;
+                lastBossSyncTime = now;
                 let dmgToSend = pendingBossDamage;
                 pendingBossDamage = 0;
                 try {
@@ -1866,6 +1870,7 @@ async function loadHTML() {
                     });
                 } catch(e) {
                     pendingBossDamage += dmgToSend; 
+                    console.error("Firebase chyba zápisu (Spam/Práva):", e);
                 }
                 isBossSyncing = false;
             } else if (pendingBossDamage > 0 && !db) {
