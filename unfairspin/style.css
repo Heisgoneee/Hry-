@@ -1,0 +1,203 @@
+body {
+    background-color: #120a1f;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+
+#game-container {
+    text-align: center;
+    background: #1f1433;
+    padding: 30px;
+    border-radius: 20px;
+    border: 4px solid #ffd700;
+    width: 420px;
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.2), inset 0 0 20px rgba(0,0,0,0.8);
+}
+
+#stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: #0a0514;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 14px;
+    border: 1px solid #442266;
+    color: #ffd700;
+}
+
+#slot-machine {
+    display: flex;
+    justify-content: space-between;
+    background: #000;
+    padding: 20px;
+    border-radius: 10px;
+    border: 3px solid #555;
+    margin-bottom: 20px;
+    box-shadow: inset 0 0 30px rgba(0,0,0,1);
+}
+
+.reel-container {
+    background: #fff;
+    width: 80px;
+    height: 100px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    box-shadow: inset 0 10px 15px rgba(0,0,0,0.5), inset 0 -10px 15px rgba(0,0,0,0.5);
+    border: 2px solid #333;
+}
+
+.reel {
+    font-size: 60px;
+    line-height: 100px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.spinning {
+    animation: slotSpin 0.15s linear infinite;
+    filter: blur(4px);
+}
+
+@keyframes slotSpin {
+    0% { transform: translateY(-100px); }
+    100% { transform: translateY(100px); }
+}
+
+#spin-btn {
+    padding: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    background: linear-gradient(to bottom, #ff4444, #aa0000);
+    color: white;
+    border: 3px solid #ffaaaa;
+    font-weight: bold;
+    border-radius: 10px;
+    width: 100%;
+    text-shadow: 1px 1px 2px black;
+    box-shadow: 0 6px 0 #660000, 0 10px 10px rgba(0,0,0,0.5);
+    transition: all 0.1s;
+    text-transform: uppercase;
+}
+
+#spin-btn:active:not(:disabled) {
+    transform: translateY(6px);
+    box-shadow: 0 0 0 #660000, 0 2px 5px rgba(0,0,0,0.5);
+}
+
+#spin-btn:disabled {
+    background: #555;
+    border-color: #777;
+    box-shadow: 0 6px 0 #222;
+    cursor: not-allowed;
+    color: #888;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 15px;
+    background: #222;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    overflow: hidden;
+}
+
+#progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff8c00, #ffd700);
+    transition: width 0.3s;
+    box-shadow: 0 0 10px #ffd700;
+}
+
+.upgrades {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.upgrade-btn {
+    background: #2a1b40;
+    color: #fff;
+    border: 2px solid #8a2be2;
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.upgrade-btn:hover:not(:disabled) {
+    background: #4a2b70;
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.6);
+}
+
+.upgrade-btn:disabled {
+    opacity: 0.4;
+    border-color: #444;
+    background: #111;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+#leaderboard {
+    margin-top: 25px;
+    font-size: 12px;
+    background: #0a0514;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #442266;
+}
+
+table { width: 100%; border-collapse: collapse; }
+th { border-bottom: 1px solid #8a2be2; padding: 5px; color: #8a2be2; }
+td { padding: 5px; border-bottom: 1px solid #2a1b40; }
+
+.win-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+#player-name {
+    padding: 12px;
+    margin: 15px;
+    background: #222;
+    color: #ffd700;
+    border: 2px solid #ffd700;
+    font-size: 18px;
+    text-align: center;
+    border-radius: 5px;
+}
+
+#save-btn {
+    padding: 12px 25px;
+    cursor: pointer;
+    background: #ffd700;
+    color: black;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    font-size: 18px;
+}

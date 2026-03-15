@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unfair Flips - Database Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="stats">
+            <div>Čas: <span id="timer">0.0</span>s</div>
+            <div>Peníze: <span id="money">0.00</span>$</div>
+            <div>Šance: <span id="chance">20</span>%</div>
+            <div>Komb: <span id="combo">0</span>/10</div>
+        </div>
+
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+
+        <div id="coin-area">
+            <div id="coin">?</div>
+        </div>
+
+        <button id="flip-btn">HODIT MINCÍ</button>
+
+        <div class="upgrades">
+            <button class="upgrade-btn" id="upg-chance" data-cost="0.50">
+                <span>+5% Šance</span>
+                <span>Cena: <span class="cost">0.50</span>$</span>
+            </button>
+            <button class="upgrade-btn" id="upg-reward" data-cost="1.00">
+                <span>x2 Odměna</span>
+                <span>Cena: <span class="cost">1.00</span>$</span>
+            </button>
+            <button class="upgrade-btn" id="upg-combo" data-cost="2.00">
+                <span>+0.5x Kombo bonus</span>
+                <span>Cena: <span class="cost">2.00</span>$</span>
+            </button>
+        </div>
+
+        <div id="leaderboard">
+            <h3>Leaderboard (Top 5)</h3>
+            <table>
+                <thead>
+                    <tr><th>Jméno</th><th>Čas</th></tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="win-screen" class="win-screen">
+        <h1>VÍTĚZSTVÍ!</h1>
+        <p id="win-stats"></p>
+        <input type="text" id="player-name" placeholder="Tvé jméno" maxlength="10">
+        <button id="save-btn">Uložit a Restart</button>
+    </div>
+
+    <script src="../censor.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+body {
+    background-color: #1a1a1a;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+
+#game-container {
+    text-align: center;
+    background: #2a2a2a;
+    padding: 30px;
+    border-radius: 15px;
+    border: 3px solid #444;
+    width: 380px;
+    box-shadow: 0 0 50px rgba(0,0,0,0.5);
+}
+
+#stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: #111;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+#coin-area {
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    margin-bottom: 30px;
+    perspective: 1000px;
+}
+
+#coin {
+    width: 90px;
+    height: 90px;
+    background: #ffd700;
+    color: #000;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 40px;
+    font-weight: bold;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.6);
+    transform-style: preserve-3d;
+}
+
+.flipping {
+    animation: unfairFlip 0.7s cubic-bezier(0.15, 0, 0.15, 1) forwards;
+}
+
+@keyframes unfairFlip {
+    0% { transform: translateY(0) rotateX(0deg) scale(1); }
+    40% { transform: translateY(-180px) rotateX(720deg) scale(1.6); filter: blur(2px); }
+    85% { transform: translateY(10px) rotateX(1440deg) scale(0.9); }
+    100% { transform: translateY(0) rotateX(1440deg) scale(1); }
+}
+
+#flip-btn {
+    padding: 15px;
+    font-size: 20px;
+    cursor: pointer;
+    background: #ffd700;
+    color: black;
+    border: none;
+    font-weight: bold;
+    border-radius: 5px;
+    width: 100%;
+    transition: transform 0.1s;
+}
+
+#flip-btn:active { transform: scale(0.95); }
+#flip-btn:disabled { background: #555; cursor: not-allowed; }
+
+/* Nový design pro upgrady */
+.upgrades {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.upgrade-btn {
+    background: #222;
+    color: #fff;
+    border: 2px solid #ffd700;
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.upgrade-btn:hover:not(:disabled) {
+    background: #ffd700;
+    color: #000;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.upgrade-btn:disabled {
+    opacity: 0.4;
+    border-color: #555;
+    background: #111;
+    color: #777;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+#leaderboard {
+    margin-top: 25px;
+    font-size: 12px;
+    background: #111;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+table { width: 100%; border-collapse: collapse; }
+th { border-bottom: 1px solid #ffd700; padding: 5px; color: #ffd700; }
+td { padding: 5px; border-bottom: 1px solid #333; }
+
+.win-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background: #444;
+    margin-top: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+#progress-fill {
+    width: 0%;
+    height: 100%;
+    background: #ffd700;
+    transition: width 0.3s;
+}
+
+button:not(#flip-btn):not(.upgrade-btn) {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #ffd700;
+    color: black;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unfair Spin - Slot Machine</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="stats">
+            <div>Čas: <span id="timer">0.0</span>s</div>
+            <div>Peníze: <span id="money">0.00</span>$</div>
+            <div>Šance na Jackpot: <span id="chance">5</span>%</div>
+            <div>Jackpoty v řadě: <span id="combo">0</span>/10</div>
+        </div>
+
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+
+        <div id="slot-machine">
+            <div class="reel-container"><div class="reel" id="reel1">🍒</div></div>
+            <div class="reel-container"><div class="reel" id="reel2">🔔</div></div>
+            <div class="reel-container"><div class="reel" id="reel3">🍋</div></div>
+        </div>
+
+        <button id="spin-btn">SPIN (ZATOČIT)</button>
+
+        <div class="upgrades">
+            <button class="upgrade-btn" id="upg-chance" data-cost="0.20">
+                <span>+2% Šance na Jackpot</span>
+                <span>Cena: <span class="cost">0.20</span>$</span>
+            </button>
+            <button class="upgrade-btn" id="upg-reward" data-cost="0.50">
+                <span>x2 Odměna</span>
+                <span>Cena: <span class="cost">0.50</span>$</span>
+            </button>
+            <button class="upgrade-btn" id="upg-combo" data-cost="1.00">
+                <span>+1.0x Kombo bonus</span>
+                <span>Cena: <span class="cost">1.00</span>$</span>
+            </button>
+        </div>
+
+        <div id="leaderboard">
+            <h3>Leaderboard (Top 5)</h3>
+            <table>
+                <thead>
+                    <tr><th>Jméno</th><th>Čas</th></tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="win-screen" class="win-screen">
+        <h1 style="color: #ffd700; text-shadow: 0 0 20px #ff0000;">ULTIMATE JACKPOT!</h1>
+        <p id="win-stats"></p>
+        <input type="text" id="player-name" placeholder="Tvé jméno" maxlength="10">
+        <button id="save-btn">Uložit a Restart</button>
+    </div>
+
+    <script src="../censor.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

@@ -207,6 +207,85 @@
             -webkit-text-fill-color: transparent;
             font-weight: 800;
         }
+
+        /* Settings button & modal */
+        #settings-button {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid var(--card-border);
+            background: rgba(15,23,42,0.9);
+            color: var(--text-main);
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 10px 25px rgba(15,23,42,0.6);
+            z-index: 1000;
+        }
+
+        #settings-button:hover {
+            border-color: var(--primary);
+        }
+
+        #settings-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+        }
+
+        #settings-modal .settings-card {
+            background: rgba(15,23,42,0.95);
+            border-radius: 16px;
+            padding: 20px 24px;
+            border: 1px solid var(--card-border);
+            width: 320px;
+            box-shadow: 0 20px 40px rgba(15,23,42,0.8);
+        }
+
+        #settings-modal h2 {
+            margin: 0 0 12px 0;
+            font-size: 1.2rem;
+        }
+
+        #settings-modal p {
+            margin: 0 0 16px 0;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        #settings-close {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px 0;
+            border-radius: 999px;
+            border: 1px solid var(--card-border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        #settings-close:hover {
+            border-color: var(--primary);
+            color: var(--text-main);
+        }
     </style>
 </head>
 <body>
@@ -238,6 +317,24 @@
                 <span class="badge">ODDECHOVÁ</span>
                 <h3>Clicker</h3>
                 <p>Nekonečné klikání, upgrady a automatizace. Vybuduj své impérium z jediného kliknutí.</p>
+            </div>
+        </a>
+
+        <a href="unfairflips/index.html" class="game-card" data-category="singleplayer">
+            <div class="thumbnail">🪙</div>
+            <div class="info">
+                <span class="badge">GAMBLING</span>
+                <h3>Unfair Flips</h3>
+                <p>Hazardní mincovka s nefér šancemi. Zvedej šanci, odměnu i kombo a zapiš se do leaderboardu.</p>
+            </div>
+        </a>
+
+        <a href="unfairspin/index.html" class="game-card" data-category="singleplayer">
+            <div class="thumbnail">🎰</div>
+            <div class="info">
+                <span class="badge">GAMBLING</span>
+                <h3>Unfair Spin</h3>
+                <p>Ultimátní nefér ruleta. Riskuj, toč a snaž se přežít náhodu, která je proti tobě.</p>
             </div>
         </a>
 
@@ -323,12 +420,27 @@
         </a>
     </div>
 
+    <button id="settings-button">⚙ Nastavení</button>
+
+    <div id="settings-modal">
+        <div class="settings-card">
+            <h2>Nastavení</h2>
+            <p>Globální nastavení se ukládají do tohoto prohlížeče.</p>
+            <div class="settings-row">
+                <span>Cenzura sprostých slov</span>
+                <input type="checkbox" id="censorship-toggle">
+            </div>
+            <button id="settings-close">Zavřít</button>
+        </div>
+    </div>
+
     <footer>
         <div class="vibe-badge">
             🚀 Vytvořeno čistě přes <span>vibe coding</span>
         </div>
     </footer>
 
+    <script src="censor.js"></script>
     <script>
         const tabs = document.querySelectorAll('.tab-btn');
         const cards = document.querySelectorAll('.game-card');
