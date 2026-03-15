@@ -7,7 +7,7 @@ const audioCtx = new AudioContext();
 // ==========================================
 // 🔴 HLAVNÍ VYPÍNAČ BOSSE (ÚDRŽBA) 🔴
 // Změň na false, až budeš chtít bosse zítra zase zapnout!
-const BOSS_MAINTENANCE = true; 
+const BOSS_MAINTENANCE = false; 
 // ==========================================
 
 function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
