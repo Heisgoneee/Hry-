@@ -4,7 +4,7 @@ import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, orderBy,
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
 
-const BOSS_MAINTENANCE = false; 
+const BOSS_MAINTENANCE = true; 
 
 // --- VYLEPŠENÁ FUNKCE NA CENZURU JMEN (Leaderboard) ---
 const badWords = [
