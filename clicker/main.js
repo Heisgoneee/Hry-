@@ -6,19 +6,40 @@ const audioCtx = new AudioContext();
 
 const BOSS_MAINTENANCE = false; 
 
-// --- FUNKCE NA CENZURU JMEN (Leaderboard) ---
-const badWords = ["kurv", "píč", "zmrd", "kokot", "prdel", "jeb", "čurá", "curak"]; 
+// --- VYLEPŠENÁ FUNKCE NA CENZURU JMEN (Leaderboard) ---
+const badWords = [
+    // České kořeny a nadávky
+    "kurv", "píč", "pic", "zmrd", "kokot", "kkt", "prdel", "jeb", "čurá", "curak",
+    "mrd", "kretén", "kreten", "debil", "buzn", "buzik", "hovn", "srač", "srac",
+    // Anglické kořeny, nadávky a rasistické urážky
+    "fuck", "shit", "bitch", "asshole", "cunt", "dick", "slut", "whore",
+    "nigger", "nigga", "nigg", "negr", "fag", "faggot", "retard", "rape"
+]; 
 
 function censorName(name) {
     if (!name) return "";
     let safeName = String(name);
+    
     badWords.forEach(word => {
+        // Hledáme konkrétní zakázané slovo (i uvnitř jiných slov), nezávisle na velikosti písmen
         const regex = new RegExp(word, "gi");
-        safeName = safeName.replace(regex, "***");
+        
+        safeName = safeName.replace(regex, (match) => {
+            // Pokud je slovo velmi krátké (třeba jen "pic" nebo "kkt"), prostě ho vycenzurujeme rovnou celé
+            if (match.length <= 2) return "***";
+            
+            // Jinak vezmeme první písmeno, prostředek nahradíme hvězdičkami (podle délky) a přidáme poslední písmeno
+            const firstLetter = match.charAt(0);
+            const lastLetter = match.charAt(match.length - 1);
+            const stars = "*".repeat(match.length - 2);
+            
+            return firstLetter + stars + lastLetter;
+        });
     });
+    
     return safeName;
 }
-// ------------------------------------------
+// -----------------------------------------------------
 
 function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
