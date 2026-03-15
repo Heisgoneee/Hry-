@@ -5,16 +5,88 @@ const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
 
 const BOSS_MAINTENANCE = false; 
+const OFFLINE_MODE = localStorage.getItem('dev_offline_mode') === 'true';
 
-// --- VYLEPŠENÁ FUNKCE NA CENZURU JMEN (Leaderboard) ---
-const badWords = [
-    // České kořeny a nadávky
-    "kurv", "píč", "pic", "zmrd", "kokot", "kkt", "prdel", "jeb", "čurá", "curak",
-    "mrd", "kretén", "kreten", "debil", "buzn", "buzik", "hovn", "srač", "srac",
-    // Anglické kořeny, nadávky a rasistické urážky
-    "fuck", "shit", "bitch", "asshole", "cunt", "dick", "slut", "whore",
-    "nigger", "nigga", "nigg", "negr", "fag", "faggot", "retard", "rape"
-]; 
+// ==========================================
+// 🛡️ ANTI-CHEAT: HASH GENERÁTOR
+// ==========================================
+const SECRET_SALT = "sigma_chad_unbreakable_2026_v5";
+
+function generateHash(dataStr) {
+    let hash = 0;
+    for (let i = 0; i < dataStr.length; i++) {
+        hash = Math.imul(31, hash) + dataStr.charCodeAt(i) | 0;
+    }
+    return hash + SECRET_SALT;
+}
+
+function saveGameData() {
+    localStorage.setItem('meme_clicker_backup_total', game.totalScore);
+    const str = JSON.stringify(game);
+    const hash = generateHash(str);
+    const payload = { d: str, h: hash };
+    // Bezpečné uložení do Base64 bez rozbíjení znaků
+    localStorage.setItem('meme_clicker_fb', btoa(encodeURIComponent(JSON.stringify(payload))));
+}
+// ==========================================
+
+let cheatBuffer = "";
+document.addEventListener('keydown', (e) => {
+    if (e.key.length > 1) return; 
+    
+    cheatBuffer += e.key.toLowerCase();
+    if (cheatBuffer.length > 20) cheatBuffer = cheatBuffer.substring(cheatBuffer.length - 20);
+
+    if (cheatBuffer.includes('hesoyam')) {
+        cheatBuffer = "";
+        window.cheatActive = true; 
+        
+        let boost = 1000000000000000;
+        game.score += boost; window._AC.s += boost;
+        game.totalScore += boost; window._AC.t += boost;
+        game.ascend.points += 100000;
+        if (game.boss) game.boss.money += 100000000;
+        
+        playSound('ascend');
+        showToast("🤑 HESOYAM AKTIVOVÁN! Účet nabuffován.");
+        updateUI();
+        if (typeof updateBossUI === 'function') updateBossUI();
+        saveGameData();
+    }
+
+    if (cheatBuffer.includes('killboss')) {
+        cheatBuffer = "";
+        if (game.bossUnlocked && globalBoss) {
+            let massiveDmg = globalBoss.maxHp;
+            pendingBossDamage += massiveDmg;
+            
+            if(game.boss) {
+                game.boss.totalDmg = (game.boss.totalDmg || 0) + massiveDmg;
+                game.boss.currentBossDmg = (game.boss.currentBossDmg || 0) + massiveDmg;
+            }
+            
+            playSound('crit');
+            showToast("💀 KILLBOSS AKTIVOVÁN! Insta-DMG odesláno.");
+            updateBossUI();
+        } else {
+            showToast("Boss ještě není odemčený!");
+        }
+    }
+
+    if (cheatBuffer.includes('aezakmi')) {
+        cheatBuffer = "";
+        if (OFFLINE_MODE) {
+            localStorage.removeItem('dev_offline_mode');
+            alert("AEZAKMI: Offline mód VYPNUT. Hra se nyní restartuje do ONLINE módu.");
+        } else {
+            localStorage.setItem('dev_offline_mode', 'true');
+            alert("AEZAKMI: Offline mód ZAPNUT. Hra se nyní restartuje do OFFLINE módu (bez ukládání na Firebase).");
+        }
+        window.location.reload();
+    }
+});
+
+const badWords = ["kurv", "píč", "pic", "zmrd", "kokot", "kkt", "prdel", "jeb", "čurá", "curak", "mrd", "kretén", "kreten", "debil", "buzn", "buzik", "hovn", "srač", "srac", "fuck", "shit", "bitch", "asshole", "cunt", "dick", "slut", "whore", "nigger", "nigga", "nigg", "negr", "fag", "faggot", "retard", "rape"]; 
 
 function censorName(name) {
     if (!name) return "";
