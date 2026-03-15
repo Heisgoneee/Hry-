@@ -4,11 +4,21 @@ import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, orderBy,
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
 
-// ==========================================
-// 🔴 HLAVNÍ VYPÍNAČ BOSSE (ÚDRŽBA) 🔴
-// Změň na false, až budeš chtít bosse zítra zase zapnout!
 const BOSS_MAINTENANCE = false; 
-// ==========================================
+
+// --- FUNKCE NA CENZURU JMEN (Leaderboard) ---
+const badWords = ["kurv", "píč", "zmrd", "kokot", "prdel", "jeb", "čurá", "curak"]; 
+
+function censorName(name) {
+    if (!name) return "";
+    let safeName = String(name);
+    badWords.forEach(word => {
+        const regex = new RegExp(word, "gi");
+        safeName = safeName.replace(regex, "***");
+    });
+    return safeName;
+}
+// ------------------------------------------
 
 function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -54,7 +64,7 @@ const firebaseConfig = {
 };
 
 let db = null;
-try { const app = initializeApp(firebaseConfig); db = getFirestore(app); } catch(e) {}
+try { const app = initializeApp(firebaseConfig); db = getFirestore(app); } catch(e) { console.error("Firebase se nepřipojil:", e); }
 
 const bldKeys = ["auto", "factory", "mine", "ai", "tiktok", "elon", "matrix", "crypto", "metaverse", "alien"];
 const bldNames = { click: "Klikání", click2: "Super Klik", klikator: "Klikátor", auto: "Trol", factory: "Farma", mine: "Důl", ai: "AI", tiktok: "TikTok", elon: "Elon", matrix: "Matrix", crypto: "Krypto", metaverse: "Metaverse", alien: "UFO" };
@@ -71,7 +81,7 @@ const skinMap = { 'default': { type: 'text', val: '🔴' }, 'doge': { type: 'img
 
 const defaultState = {
     nick: "", score: 0, totalScore: 0, clicks: 0, clickPower: 1, click2Level: 0, click2Power: 0, klikatorCount: 0, casinoSpins: 0,
-    bossUnlocked: false, 
+    bossUnlocked: false, season: 1,
     boss: { 
         money: 0, xp: 0, level: 1, totalDmg: 0,
         bossKills: 0, currentBossDmg: 0, lastSeenBossLevel: 1, 
@@ -119,6 +129,7 @@ if (game.totalScore < backupTotalScore) {
     game.totalScore = backupTotalScore; 
 }
 
+if (!game.lastTime || isNaN(game.lastTime)) game.lastTime = Date.now();
 if (isNaN(game.score) || game.score == null) game.score = 0;
 if (isNaN(game.totalScore) || game.totalScore == null) game.totalScore = game.score;
 if (isNaN(game.clicks) || game.clicks == null) game.clicks = 0;
@@ -127,6 +138,7 @@ if (isNaN(game.click2Level) || game.click2Level == null) game.click2Level = 0;
 if (isNaN(game.click2Power) || game.click2Power == null) game.click2Power = 0;
 if (isNaN(game.klikatorCount) || game.klikatorCount == null) game.klikatorCount = 0;
 if (isNaN(game.casinoSpins) || game.casinoSpins == null) game.casinoSpins = 0;
+if (isNaN(game.season) || game.season == null) game.season = 1;
 
 if (!game.buildings) game.buildings = {};
 if (!game.improvements) game.improvements = {};
@@ -201,7 +213,7 @@ let nextGolden = Math.random() * 60000 + 60000;
 let cryptoTimer = 0;
 let lastSaveTime = Date.now();
 
-let globalBoss = JSON.parse(localStorage.getItem('meme_boss_local')) || { currentHp: 5000000, maxHp: 5000000, level: 1, lastUpdate: Date.now() };
+let globalBoss = JSON.parse(localStorage.getItem('meme_boss_local')) || { currentHp: 5000000, maxHp: 5000000, level: 1, lastUpdate: Date.now(), season: 1 };
 let pendingBossDamage = 0;
 let isBossSyncing = false;
 let lastBossSyncTime = 0; 
@@ -482,13 +494,15 @@ function updateImprovementsUI() {
 }
 
 function spawnParticle(x, y, text) {
-    const p = document.createElement('div');
-    p.className = 'particle'; 
-    p.textContent = text;
-    p.style.left = (x - 20 + Math.random()*40) + 'px'; 
-    p.style.top = y + 'px';
-    document.body.appendChild(p);
-    setTimeout(() => p.remove(), 1000);
+    try {
+        const p = document.createElement('div');
+        p.className = 'particle'; 
+        p.textContent = text;
+        p.style.left = (x - 20 + Math.random()*40) + 'px'; 
+        p.style.top = y + 'px';
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 1000);
+    } catch(e) {}
 }
 
 function applyCosmetics() {
@@ -535,35 +549,37 @@ function applyCosmetics() {
 }
 
 function spawnGoldenMeme() {
-    const gm = document.createElement('div');
-    gm.className = 'golden-meme';
-    
-    gm.style.left = Math.random() * (window.innerWidth - 100) + 'px';
-    gm.style.top = Math.random() * (window.innerHeight - 100) + 'px';
-    document.body.appendChild(gm);
-    
-    let clicked = false;
-    gm.addEventListener('click', () => {
-        if(clicked) return;
-        clicked = true;
-        gm.remove();
-        playSound('achievement');
+    try {
+        const gm = document.createElement('div');
+        gm.className = 'golden-meme';
         
-        if (Math.random() > 0.5) {
-            game.frenzy = { active: true, type: 'click', multiplier: 4, duration: 30000, endTime: Date.now() + 30000 };
-            showToast("🌟 CLICK FRENZY! Klikání x4 na 30 sekund!");
-        } else {
-            game.frenzy = { active: true, type: 'bps', multiplier: 3, duration: 30000, endTime: Date.now() + 30000 };
-            showToast("🌟 BUILDING FRENZY! Budovy x3 na 30 sekund!");
-        }
-        document.body.classList.add('frenzy-active');
-        updateUI();
-        saveGameData();
-    });
+        gm.style.left = Math.random() * (window.innerWidth - 100) + 'px';
+        gm.style.top = Math.random() * (window.innerHeight - 100) + 'px';
+        document.body.appendChild(gm);
+        
+        let clicked = false;
+        gm.addEventListener('click', () => {
+            if(clicked) return;
+            clicked = true;
+            gm.remove();
+            playSound('achievement');
+            
+            if (Math.random() > 0.5) {
+                game.frenzy = { active: true, type: 'click', multiplier: 4, duration: 30000, endTime: Date.now() + 30000 };
+                showToast("🌟 CLICK FRENZY! Klikání x4 na 30 sekund!");
+            } else {
+                game.frenzy = { active: true, type: 'bps', multiplier: 3, duration: 30000, endTime: Date.now() + 30000 };
+                showToast("🌟 BUILDING FRENZY! Budovy x3 na 30 sekund!");
+            }
+            document.body.classList.add('frenzy-active');
+            updateUI();
+            saveGameData();
+        });
 
-    setTimeout(() => {
-        if (!clicked && gm.parentNode) gm.remove();
-    }, 12000);
+        setTimeout(() => {
+            if (!clicked && gm.parentNode) gm.remove();
+        }, 12000);
+    } catch(e) {}
 }
 
 function updateBossUI() {
@@ -608,7 +624,128 @@ function updateBossUI() {
         
         const autoText = document.getElementById('boss-auto-dps-text');
         if (autoText) {
-            autoText.style.display = game.boss.autoAttack > 0 ? 'block' : 'none';
+            autoText.style.display = (!BOSS_MAINTENANCE && game.boss.autoAttack > 0) ? 'block' : 'none';
+        }
+
+        const uDmg = document.getElementById('btn-boss-upg-dmg');
+        if (uDmg) {
+            fastText('boss-lvl-dmg', `[${game.boss.weaponDmg}]`);
+            fastText('boss-cost-dmg', formatNumber(game.boss.costs.weaponDmg));
+            uDmg.disabled = game.boss.money < game.boss.costs.weaponDmg;
+            uDmg.style.opacity = uDmg.disabled ? '0.4' : '1';
+            uDmg.style.cursor = uDmg.disabled ? 'not-allowed' : 'pointer';
+        }
+
+        const uGold = document.getElementById('btn-boss-upg-gold');
+        if (uGold) {
+            if (game.boss.level >= 2) {
+                fastText('boss-lvl-gold', `[${game.boss.goldMult}]`);
+                fastText('boss-cost-gold', formatNumber(game.boss.costs.goldMult));
+                fastText('boss-req-gold', `Zisk mincí z bosse +1`);
+                uGold.disabled = game.boss.money < game.boss.costs.goldMult;
+            } else {
+                fastText('boss-lvl-gold', `[🔒]`); fastText('boss-cost-gold', `Lvl 2`); fastText('boss-req-gold', `Vyžaduje tvůj level 2`); uGold.disabled = true;
+            }
+            uGold.style.opacity = uGold.disabled ? '0.4' : '1';
+            uGold.style.cursor = uGold.disabled ? 'not-allowed' : 'pointer';
+        }
+
+        const uXp = document.getElementById('btn-boss-upg-xp');
+        if (uXp) {
+            if (game.boss.level >= 3) {
+                fastText('boss-lvl-xp', `[${game.boss.xpMult}]`);
+                fastText('boss-cost-xp', formatNumber(game.boss.costs.xpMult));
+                fastText('boss-req-xp', `Zisk XP z bosse +1`);
+                uXp.disabled = game.boss.money < game.boss.costs.xpMult;
+            } else {
+                fastText('boss-lvl-xp', `[🔒]`); fastText('boss-cost-xp', `Lvl 3`); fastText('boss-req-xp', `Vyžaduje tvůj level 3`); uXp.disabled = true;
+            }
+            uXp.style.opacity = uXp.disabled ? '0.4' : '1';
+            uXp.style.cursor = uXp.disabled ? 'not-allowed' : 'pointer';
+        }
+
+        const uCount = document.getElementById('btn-boss-upg-count');
+        if (uCount) {
+            if (game.boss.level >= 5) {
+                fastText('boss-lvl-count', `[${game.boss.weaponCount}]`);
+                fastText('boss-cost-count', formatNumber(game.boss.costs.weaponCount));
+                fastText('boss-req-count', `Počet útoků naráz +1`);
+                uCount.disabled = game.boss.money < game.boss.costs.weaponCount;
+            } else {
+                fastText('boss-lvl-count', `[🔒]`); fastText('boss-cost-count', `Lvl 5`); fastText('boss-req-count', `Vyžaduje tvůj level 5`); uCount.disabled = true;
+            }
+            uCount.style.opacity = uCount.disabled ? '0.4' : '1';
+            uCount.style.cursor = uCount.disabled ? 'not-allowed' : 'pointer';
+        }
+        
+        const uCritC = document.getElementById('btn-boss-upg-crit-c');
+        if (uCritC) {
+            if (game.boss.level >= 8) {
+                fastText('boss-lvl-crit-c', `[${game.boss.critChance}%]`);
+                fastText('boss-cost-crit-c', formatNumber(game.boss.costs.critChance));
+                fastText('boss-req-crit-c', `Šance na obří poškození +1%`);
+                uCritC.disabled = game.boss.money < game.boss.costs.critChance;
+            } else {
+                fastText('boss-lvl-crit-c', `[🔒]`); fastText('boss-cost-crit-c', `Lvl 8`); fastText('boss-req-crit-c', `Vyžaduje tvůj level 8`); uCritC.disabled = true;
+            }
+            uCritC.style.opacity = uCritC.disabled ? '0.4' : '1';
+            uCritC.style.cursor = uCritC.disabled ? 'not-allowed' : 'pointer';
+        }
+
+        const uEnchant = document.getElementById('btn-boss-upg-enchant');
+        if (uEnchant) {
+            if (game.boss.level >= 10) {
+                fastText('boss-lvl-enchant', `[${game.boss.enchantMult}]`);
+                fastText('boss-cost-enchant', formatNumber(game.boss.costs.enchantMult));
+                fastText('boss-req-enchant', `Násobič celkového DMG +1x`);
+                uEnchant.disabled = game.boss.money < game.boss.costs.enchantMult;
+            } else {
+                fastText('boss-lvl-enchant', `[🔒]`); fastText('boss-cost-enchant', `Lvl 10`); fastText('boss-req-enchant', `Vyžaduje tvůj level 10`); uEnchant.disabled = true;
+            }
+            uEnchant.style.opacity = uEnchant.disabled ? '0.4' : '1';
+            uEnchant.style.cursor = uEnchant.disabled ? 'not-allowed' : 'pointer';
+        }
+
+        const uCritD = document.getElementById('btn-boss-upg-crit-d');
+        if (uCritD) {
+            if (game.boss.level >= 12) {
+                fastText('boss-lvl-crit-d', `[${(game.boss.critDmg || 2).toFixed(1)}x]`);
+                fastText('boss-cost-crit-d', formatNumber(game.boss.costs.critDmg));
+                fastText('boss-req-crit-d', `Zvýší poškození CRITu o +0.5x`);
+                uCritD.disabled = game.boss.money < game.boss.costs.critDmg;
+            } else {
+                fastText('boss-lvl-crit-d', `[🔒]`); fastText('boss-cost-crit-d', `Lvl 12`); fastText('boss-req-crit-d', `Vyžaduje tvůj level 12`); uCritD.disabled = true;
+            }
+            uCritD.style.opacity = uCritD.disabled ? '0.4' : '1';
+            uCritD.style.cursor = uCritD.disabled ? 'not-allowed' : 'pointer';
+        }
+
+        const uPen = document.getElementById('btn-boss-upg-pen');
+        if (uPen) {
+            if (game.boss.level >= 15) {
+                fastText('boss-lvl-pen', `[${game.boss.armorPen}]`);
+                fastText('boss-cost-pen', formatNumber(game.boss.costs.armorPen));
+                fastText('boss-req-pen', `Ignoruje 5 DEF z každé rány`);
+                uPen.disabled = game.boss.money < game.boss.costs.armorPen;
+            } else {
+                fastText('boss-lvl-pen', `[🔒]`); fastText('boss-cost-pen', `Lvl 15`); fastText('boss-req-pen', `Vyžaduje tvůj level 15`); uPen.disabled = true;
+            }
+            uPen.style.opacity = uPen.disabled ? '0.4' : '1';
+            uPen.style.cursor = uPen.disabled ? 'not-allowed' : 'pointer';
+        }
+
+        const uAuto = document.getElementById('btn-boss-upg-auto');
+        if (uAuto) {
+            if (game.boss.level >= 20) {
+                fastText('boss-lvl-auto', `[${game.boss.autoAttack}]`);
+                fastText('boss-cost-auto', formatNumber(game.boss.costs.autoAttack));
+                fastText('boss-req-auto', `Pasivně střílí na Bosse (1x/s)`);
+                uAuto.disabled = game.boss.money < game.boss.costs.autoAttack;
+            } else {
+                fastText('boss-lvl-auto', `[🔒]`); fastText('boss-cost-auto', `Lvl 20`); fastText('boss-req-auto', `Vyžaduje tvůj level 20`); uAuto.disabled = true;
+            }
+            uAuto.style.opacity = uAuto.disabled ? '0.4' : '1';
+            uAuto.style.cursor = uAuto.disabled ? 'not-allowed' : 'pointer';
         }
     }
 }
@@ -794,8 +931,9 @@ function renderLeaderboardData(data) {
     if (!tbody) return;
     let html = '';
     data.forEach((d) => {
+        const safeName = censorName(d.name);
         html += `<tr>
-            <td>${d.name}</td>
+            <td>${safeName}</td>
             <td>${d.achievements || 0}</td>
             <td style="font-weight:bold;color:#e67e22;">${formatNumber(d.score)}</td>
             <td>${formatNumber(d.current || 0)}</td>
@@ -810,8 +948,9 @@ function renderLocalLeaderboard() {
     if (!tbody) return;
     let html = '';
     localLeaderboard.slice(0, 10).forEach(entry => {
+        const safeName = censorName(entry.name);
         html += `<tr>
-            <td>${entry.name}</td>
+            <td>${safeName}</td>
             <td>${entry.achievements || 0}</td>
             <td style="font-weight:bold;color:#e67e22;">${formatNumber(entry.score)}</td>
             <td>${formatNumber(entry.current || 0)}</td>
@@ -926,7 +1065,6 @@ document.addEventListener('change', (e) => {
 
 document.addEventListener('click', async (e) => {
     
-    // --- OCHRANA PŘED KLIKÁNÍM PŘI ÚDRŽBĚ ---
     if (BOSS_MAINTENANCE && (e.target.closest('#boss-click-btn') || e.target.closest('[id^="btn-boss-upg"]') || e.target.closest('#btn-unlock-boss') || e.target.closest('#btn-refresh-boss'))) {
         playSound('error');
         showToast("⚠️ Boss minihra je do zítra pozastavena (údržba DB).");
@@ -1571,7 +1709,6 @@ async function loadHTML() {
             document.getElementById('loading-lb').style.color = db ? "#2ecc71" : "#e74c3c";
         }
 
-        // --- POKUD NENÍ ÚDRŽBA, ZAPOJÍME FIREBASE LISTENERA ---
         if (db && !BOSS_MAINTENANCE) {
             onSnapshot(doc(db, "global_events", "boss"), (docSnap) => {
                 if (docSnap.exists()) {
@@ -1627,192 +1764,196 @@ async function loadHTML() {
         }
 
         gameLoop = setInterval(async () => {
-            const now = Date.now();
-            fastText('timer', formatTime(now - game.startTime));
-            
-            let realDt = (now - game.lastTime) / 1000;
-            if (realDt > 86400) realDt = 86400;
-            if (realDt < 0) realDt = 0;
-
-            game.lastTime = now;
-            
-            const gain = getBPS() * realDt;
-            if (gain > 0 && !isNaN(gain)) { 
-                game.score += gain; 
-                game.totalScore += gain;
-            }
-
-            let regenPerSec = globalBoss.maxHp * 0.01 / 3600;
-            if (globalBoss.currentHp < globalBoss.maxHp && globalBoss.currentHp > 0) {
-                globalBoss.currentHp = Math.min(globalBoss.maxHp, globalBoss.currentHp + regenPerSec * realDt);
-            }
-
-            // --- ZABITÍ BOSSE A PŘIDĚLENÍ ODMĚNY (VYPNUTO PŘI ÚDRŽBĚ) ---
-            if (!BOSS_MAINTENANCE && globalBoss.level > game.boss.lastSeenBossLevel) {
-                let oldLevel = game.boss.lastSeenBossLevel;
-                let oldMaxHp = 5000000 * Math.pow(1.5, oldLevel - 1);
-                let percentDealt = ((game.boss.currentBossDmg || 0) / oldMaxHp) * 100;
+            try {
+                const now = Date.now();
+                fastText('timer', formatTime(now - game.startTime));
                 
-                if (percentDealt >= 10) {
-                    game.boss.bossKills = (game.boss.bossKills || 0) + 1;
-                    
-                    let goldReward = Math.floor(1000 * Math.pow(1.6, oldLevel) * game.boss.goldMult);
-                    let xpReward = Math.floor(500 * Math.pow(1.4, oldLevel) * game.boss.xpMult);
-                    
-                    game.boss.money += goldReward;
-                    game.boss.xp += xpReward;
-                    
-                    let reqXp = getBossReqXp(game.boss.level);
-                    while (game.boss.xp >= reqXp) {
-                        game.boss.xp -= reqXp;
-                        game.boss.level++;
-                        reqXp = getBossReqXp(game.boss.level);
-                    }
-                    
-                    showToast(`🎉 Boss Lvl ${oldLevel} padl! Tvá odměna: 💰${formatNumber(goldReward)} ✨${formatNumber(xpReward)}`);
-                    playSound('achievement');
-                } else if (game.boss.currentBossDmg > 0) {
-                    showToast(`💀 Boss padl, ale tvůj podíl byl jen ${percentDealt.toFixed(1)}%. Bez odměny! (Nutno 10%)`);
+                let realDt = (now - game.lastTime) / 1000;
+                if (isNaN(realDt)) realDt = 0.1;
+                if (realDt > 86400) realDt = 86400;
+                if (realDt < 0) realDt = 0;
+
+                game.lastTime = now;
+                
+                const gain = getBPS() * realDt;
+                if (gain > 0 && !isNaN(gain)) { 
+                    game.score += gain; 
+                    game.totalScore += gain;
                 }
-                
-                game.boss.currentBossDmg = 0;
-                game.boss.lastSeenBossLevel = globalBoss.level;
-                saveGameData();
-                updateBossUI();
-            }
 
-            // --- AUTO ATTACK BOSS LOGIKA (VYPNUTO PŘI ÚDRŽBĚ) ---
-            if (!BOSS_MAINTENANCE && game.bossUnlocked && game.boss.autoAttack > 0) {
-                let autoHits = game.boss.autoAttack * realDt;
-                if (autoHits > 0) {
-                    const rawDmg = game.boss.weaponDmg * game.boss.enchantMult;
-                    const bossDef = Math.max(0, ((globalBoss.level - 1) * 15) - (game.boss.armorPen || 0));
+                let regenPerSec = globalBoss.maxHp * 0.01 / 3600;
+                if (globalBoss.currentHp < globalBoss.maxHp && globalBoss.currentHp > 0) {
+                    globalBoss.currentHp = Math.min(globalBoss.maxHp, globalBoss.currentHp + regenPerSec * realDt);
+                }
+
+                if (!BOSS_MAINTENANCE && globalBoss.level > game.boss.lastSeenBossLevel) {
+                    let oldLevel = game.boss.lastSeenBossLevel;
+                    let oldMaxHp = 5000000 * Math.pow(1.5, oldLevel - 1);
+                    let percentDealt = ((game.boss.currentBossDmg || 0) / oldMaxHp) * 100;
                     
-                    let critChance = game.boss.critChance || 0;
-                    let critDmg = game.boss.critDmg || 2;
-                    let nonCritChance = Math.max(0, 100 - critChance) / 100;
-                    let critProb = critChance / 100;
-                    
-                    let nonCritDmg = Math.max(0, rawDmg - bossDef);
-                    let expectedHitDmg = (nonCritDmg * nonCritChance) + (rawDmg * critDmg * critProb); 
-
-                    const totalAutoDmg = expectedHitDmg * autoHits;
-
-                    if (totalAutoDmg > 0) {
-                        pendingBossDamage += totalAutoDmg;
-                        game.boss.totalDmg = (game.boss.totalDmg || 0) + totalAutoDmg;
-                        game.boss.currentBossDmg = (game.boss.currentBossDmg || 0) + totalAutoDmg;
-                        globalBoss.currentHp -= totalAutoDmg;
+                    if (percentDealt >= 10) {
+                        game.boss.bossKills = (game.boss.bossKills || 0) + 1;
                         
-                        let moneyDrop = (1 * game.boss.goldMult) * autoHits;
-                        let xpDrop = (1 * game.boss.xpMult) * autoHits;
-                        game.boss.money += moneyDrop;
-                        game.boss.xp += xpDrop;
+                        let goldReward = Math.floor(1000 * Math.pow(1.6, oldLevel) * game.boss.goldMult);
+                        let xpReward = Math.floor(500 * Math.pow(1.4, oldLevel) * game.boss.xpMult);
+                        
+                        game.boss.money += goldReward;
+                        game.boss.xp += xpReward;
                         
                         let reqXp = getBossReqXp(game.boss.level);
                         while (game.boss.xp >= reqXp) {
                             game.boss.xp -= reqXp;
                             game.boss.level++;
                             reqXp = getBossReqXp(game.boss.level);
-                            playSound('achievement');
-                            showToast(`🔥 Level UP (Auto)! Jsi na Boss Lvl ${game.boss.level}`);
+                        }
+                        
+                        showToast(`🎉 Boss Lvl ${oldLevel} padl! Tvá odměna: 💰${formatNumber(goldReward)} ✨${formatNumber(xpReward)}`);
+                        playSound('achievement');
+                    } else if (game.boss.currentBossDmg > 0) {
+                        showToast(`💀 Boss padl, ale tvůj podíl byl jen ${percentDealt.toFixed(1)}%. Bez odměny! (Nutno 10%)`);
+                    }
+                    
+                    game.boss.currentBossDmg = 0;
+                    game.boss.lastSeenBossLevel = globalBoss.level;
+                    saveGameData();
+                    updateBossUI();
+                }
+
+                if (!BOSS_MAINTENANCE && game.bossUnlocked && game.boss.autoAttack > 0) {
+                    let autoHits = game.boss.autoAttack * realDt;
+                    if (autoHits > 0) {
+                        const rawDmg = game.boss.weaponDmg * game.boss.enchantMult;
+                        const bossDef = Math.max(0, ((globalBoss.level - 1) * 15) - (game.boss.armorPen || 0));
+                        
+                        let critChance = game.boss.critChance || 0;
+                        let critDmg = game.boss.critDmg || 2;
+                        let nonCritChance = Math.max(0, 100 - critChance) / 100;
+                        let critProb = critChance / 100;
+                        
+                        let nonCritDmg = Math.max(0, rawDmg - bossDef);
+                        let expectedHitDmg = (nonCritDmg * nonCritChance) + (rawDmg * critDmg * critProb); 
+
+                        const totalAutoDmg = expectedHitDmg * autoHits;
+
+                        if (totalAutoDmg > 0 && !isNaN(totalAutoDmg)) {
+                            pendingBossDamage += totalAutoDmg;
+                            game.boss.totalDmg = (game.boss.totalDmg || 0) + totalAutoDmg;
+                            game.boss.currentBossDmg = (game.boss.currentBossDmg || 0) + totalAutoDmg;
+                            globalBoss.currentHp -= totalAutoDmg;
+                            
+                            let moneyDrop = (1 * game.boss.goldMult) * autoHits;
+                            let xpDrop = (1 * game.boss.xpMult) * autoHits;
+                            game.boss.money += moneyDrop;
+                            game.boss.xp += xpDrop;
+                            
+                            let reqXp = getBossReqXp(game.boss.level);
+                            while (game.boss.xp >= reqXp) {
+                                game.boss.xp -= reqXp;
+                                game.boss.level++;
+                                reqXp = getBossReqXp(game.boss.level);
+                                playSound('achievement');
+                                showToast(`🔥 Level UP (Auto)! Jsi na Boss Lvl ${game.boss.level}`);
+                            }
                         }
                     }
                 }
-            }
 
-            cryptoTimer += 100;
-            if (cryptoTimer >= 5000) {
-                cryptoTimer = 0;
-                if (game.ascend.upgrades.cryptoUnlocked) {
-                    if (Math.random() < 0.001) { 
-                        game.crypto.coins = 0;
-                        game.crypto.price = 10;
-                        showToast("📉 KRYPTO BURZA ZKRACHOVALA! Všechny tvé MemeCoiny jsou pryč!");
-                        playSound('crash');
+                cryptoTimer += 100;
+                if (cryptoTimer >= 5000) {
+                    cryptoTimer = 0;
+                    if (game.ascend.upgrades.cryptoUnlocked) {
+                        if (Math.random() < 0.001) { 
+                            game.crypto.coins = 0;
+                            game.crypto.price = 10;
+                            showToast("📉 KRYPTO BURZA ZKRACHOVALA! Všechny tvé MemeCoiny jsou pryč!");
+                            playSound('crash');
+                            saveGameData();
+                        } else {
+                            let change = (Math.random() * 0.35) - 0.15;
+                            game.crypto.price = Math.max(10, Math.floor(game.crypto.price * (1 + change)));
+                        }
+                        
+                        if (!game.crypto.history) game.crypto.history = [];
+                        game.crypto.history.push(game.crypto.price);
+                        if (game.crypto.history.length > 20) game.crypto.history.shift();
+                        
+                        renderCryptoChart();
+                    }
+                }
+
+                goldenTimer += 100;
+                if (goldenTimer >= nextGolden) {
+                    goldenTimer = 0;
+                    nextGolden = Math.random() * 60000 + 60000; 
+                    spawnGoldenMeme();
+                }
+
+                if (!BOSS_MAINTENANCE && pendingBossDamage > 0 && db && !isBossSyncing && (now - lastBossSyncTime > 5000)) {
+                    isBossSyncing = true;
+                    lastBossSyncTime = now;
+                    let dmgToSend = pendingBossDamage;
+                    pendingBossDamage = 0;
+                    try {
+                        await updateDoc(doc(db, "global_events", "boss"), {
+                            currentHp: increment(-dmgToSend),
+                            lastUpdate: Date.now()
+                        });
+                    } catch(e) {
+                        pendingBossDamage += dmgToSend; 
+                    }
+                    isBossSyncing = false;
+                } else if (!BOSS_MAINTENANCE && pendingBossDamage > 0 && !db) {
+                    globalBoss.currentHp -= pendingBossDamage;
+                    pendingBossDamage = 0;
+                    if (globalBoss.currentHp <= 0) {
+                        globalBoss.level += 1;
+                        globalBoss.maxHp = 5000000 * Math.pow(1.5, globalBoss.level - 1);
+                        globalBoss.currentHp = globalBoss.maxHp;
+                        globalBoss.lastUpdate = Date.now();
+                    }
+                    localStorage.setItem('meme_boss_local', JSON.stringify(globalBoss));
+                    updateBossUI();
+                }
+
+                const fd = document.getElementById('frenzy-display');
+                if (game.frenzy && game.frenzy.active) {
+                    if (now > game.frenzy.endTime) {
+                        game.frenzy.active = false;
+                        game.frenzy.multiplier = 1;
+                        document.body.classList.remove('frenzy-active');
+                        if(fd) fd.style.display = 'none';
+                        showToast("Frenzy skončilo!");
                         saveGameData();
                     } else {
-                        let change = (Math.random() * 0.35) - 0.15;
-                        game.crypto.price = Math.max(10, Math.floor(game.crypto.price * (1 + change)));
+                        document.body.classList.add('frenzy-active');
+                        if(fd) {
+                            fd.style.display = 'block';
+                            fastText('frenzy-name', game.frenzy.type === 'click' ? '🌟 CLICK FRENZY 🌟' : '🌟 BUILDING FRENZY 🌟');
+                            let timeLeft = game.frenzy.endTime - now;
+                            fastText('frenzy-time', (timeLeft / 1000).toFixed(1) + 's');
+                            document.getElementById('frenzy-bar').style.width = (timeLeft / game.frenzy.duration * 100) + '%';
+                        }
                     }
-                    
-                    if (!game.crypto.history) game.crypto.history = [];
-                    game.crypto.history.push(game.crypto.price);
-                    if (game.crypto.history.length > 20) game.crypto.history.shift();
-                    
-                    renderCryptoChart();
-                }
-            }
-
-            goldenTimer += 100;
-            if (goldenTimer >= nextGolden) {
-                goldenTimer = 0;
-                nextGolden = Math.random() * 60000 + 60000; 
-                spawnGoldenMeme();
-            }
-
-            // ANTI-SPAM SYNC: Nyní posílá na Firebase pouze 1x za 5 vteřin a JE VYPNUTO PŘI ÚDRŽBĚ
-            if (!BOSS_MAINTENANCE && pendingBossDamage > 0 && db && !isBossSyncing && (now - lastBossSyncTime > 5000)) {
-                isBossSyncing = true;
-                lastBossSyncTime = now;
-                let dmgToSend = pendingBossDamage;
-                pendingBossDamage = 0;
-                try {
-                    await updateDoc(doc(db, "global_events", "boss"), {
-                        currentHp: increment(-dmgToSend),
-                        lastUpdate: Date.now()
-                    });
-                } catch(e) {
-                    pendingBossDamage += dmgToSend; 
-                }
-                isBossSyncing = false;
-            } else if (!BOSS_MAINTENANCE && pendingBossDamage > 0 && !db) {
-                globalBoss.currentHp -= pendingBossDamage;
-                pendingBossDamage = 0;
-                if (globalBoss.currentHp <= 0) {
-                    globalBoss.level += 1;
-                    globalBoss.maxHp = 5000000 * Math.pow(1.5, globalBoss.level - 1);
-                    globalBoss.currentHp = globalBoss.maxHp;
-                    globalBoss.lastUpdate = Date.now();
-                }
-                localStorage.setItem('meme_boss_local', JSON.stringify(globalBoss));
-                updateBossUI();
-            }
-
-            const fd = document.getElementById('frenzy-display');
-            if (game.frenzy && game.frenzy.active) {
-                if (now > game.frenzy.endTime) {
-                    game.frenzy.active = false;
-                    game.frenzy.multiplier = 1;
+                } else {
                     document.body.classList.remove('frenzy-active');
                     if(fd) fd.style.display = 'none';
-                    showToast("Frenzy skončilo!");
-                    saveGameData();
-                } else {
-                    document.body.classList.add('frenzy-active');
-                    if(fd) {
-                        fd.style.display = 'block';
-                        fastText('frenzy-name', game.frenzy.type === 'click' ? '🌟 CLICK FRENZY 🌟' : '🌟 BUILDING FRENZY 🌟');
-                        let timeLeft = game.frenzy.endTime - now;
-                        fastText('frenzy-time', (timeLeft / 1000).toFixed(1) + 's');
-                        document.getElementById('frenzy-bar').style.width = (timeLeft / game.frenzy.duration * 100) + '%';
-                    }
                 }
-            } else {
-                document.body.classList.remove('frenzy-active');
-                if(fd) fd.style.display = 'none';
-            }
 
-            updateUI();
-            if(!db) updateBossUI();
-            
-            if (now - lastSaveTime > 3000) {
-                saveGameData();
-                lastSaveTime = now;
+                updateUI();
+                if(!db) updateBossUI();
+                
+                if (now - lastSaveTime > 3000) {
+                    saveGameData();
+                    lastSaveTime = now;
+                }
+            } catch (err) {
+                console.error("Kritická chyba v herní smyčce:", err);
             }
         }, 100);
 
-    } catch (error) {}
+    } catch (error) {
+        console.error("Chyba při načítání UI:", error);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', loadHTML);
