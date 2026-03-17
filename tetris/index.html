@@ -429,9 +429,13 @@
 
     function updateScore() {
         scoreElement.innerText = player.score;
-        currentLevel = Math.floor(player.score / 50) + 1;
+        // Úprava: Nová úroveň každých 100 bodů místo 50
+        currentLevel = Math.floor(player.score / 100) + 1;
         levelElement.innerText = "Úroveň: " + currentLevel;
-        dropInterval = Math.max(100, 800 - (currentLevel - 1) * 75);
+        
+        // Úprava: Mírnější zrychlování (ubíráme 30ms místo 75ms)
+        // Minimum je nastaveno na 150ms, aby hra nebyla šílená
+        dropInterval = Math.max(150, 800 - (currentLevel - 1) * 30);
     }
 
     function gameOver() {
