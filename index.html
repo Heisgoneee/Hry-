@@ -208,7 +208,6 @@
             font-weight: 800;
         }
 
-        /* Settings button & modal */
         #settings-button {
             position: fixed;
             right: 20px;
@@ -311,6 +310,15 @@
             </div>
         </a>
 
+        <a href="mines/index.html" class="game-card" data-category="singleplayer">
+            <div class="thumbnail">💣</div>
+            <div class="info">
+                <span class="badge">LOGICKÁ</span>
+                <h3>Mines</h3>
+                <p>Klasické hledání min. Vyčisti pole bez jediného výbuchu. Zvol si obtížnost a otestuj svou logiku i štěstí.</p>
+            </div>
+        </a>
+
         <a href="clicker/index.html" class="game-card" data-category="singleplayer">
             <div class="thumbnail">🖱️</div>
             <div class="info">
@@ -353,6 +361,15 @@
                 <span class="badge">ARKÁDA</span>
                 <h3>Pacman</h3>
                 <p>Sbírej tečky, unikej duchům a vyčisti bludiště v této nesmrtelné herní klasice.</p>
+            </div>
+        </a>
+
+        <a href="dino/index.html" class="game-card" data-category="singleplayer">
+            <div class="thumbnail">🦖</div>
+            <div class="info">
+                <span class="badge">ARKÁDA</span>
+                <h3>Dinosaur</h3>
+                <p>Nekonečný běh pouští. Skákej přes kaktusy a vyhýbej se překážkám v této legendární arkádě.</p>
             </div>
         </a>
 
@@ -473,6 +490,17 @@
         });
 
         filterGames('singleplayer');
+
+        // Modal Logic
+        const settingsBtn = document.getElementById('settings-button');
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsClose = document.getElementById('settings-close');
+
+        settingsBtn.onclick = () => settingsModal.style.display = 'flex';
+        settingsClose.onclick = () => settingsModal.style.display = 'none';
+        window.onclick = (event) => {
+            if (event.target == settingsModal) settingsModal.style.display = 'none';
+        }
     </script>
 </body>
 </html>
