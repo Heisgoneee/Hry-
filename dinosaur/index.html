@@ -1,0 +1,257 @@
+﻿<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dino Run - Vylepšená verze</title>
+    <style>
+        body { 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background: #2c3e50; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            overflow: hidden; 
+            color: white;
+        }
+        canvas { 
+            background: #87CEEB; 
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .controls {
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+        kbd {
+            background: #eee;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #ccc;
+            border-bottom: 2px solid #999;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="250"></canvas>
+    <div class="controls">
+        Skok: <kbd>Mezerník</kbd> nebo <kbd>↑</kbd> | Skrčení: <kbd>↓</kbd>
+    </div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let score = 0;
+let highScore = localStorage.getItem("dinoHighScore") || 0;
+let gameSpeed = 5;
+let isGameOver = false;
+let frameCount = 0;
+
+const groundHeight = 30;
+
+const dino = {
+    x: 50,
+    y: 0,
+    width: 40,
+    height: 40,
+    normalHeight: 40,
+    duckHeight: 20,
+    dy: 0,
+    jumpForce: 11,
+    gravity: 0.6,
+    grounded: false,
+    isDucking: false
+};
+
+const obstacles = [];
+const clouds = [];
+
+for(let i=0; i<5; i++) {
+    clouds.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * 100 + 20,
+        speed: Math.random() * 0.5 + 0.2,
+        size: Math.random() * 20 + 20
+    });
+}
+
+function spawnObstacle() {
+    let type = Math.random() > 0.6 ? 'bird' : 'cactus';
+    
+    if (type === 'cactus') {
+        let height = Math.random() * (35 - 20) + 20;
+        obstacles.push({
+            x: canvas.width,
+            y: canvas.height - groundHeight - height,
+            width: 20,
+            height: height,
+            type: 'cactus'
+        });
+    } else {
+        // 3 možné výšky letu:
+        // 65: Bezpečně proletí nad stojícím dinosaurem
+        // 40: Hráč se musí skrčit
+        // 20: Hráč musí přeskočit
+        const birdHeights = [65, 40, 20];
+        const flyHeight = birdHeights[Math.floor(Math.random() * birdHeights.length)];
+        
+        obstacles.push({
+            x: canvas.width,
+            y: canvas.height - groundHeight - flyHeight,
+            width: 30,
+            height: 15,
+            type: 'bird',
+            wingUp: true
+        });
+    }
+}
+
+function update() {
+    if (isGameOver) return;
+    frameCount++;
+
+    if (!dino.grounded) {
+        dino.dy += dino.gravity;
+        dino.y += dino.dy;
+    }
+
+    let groundY = canvas.height - groundHeight;
+
+    if (dino.y + dino.height > groundY) {
+        dino.y = groundY - dino.height;
+        dino.dy = 0;
+        dino.grounded = true;
+    }
+
+    clouds.forEach(c => {
+        c.x -= c.speed;
+        if (c.x + c.size * 2 < 0) {
+            c.x = canvas.width;
+            c.y = Math.random() * 100 + 20;
+        }
+    });
+
+    if (frameCount % Math.max(Math.floor(100 - gameSpeed * 2), 40) === 0) {
+        spawnObstacle();
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        let o = obstacles[i];
+        o.x -= (o.type === 'bird' ? gameSpeed * 1.3 : gameSpeed);
+
+        if (o.type === 'bird' && frameCount % 15 === 0) o.wingUp = !o.wingUp;
+
+        let hitMarginX = 4;
+        let hitMarginY = 4;
+        
+        if (dino.x + hitMarginX < o.x + o.width - hitMarginX &&
+            dino.x + dino.width - hitMarginX > o.x + hitMarginX &&
+            dino.y + hitMarginY < o.y + o.height - hitMarginY &&
+            dino.y + dino.height - hitMarginY > o.y + hitMarginY) {
+            
+            isGameOver = true;
+            if (score > highScore) {
+                highScore = Math.floor(score);
+                localStorage.setItem("dinoHighScore", highScore);
+            }
+            setTimeout(() => {
+                if(confirm("Konec hry! Skóre: " + Math.floor(score) + "\nChceš hrát znovu?")) {
+                    location.reload();
+                }
+            }, 50);
+        }
+
+        if (o.x + o.width < 0) obstacles.splice(i, 1);
+    }
+
+    score += 0.1;
+    gameSpeed += 0.002;
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    clouds.forEach(c => {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.size, Math.PI * 0.5, Math.PI * 1.5);
+        ctx.arc(c.x + c.size, c.y - c.size/2, c.size * 1.2, Math.PI * 1, Math.PI * 2);
+        ctx.arc(c.x + c.size * 2, c.y, c.size, Math.PI * 1.5, Math.PI * 0.5);
+        ctx.fill();
+    });
+
+    ctx.fillStyle = "#8B4513";
+    ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+    ctx.fillStyle = "#228B22";
+    ctx.fillRect(0, canvas.height - groundHeight, canvas.width, 8);
+
+    ctx.fillStyle = "#2ecc71";
+    ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+    
+    ctx.fillStyle = "black";
+    let eyeY = dino.isDucking ? dino.y + 4 : dino.y + 8;
+    ctx.fillRect(dino.x + 25, eyeY, 4, 4);
+
+    for (let o of obstacles) {
+        if (o.type === 'cactus') {
+            ctx.fillStyle = "#1e8449";
+            ctx.fillRect(o.x, o.y, o.width, o.height);
+            ctx.fillRect(o.x - 6, o.y + 10, 6, 8);
+            ctx.fillRect(o.x + o.width, o.y + 5, 6, 8);
+        } else if (o.type === 'bird') {
+            ctx.fillStyle = "#e74c3c";
+            ctx.fillRect(o.x, o.y + 5, o.width, 10);
+            ctx.fillStyle = "#c0392b";
+            if (o.wingUp) {
+                ctx.fillRect(o.x + 10, o.y - 5, 10, 10);
+            } else {
+                ctx.fillRect(o.x + 10, o.y + 15, 10, 10);
+            }
+        }
+    }
+
+    ctx.fillStyle = "black";
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillText("Skóre: " + Math.floor(score), 680, 30);
+    ctx.fillStyle = "#555";
+    ctx.fillText("Nejvyšší: " + highScore, 680, 50);
+}
+
+function loop() {
+    update();
+    draw();
+    if (!isGameOver) requestAnimationFrame(loop);
+}
+
+window.addEventListener("keydown", (e) => {
+    if ((e.code === "Space" || e.code === "ArrowUp") && dino.grounded) {
+        dino.dy = -dino.jumpForce;
+        dino.grounded = false;
+    }
+    if (e.code === "ArrowDown" && dino.grounded && !dino.isDucking) {
+        dino.isDucking = true;
+        dino.height = dino.duckHeight;
+        dino.y += (dino.normalHeight - dino.duckHeight);
+    }
+});
+
+window.addEventListener("keyup", (e) => {
+    if (e.code === "ArrowDown" && dino.isDucking) {
+        dino.isDucking = false;
+        dino.y -= (dino.normalHeight - dino.duckHeight);
+        dino.height = dino.normalHeight;
+    }
+});
+
+dino.y = canvas.height - groundHeight - dino.height;
+loop();
+</script>
+</body>
+</html>
