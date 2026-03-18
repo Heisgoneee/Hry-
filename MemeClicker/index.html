@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Pro Clicker - V0.5 BETA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <button id="btn-changelog">📜 Changelog</button>
+    <div id="golden-cookie" class="hidden">✨</div>
+
+    <div class="column">
+        <div class="score-board">
+            <h1 id="player-name">Host</h1>
+            <div id="auth-status-bar" class="auth-status-bar">
+                Nepřihlášen <button id="btn-open-auth" class="btn-text">Přihlásit se</button>
+            </div>
+            
+            <span>Nynější skóre: <b id="current-score" class="score-highlight">0</b></span>
+            <span style="font-size: 0.85rem; color: #aaa; margin-top: 5px; display: block;">Celkové skóre (All-time): <b id="total-score" style="color: #ccc;">0</b></span>
+            
+            <div class="power-stats">
+                <div>Síla kliku: <span id="click-power" class="text-white">1</span></div>
+                <div>Auto za sekundu: <span id="auto-power" class="text-white">0</span></div>
+                <div id="synergy-display" class="synergy-text">Synergie úspěchů: +0%</div>
+            </div>
+
+            <div id="divine-display" style="display:none; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 6px; margin-top: 15px; padding: 10px; background: rgba(0, 255, 255, 0.1); border: 1px solid #00ffff; border-radius: 8px;">
+                <span style="color: #00ffff; font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 5px #00ffff;">Božské Bity:</span>
+                <span id="divine-bits-count" style="color: #fff; font-weight: bold; font-size: 1.1rem;">0</span>
+                <span style="font-size: 0.9rem; color: #aaa; white-space: nowrap;">(+<span id="divine-bonus-count">0</span>% prod.)</span>
+            </div>
+
+            <div id="buffs-container" style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;"></div>
+
+            <div class="bit-container">
+                <div class="bit-title">
+                    <span>Vytěžené Bity: <b id="bit-count" class="text-white">0</b></span>
+                    <span class="info-icon" title="Každých 16 hodin získáš 1 Bit. Za Bity můžeš trvale zdvojnásobit produkci budov.">ℹ️</span>
+                </div>
+                <div class="bit-subtitle">Další Bit za: <span id="bit-timer">16h 00m 00s</span></div>
+                <div class="bit-progress-bar">
+                    <div id="bit-progress"></div>
+                </div>
+                <button id="btn-harvest-bit" class="btn-harvest">Sklidit Bit!</button>
+            </div>
+            
+            <button id="btn-show-stats" class="btn-secondary w-100 mt-20">📊 Zobrazit Statistiky</button>
+            <button id="btn-prestige" class="btn-prestige w-100 mt-10">✨ POSTOUPIT ✨</button>
+        </div>
+        
+        <div class="click-arena">
+            <button id="click-btn">
+                <img id="click-img" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; position: absolute; top:0; left:0; z-index:1;">
+                <span id="click-text" style="position: relative; z-index: 2;">KLIK</span>
+            </button>
+            <div id="visual-clickers-container"></div>
+        </div>
+        
+        <input type="file" id="custom-image-input" accept="image/*" style="display: none;">
+
+        <h2 class="mt-20">🏆 Leaderboard</h2>
+        <div class="timer-text">Globální aktualizace za: <span id="time-left"></span></div>
+        <div id="leaderboard-warning" class="warning-text">Pro účast v tabulce se musíte přihlásit.</div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Pořadí</th>
+                        <th>Jméno</th>
+                        <th>Nynější</th>
+                        <th>Celkové</th>
+                        <th>Achiev.</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="column">
+        <h2>Tvé Impérium</h2>
+        <div id="visual-buildings-container">
+        </div>
+    </div>
+
+    <div class="column">
+        <h2 class="collapsible-header" data-target="store-wrapper">
+            <span>Obchod</span>
+            <span class="toggle-icon">▼</span>
+        </h2>
+        <div id="store-wrapper" class="collapsible-content">
+            <div class="store-container">
+                <div class="store-section">
+                    <h3>Klikátory</h3>
+                    <div id="clickers-store"></div>
+                </div>
+                <div class="store-section">
+                    <h3>Budovy</h3>
+                    <div id="buildings-store"></div>
+                </div>
+            </div>
+        </div>
+        
+        <h3 class="upgrade-title collapsible-header" data-target="upgrades-wrapper">
+            <span>Vylepšení</span>
+            <span class="toggle-icon">▼</span>
+        </h3>
+        <div id="upgrades-wrapper" class="collapsible-content">
+            <div id="upgrades-store" class="upgrades-grid"></div>
+        </div>
+
+        <h3 class="upgrade-title collapsible-header" data-target="cosmetics-wrapper" style="color: #ff9800;">
+            <span>Kosmetika (Skiny & Motivy)</span>
+            <span class="toggle-icon">▼</span>
+        </h3>
+        <div id="cosmetics-wrapper" class="collapsible-content">
+            <div id="cosmetics-store" class="upgrades-grid"></div>
+        </div>
+
+        <h2 class="mt-20 collapsible-header" data-target="ach-wrapper">
+            <span>Achievementy (<span id="ach-count">0</span>/<span id="ach-total">0</span>)</span>
+            <span class="toggle-icon">▼</span>
+        </h2>
+        <div id="ach-wrapper" class="collapsible-content">
+            <div id="achievements-list"></div>
+        </div>
+    </div>
+
+    <button id="btn-settings">⚙️</button>
+    <button id="btn-dev" style="display: none;">🛠️</button>
+
+    <div id="changelog-modal" class="modal">
+        <div class="modal-content" style="text-align: left; width: 600px; max-width: 95%;">
+            <button class="close-btn" id="btn-close-changelog">Zavřít</button>
+            <h2 style="text-align: center; color: var(--accent);">Ultimate Pro Clicker - V0.5 BETA</h2>
+            
+            <div style="background: rgba(255,0,0,0.1); border: 1px solid #ff0000; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <b style="color: #ff6b6b;">⚠️ UPOZORNĚNÍ K BETA VERZI:</b><br>
+                Tato hra je aktuálně ve fázi BETA. Při plném spuštění (Full Release) <b>budou všichni hráči v Leaderboardu smazáni a resetováni</b>, aby měli všichni stejnou startovní čáru.
+            </div>
+            
+            <h3 style="color: var(--unlocked);">Co hra momentálně obsahuje:</h3>
+            <ul style="line-height: 1.6; color: #ccc; padding-left: 20px;">
+                <li>🖱️ <b>Hluboký systém upgradů:</b> Desítky budov, klikátorů a stovky vylepšení.</li>
+                <li>✨ <b>Božské Postoupení (Prestige):</b> Resetuj svůj postup pro Božské Bity a odemykej permanentní perky v obřím Rozvojovém stromu (více než 40 uzlů).</li>
+                <li>🌟 <b>Zlatá Hodinka:</b> Náhodně se zjevující zlaté bity přináší masivní buffy (až 7x klikačka nebo 2x auto-těžba).</li>
+                <li>🔋 <b>Minihra Přetížení:</b> Odemykatelná aktivní minihra u Auto-myši. Udržuj energii pomocí "PUMP" a získej reálný +20% bonus k produkci.</li>
+                <li>💎 <b>Těžba Bitů:</b> Každých 16 hodin získej krystal (Bit) a vylepšuj konkrétní budovy v Impériu na exponenciální násobiče (x2, x4, x8...).</li>
+                <li>📦 <b>Hromadný nákup:</b> Podrž <code>CTRL</code> a klikni na předmět pro nákup 10 kusů naráz (po odemčení vylepšení).</li>
+                <li>🏆 <b>Leaderboard & Achievementy:</b> Soutěž s ostatními přes Cloud Sync a sbírej bonusové % za odemčené achievementy.</li>
+                <li>🎨 <b>Kosmetika:</b> Různé motivy a skiny pro tvé klikací tlačítko, včetně nahrání vlastního obrázku.</li>
+                <li>📱 <b>Mobilní verze:</b> Hra je plně optimalizována pro telefony!</li>
+                <li>🛡️ <b>Anti-Cheat:</b> Zabezpečení proti neoprávněnému posunu času a změnám skóre s auto-obnovou z cloudu.</li>
+            </ul>
+
+            <div style="margin-top: 20px; text-align: center; border-top: 1px solid var(--border); padding-top: 15px;">
+                <label style="cursor: pointer; color: #aaa; font-size: 0.9rem;">
+                    <input type="checkbox" id="hide-changelog-cb"> Příště toto okno automaticky nezobrazovat
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="prestige-modal" class="modal">
+        <div class="modal-content" style="width: 1000px; max-width: 95%; background: #0a0a1a; border-color: #00ffff; height: 90vh; overflow-y: auto;">
+            <button class="close-btn" id="btn-close-prestige">Zavřít</button>
+            <h2 style="color: #00ffff; text-shadow: 0 0 10px #00ffff;">✨ BOŽSKÉ POSTOUPENÍ ✨</h2>
+            
+            <div style="background: rgba(0, 255, 255, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                <p>Každý Božský bit natrvalo přidává <b>+1 % k celkové produkci</b>.</p>
+                <h3 style="color: #fff; margin: 10px 0;">Při postoupení získáš: <b id="pending-divine-bits" style="color: #00ffff; font-size: 1.8rem; text-shadow: 0 0 10px #00ffff;">0</b> Božských bitů</h3>
+                <p style="font-size: 0.9rem; color: #aaa;">Potřebné celkové skóre pro další bit: <b id="next-bit-req" style="color: #ffd700;">0</b></p>
+                <button id="btn-do-prestige" class="btn-prestige mt-10">ZNOVUZRODIT SE</button>
+            </div>
+
+            <h3 style="color: #00ffff; text-align: center; margin-bottom: 20px;">Rozvojový Strom (Nebeská Vylepšení)</h3>
+            <div class="prestige-tree-container" id="prestige-tree-dyn">
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" id="btn-close-settings">Zavřít</button>
+            <h2>Nastavení</h2>
+            <div class="stat-row">
+                <span>🔊 Zvuky ve hře:</span>
+                <input type="checkbox" id="setting-sound" checked>
+            </div>
+            <div class="stat-row">
+                <span>🤬 Cenzura jmen (Leaderboard):</span>
+                <input type="checkbox" id="setting-censor" checked>
+            </div>
+            <div class="mt-20" style="border-top: 1px solid var(--border); padding-top: 15px;">
+                <button id="btn-rescue-data" class="btn-secondary w-100" style="background:#4a90e2; border:none; color:white;">🚑 Pokusit se obnovit ztracená data</button>
+                <p style="font-size:0.75rem; color:#aaa; margin-top:5px;">Pokud se ti resetovalo Celkové skóre, zkus ho obnovit ze zálohy.</p>
+            </div>
+            <div class="mt-20" style="border-top: 1px solid #ff0000; padding-top: 15px;">
+                <button id="btn-hard-reset" class="btn-secondary w-100" style="background:#cc0000; border:none; color:white;">🚨 Smazat veškerá lokální data 🚨</button>
+                <p style="font-size:0.75rem; color:#ff6666; margin-top:5px;">Kompletní tvrdý reset bez možnosti návratu.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="dev-modal" class="modal">
+        <div class="modal-content" style="border-color: #ff0000; box-shadow: 0 0 20px #ff0000;">
+            <button class="close-btn" id="btn-close-dev">Zavřít</button>
+            <h2 style="color: #ff0000;">🛠️ DEV CHEAT MENU</h2>
+            <button id="dev-add-score" class="btn-secondary w-100 mt-20" style="background:#cc0000; color:white; border:none;">+1t Skóre</button>
+            <button id="dev-add-score-huge" class="btn-secondary w-100 mt-10" style="background:#990000; color:white; border:none;">+100t Skóre (Pro Bity)</button>
+            <button id="dev-unlock-ach" class="btn-secondary w-100 mt-20" style="background:#cc0000; color:white; border:none;">Odemknout všechny achievementy</button>
+            <button id="dev-unlock-cosmetics" class="btn-secondary w-100 mt-20" style="background:#cc0000; color:white; border:none;">Odemknout veškerou kosmetiku</button>
+            <button id="dev-add-items" class="btn-secondary w-100 mt-20" style="background:#cc0000; color:white; border:none;">+100 Všech budov a klikátorů</button>
+            <button id="dev-add-bit" class="btn-secondary w-100 mt-20" style="background:#00ffaa; color:black; border:none;">+10 Bit okamžitě</button>
+            <button id="dev-add-divine" class="btn-secondary w-100 mt-20" style="background:#00ffff; color:black; border:none;">+10 Božských Bitů</button>
+        </div>
+    </div>
+
+    <div id="stats-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" id="btn-close-stats">Zavřít</button>
+            <h2>Statistiky Hráče</h2>
+            <div id="stats-container"></div>
+        </div>
+    </div>
+
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" id="btn-close-auth">Zavřít</button>
+            <h2>Účet (Cloud Sync)</h2>
+            <input type="text" id="auth-nick" class="auth-input" placeholder="Přezdívka (Nick)">
+            <input type="password" id="auth-pass" class="auth-input" placeholder="Heslo">
+            <div>
+                <button id="btn-login" class="auth-btn">Přihlásit</button>
+                <button id="btn-register" class="auth-btn">Registrovat</button>
+            </div>
+            <div id="auth-error" class="error-text"></div>
+        </div>
+    </div>
+
+    <div id="offline-modal" class="modal offline-modal-z">
+        <div class="modal-content">
+            <button class="close-btn" id="btn-close-offline">Skvělý!</button>
+            <h2 class="welcome-back">Vítej zpět!</h2>
+            <p>Zatímco jsi byl pryč, tvé budovy pracovaly a vydělaly:</p>
+            <div id="offline-earnings">0</div>
+        </div>
+    </div>
+
+    <script type="module" src="game.js"></script>
+</body>
+</html>
