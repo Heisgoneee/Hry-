@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>LAN Hra</title>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+        .sekce { background: white; border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+        #herni-plocha { width: 400px; height: 300px; border: 2px solid #333; position: relative; background: #fff; overflow: hidden; margin-top: 10px; }
+        .hrac { width: 20px; height: 20px; position: absolute; border-radius: 3px; }
+        #ja { background: blue; left: 50px; top: 140px; z-index: 2; }
+        #druhy { background: red; left: 330px; top: 140px; display: none; z-index: 1; }
+    </style>
+</head>
+<body>
+    <h1>Multiplayer Hra</h1>
+    
+    <div class="sekce">
+        <h3>Hráč 1 (Hostitel)</h3>
+        <button onclick="vytvorHru()">Vytvořit hru</button>
+        <p>Tvůj PIN: <strong id="moje-id">...</strong></p>
+    </div>
+
+    <div class="sekce">
+        <h3>Hráč 2 (Klient)</h3>
+        <input type="text" id="id-hostitele" placeholder="Zadej PIN">
+        <button onclick="pripojSe()">Připojit se</button>
+    </div>
+
+    <div class="sekce" id="hra-sekce">
+        <h3>Hrací plocha (Pohyb šipkami)</h3>
+        <div id="herni-plocha">
+            <div id="ja" class="hrac"></div>
+            <div id="druhy" class="hrac"></div>
+        </div>
+    </div>
+
+    <script>
+        let peer = null;
+        let spojeni = null;
+        const TAJNA_PREDPONA = "skolni-hra-xy-"; 
+        
+        let mojePozice = { x: 50, y: 140 };
+
+        function vytvorHru() {
+            let pin = Math.floor(1000 + Math.random() * 9000); 
+            peer = new Peer(TAJNA_PREDPONA + pin);
+            
+            peer.on('open', () => {
+                document.getElementById('moje-id').innerText = pin;
+            });
+            
+            peer.on('connection', (conn) => {
+                spojeni = conn;
+                nastavSpojeni();
+            });
+
+            peer.on('error', (err) => {
+                alert("Něco se pokazilo, zkus to znovu.");
+            });
+        }
+
+        function pripojSe() {
+            let pin = document.getElementById('id-hostitele').value;
+            peer = new Peer();
+            
+            peer.on('open', () => {
+                spojeni = peer.connect(TAJNA_PREDPONA + pin);
+                nastavSpojeni();
+            });
+        }
+
+        function nastavSpojeni() {
+            spojeni.on('open', () => {
+                document.getElementById('druhy').style.display = 'block';
+                alert('Propojeno! Můžete se hýbat.');
+            });
+            
+            spojeni.on('data', (data) => {
+                if(data.x !== undefined && data.y !== undefined) {
+                    document.getElementById('druhy').style.left = data.x + 'px';
+                    document.getElementById('druhy').style.top = data.y + 'px';
+                }
+            });
+        }
+
+        // Ovládání šipkami
+        window.addEventListener('keydown', (e) => {
+            if (!spojeni || !spojeni.open) return;
+
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault(); // Zabrání scrollování stránky
+            }
+
+            let krok = 10;
+            if (e.key === 'ArrowUp' && mojePozice.y > 0) mojePozice.y -= krok;
+            if (e.key === 'ArrowDown' && mojePozice.y < 280) mojePozice.y += krok;
+            if (e.key === 'ArrowLeft' && mojePozice.x > 0) mojePozice.x -= krok;
+            if (e.key === 'ArrowRight' && mojePozice.x < 380) mojePozice.x += krok;
+
+            document.getElementById('ja').style.left = mojePozice.x + 'px';
+            document.getElementById('ja').style.top = mojePozice.y + 'px';
+
+            spojeni.send(mojePozice);
+        });
+    </script>
+</body>
+</html>
