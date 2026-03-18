@@ -374,7 +374,7 @@ function init() {
     requestAnimationFrame(renderLoop);
     setInterval(gameLoop, 1000);
     setInterval(updateTimerDisplay, 1000);
-    setInterval(renderLeaderboard, 3000); 
+    setInterval(fetchGlobalLeaderboard, 15000); 
 }
 
 function renderLoop() {
@@ -1119,7 +1119,7 @@ async function loadCloudGame() {
 
     if (cloudData && localCache) {
         let parsedCache = JSON.parse(localCache);
-        verifyAndMerge(cloudData, parsedCache);
+        mergeSave(cloudData.totalScore > parsedCache.totalScore ? cloudData : parsedCache);
     } else if (cloudData) {
         mergeSave(cloudData);
     } else if (localCache) {
@@ -1570,7 +1570,6 @@ function updateUI() {
     updateVisualClickersIfNeeded();
     updateBitUI();
     updateVisualBuildingsBitButtons();
-    renderLeaderboard(); 
 }
 
 function renderStore() {
