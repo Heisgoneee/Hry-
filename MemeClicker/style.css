@@ -124,25 +124,29 @@ h2 { clear: both; }
 
 .synergy-text { color: var(--upgrade); font-size: 0.85rem; font-weight: bold; margin-top: 5px; display: none; white-space: nowrap; }
 
-/* CHANGELOG TLAČÍTKO NAHOŘE VPRAVO */
-#btn-changelog {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--panel);
-    color: var(--text);
-    border: 1px solid var(--accent);
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    z-index: 999;
+/* BOŽSKÉ BITY DESIGN VEDLE SEBE */
+.divine-display-box {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(0, 255, 255, 0.1);
+    border: 1px solid #00ffff;
+    border-radius: 8px;
+    color: #00ffff;
     font-weight: bold;
-    transition: background 0.2s, transform 0.2s;
+    font-size: 1.1rem;
+    text-shadow: 0 0 5px #00ffff;
+    white-space: nowrap;
 }
-#btn-changelog:hover {
-    background: var(--accent);
-    color: var(--bg);
-    transform: scale(1.05);
+.divine-display-box .divine-bonus-text {
+    font-size: 0.85rem;
+    color: #aaa;
+    font-weight: normal;
+    text-shadow: none;
 }
 
 .btn-prestige {
@@ -312,6 +316,10 @@ th { color: var(--accent); transition: color 0.5s; }
 #btn-dev { position: fixed; bottom: 80px; right: 20px; background: #cc0000; color: white; border: 2px solid #ff0000; border-radius: 50%; width: 50px; height: 50px; font-size: 1.5rem; cursor: pointer; z-index: 999; transition: transform 0.2s; justify-content: center; align-items: center; box-shadow: 0 0 10px #ff0000; }
 #btn-dev:hover { transform: scale(1.1); }
 input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; transition: accent-color 0.5s; }
+
+/* CHANGELOG TLAČÍTKO NAHOŘE VPRAVO */
+#btn-changelog { position: fixed; top: 20px; right: 20px; background: var(--panel); color: var(--text); border: 1px solid var(--accent); padding: 8px 15px; border-radius: 5px; cursor: pointer; z-index: 999; font-weight: bold; transition: background 0.2s, transform 0.2s; }
+#btn-changelog:hover { background: var(--accent); color: var(--bg); transform: scale(1.05); }
 
 .floating-text {
     position: fixed;
