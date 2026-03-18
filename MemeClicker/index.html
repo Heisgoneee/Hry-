@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultimate Pro Clicker - V0.5 BETA</title>
+    <title>Ultimate Pro Clicker - V43</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -27,10 +27,10 @@
                 <div id="synergy-display" class="synergy-text">Synergie úspěchů: +0%</div>
             </div>
 
-            <div id="divine-display" style="display:none; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 6px; margin-top: 15px; padding: 10px; background: rgba(0, 255, 255, 0.1); border: 1px solid #00ffff; border-radius: 8px;">
-                <span style="color: #00ffff; font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 5px #00ffff;">Božské Bity:</span>
-                <span id="divine-bits-count" style="color: #fff; font-weight: bold; font-size: 1.1rem;">0</span>
-                <span style="font-size: 0.9rem; color: #aaa; white-space: nowrap;">(+<span id="divine-bonus-count">0</span>% prod.)</span>
+            <div id="divine-display" class="divine-display-box" style="display:none;">
+                <span>Božské Bity:</span>
+                <span id="divine-bits-count" style="color: #fff;">0</span>
+                <span class="divine-bonus-text">(+<span id="divine-bonus-count">0</span>% prod.)</span>
             </div>
 
             <div id="buffs-container" style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;"></div>
@@ -134,7 +134,7 @@
     <button id="btn-dev" style="display: none;">🛠️</button>
 
     <div id="changelog-modal" class="modal">
-        <div class="modal-content" style="text-align: left; width: 600px; max-width: 95%;">
+        <div class="modal-content" style="text-align: left; width: 600px; max-width: 95%; max-height: 90vh; overflow-y: auto;">
             <button class="close-btn" id="btn-close-changelog">Zavřít</button>
             <h2 style="text-align: center; color: var(--accent);">Ultimate Pro Clicker - V0.5 BETA</h2>
             
@@ -146,11 +146,11 @@
             <h3 style="color: var(--unlocked);">Co hra momentálně obsahuje:</h3>
             <ul style="line-height: 1.6; color: #ccc; padding-left: 20px;">
                 <li>🖱️ <b>Hluboký systém upgradů:</b> Desítky budov, klikátorů a stovky vylepšení.</li>
-                <li>✨ <b>Božské Postoupení (Prestige):</b> Resetuj svůj postup pro Božské Bity a odemykej permanentní perky v obřím Rozvojovém stromu (více než 40 uzlů).</li>
-                <li>🌟 <b>Zlatá Hodinka:</b> Náhodně se zjevující zlaté bity přináší masivní buffy (až 7x klikačka nebo 2x auto-těžba).</li>
+                <li>✨ <b>Božské Postoupení (Prestige):</b> Resetuj svůj postup pro Božské Bity a odemykej permanentní perky v obřím Rozvojovém stromu.</li>
+                <li>🌟 <b>Zlatá Hodinka:</b> Náhodně se zjevující zlaté bity přináší masivní buffy.</li>
                 <li>🔋 <b>Minihra Přetížení:</b> Odemykatelná aktivní minihra u Auto-myši. Udržuj energii pomocí "PUMP" a získej reálný +20% bonus k produkci.</li>
                 <li>💎 <b>Těžba Bitů:</b> Každých 16 hodin získej krystal (Bit) a vylepšuj konkrétní budovy v Impériu na exponenciální násobiče (x2, x4, x8...).</li>
-                <li>📦 <b>Hromadný nákup:</b> Podrž <code>CTRL</code> a klikni na předmět pro nákup 10 kusů naráz (po odemčení vylepšení).</li>
+                <li>📦 <b>Hromadný nákup:</b> Podrž <code>CTRL</code> a klikni na předmět pro nákup 10 kusů naráz.</li>
                 <li>🏆 <b>Leaderboard & Achievementy:</b> Soutěž s ostatními přes Cloud Sync a sbírej bonusové % za odemčené achievementy.</li>
                 <li>🎨 <b>Kosmetika:</b> Různé motivy a skiny pro tvé klikací tlačítko, včetně nahrání vlastního obrázku.</li>
                 <li>📱 <b>Mobilní verze:</b> Hra je plně optimalizována pro telefony!</li>
