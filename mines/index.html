@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hledání min</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin-top: 50px;
+        }
+        #controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+            background: #ddd;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid #999;
+        }
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: monospace;
+            background: black;
+            color: red;
+            padding: 5px 10px;
+            border-radius: 4px;
+            min-width: 60px;
+            text-align: center;
+        }
+        select, button {
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #board {
+            display: grid;
+            gap: 2px;
+            background-color: #999;
+            padding: 2px;
+            border: 2px solid #666;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: #ccc;
+            border-top: 2px solid #fff;
+            border-left: 2px solid #fff;
+            border-bottom: 2px solid #777;
+            border-right: 2px solid #777;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            box-sizing: border-box;
+        }
+        .cell.revealed {
+            background-color: #ddd;
+            border: 1px solid #999;
+        }
+        .cell.mine {
+            background-color: red;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Hledání min</h1>
+    
+    <div id="controls">
+        <select id="difficulty" onchange="changeDifficulty()">
+            <option value="easy">Easy (9x9, 10 min)</option>
+            <option value="medium">Medium (16x16, 40 min)</option>
+            <option value="hard">Hard (30x16, 99 min)</option>
+            <option value="extreme">Extreme (30x24, 150 min)</option>
+        </select>
+        <div id="timer">0</div>
+        <button onclick="init()">Nová hra</button>
+    </div>
+
+    <div id="board"></div>
+
+    <script>
+        let rows = 9;
+        let cols = 9;
+        let minesCount = 10;
+        let board = [];
+        let revealedCount = 0;
+        let gameOver = false;
+        
+        let timerInterval = null;
+        let timeElapsed = 0;
+        let firstClick = true;
+
+        const boardEl = document.getElementById('board');
+        const timerEl = document.getElementById('timer');
+
+        function changeDifficulty() {
+            const diff = document.getElementById('difficulty').value;
+            if (diff === 'easy') { rows = 9; cols = 9; minesCount = 10; }
+            else if (diff === 'medium') { rows = 16; cols = 16; minesCount = 40; }
+            else if (diff === 'hard') { rows = 16; cols = 30; minesCount = 99; }
+            else if (diff === 'extreme') { rows = 24; cols = 30; minesCount = 150; }
+            init();
+        }
+
+        function init() {
+            boardEl.innerHTML = '';
+            boardEl.style.gridTemplateColumns = `repeat(${cols}, 30px)`;
+            
+            board = [];
+            revealedCount = 0;
+            gameOver = false;
+            firstClick = true;
+            
+            clearInterval(timerInterval);
+            timeElapsed = 0;
+            timerEl.textContent = '0';
+            
+            for (let r = 0; r < rows; r++) {
+                let row = [];
+                for (let c = 0; c < cols; c++) {
+                    let cell = { r, c, mine: false, revealed: false, flag: false, count: 0 };
+                    row.push(cell);
+                    let div = document.createElement('div');
+                    div.className = 'cell';
+                    div.dataset.r = r;
+                    div.dataset.c = c;
+                    div.addEventListener('mousedown', handleInteraction);
+                    div.addEventListener('contextmenu', (e) => e.preventDefault());
+                    boardEl.appendChild(div);
+                }
+                board.push(row);
+            }
+        }
+
+        function placeMines(firstR, firstC) {
+            let placed = 0;
+            while (placed < minesCount) {
+                let r = Math.floor(Math.random() * rows);
+                let c = Math.floor(Math.random() * cols);
+                if (!board[r][c].mine && (r !== firstR || c !== firstC)) {
+                    board[r][c].mine = true;
+                    placed++;
+                }
+            }
+        }
+
+        function calcCounts() {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (board[r][c].mine) continue;
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            let nr = r + dr;
+                            let nc = c + dc;
+                            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].mine) {
+                                count++;
+                            }
+                        }
+                    }
+                    board[r][c].count = count;
+                }
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                timerEl.textContent = timeElapsed;
+            }, 1000);
+        }
+
+        function handleInteraction(e) {
+            if (gameOver) return;
+            
+            let r = parseInt(e.target.dataset.r);
+            let c = parseInt(e.target.dataset.c);
+            
+            if (firstClick) {
+                startTimer();
+                placeMines(r, c);
+                calcCounts();
+                firstClick = false;
+            }
+
+            if (e.button === 0) {
+                reveal(r, c);
+            } else if (e.button === 2) {
+                toggleFlag(r, c);
+            }
+        }
+
+        function toggleFlag(r, c) {
+            let cell = board[r][c];
+            if (cell.revealed) return;
+            cell.flag = !cell.flag;
+            render();
+        }
+
+        function reveal(r, c) {
+            if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+            let cell = board[r][c];
+            if (cell.revealed || cell.flag) return;
+
+            cell.revealed = true;
+            revealedCount++;
+
+            if (cell.mine) {
+                gameOver = true;
+                clearInterval(timerInterval);
+                revealAll();
+                setTimeout(() => alert('Hra končí! Šlápl jsi na minu.'), 100);
+            } else if (revealedCount === rows * cols - minesCount) {
+                gameOver = true;
+                clearInterval(timerInterval);
+                setTimeout(() => alert(`Vyhrál jsi! Tvůj čas je ${timeElapsed} s.`), 100);
+            } else if (cell.count === 0) {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        reveal(r + dr, c + dc);
+                    }
+                }
+            }
+            render();
+        }
+
+        function revealAll() {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    board[r][c].revealed = true;
+                }
+            }
+            render();
+        }
+
+        function render() {
+            let divs = boardEl.children;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let cell = board[r][c];
+                    let div = divs[r * cols + c];
+                    div.className = 'cell';
+                    div.textContent = '';
+                    if (cell.revealed) {
+                        div.classList.add('revealed');
+                        if (cell.mine) {
+                            div.classList.add('mine');
+                            div.textContent = '💣';
+                        } else if (cell.count > 0) {
+                            div.textContent = cell.count;
+                            const colors = ['', 'blue', 'green', 'red', 'purple', 'maroon', 'turquoise', 'black', 'gray'];
+                            div.style.color = colors[cell.count];
+                        }
+                    } else if (cell.flag) {
+                        div.textContent = '🚩';
+                    }
+                }
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
