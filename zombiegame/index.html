@@ -2,22 +2,22 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>3D Zombie Survival - Extended Weaponry</title>
+    <title>3D Zombie Survival - Extended Weaponry & Classes</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #111; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+        body { margin: 0; overflow: hidden; background: #0a0f1a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
         #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .menu-container { display: flex; gap: 20px; transition: 0.3s; }
-        .box { border: 2px solid #555; padding: 25px; background: #222; border-radius: 10px; width: 300px; text-align: center; }
-        input[type="text"], button { padding: 12px; font-size: 16px; margin: 8px 0; width: 90%; border-radius: 5px; border: none; box-sizing: border-box; }
+        .menu-container { display: flex; gap: 20px; transition: 0.3s; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .box { border: 2px solid #555; padding: 25px; background: #1a1f2b; border-radius: 10px; width: 300px; text-align: center; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input[type="text"], button, select { padding: 12px; font-size: 16px; margin: 8px 0; width: 90%; border-radius: 5px; border: none; box-sizing: border-box; }
         button { background: #d32f2f; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { background: #f44336; }
-        input[type="text"] { background: #333; color: white; border: 1px solid #666; text-align: center; }
+        input[type="text"], select { background: #2a3142; color: white; border: 1px solid #4a5568; text-align: center; }
         
         #ui { position: absolute; bottom: 20px; right: 20px; font-size: 24px; text-shadow: 2px 2px 0 #000; text-align: right; pointer-events: none; z-index: 10; }
         #top-ui { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 32px; font-weight: bold; text-shadow: 2px 2px 0 #000; text-align: center; pointer-events: none; z-index: 10; }
-        #controls-ui { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; font-size: 16px; text-shadow: 1px 1px 0 #000; pointer-events: none; z-index: 10; }
+        #controls-ui { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; font-size: 16px; text-shadow: 1px 1px 0 #000; pointer-events: none; z-index: 10; border-left: 4px solid #d32f2f; }
         
         #scoreboard { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; font-size: 16px; text-shadow: 1px 1px 0 #000; pointer-events: none; z-index: 10; min-width: 250px; }
         .score-row { display: flex; justify-content: space-between; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #444; }
@@ -26,7 +26,7 @@
 
         #lobby-section { margin-top: 30px; text-align: center; width: 100%; display: none; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; }
         #player-list { list-style: none; padding: 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-        #player-list li { padding: 10px 20px; background: #444; border-radius: 20px; font-weight: bold; display: flex; align-items: center; font-size: 18px; }
+        #player-list li { padding: 10px 20px; background: #2a3142; border-radius: 20px; font-weight: bold; display: flex; align-items: center; font-size: 18px; border: 1px solid #4a5568; }
         .color-dot { width: 18px; height: 18px; border-radius: 50%; margin-right: 10px; border: 2px solid #fff; }
 
         .world-label { position: absolute; transform: translate(-50%, -50%); font-size: 20px; font-weight: bold; text-shadow: 2px 2px 0 #000; pointer-events: none; text-align: center; display: none; z-index: 5; }
@@ -39,17 +39,30 @@
         .perk-wrap { display: none; background: #222; border: 2px solid #fff; position: relative; height: 20px; border-radius: 5px; overflow: hidden; }
         .perk-fill { height: 100%; width: 100%; }
         .perk-label { position: absolute; top: 0; left: 5px; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 0 #000; line-height: 20px; }
+        
+        .zombie-indicator { position: absolute; font-size: 28px; color: #ff3333; text-shadow: 2px 2px 0 #000; pointer-events: none; display: none; z-index: 5; transform-origin: center; }
+
+        #announcement { position: absolute; top: 100px; width: 100%; text-align: center; font-size: 40px; font-weight: bold; text-shadow: 3px 3px 0 #000; pointer-events: none; display: none; z-index: 20; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
 <div id="menu">
-    <h1 style="font-size: 50px; color: #d32f2f; margin-bottom: 40px; text-shadow: 2px 2px #000;">ZOMBIE SURVIVAL</h1>
+    <h1 style="font-size: 50px; color: #d32f2f; margin-bottom: 40px; text-shadow: 3px 3px #000;">ZOMBIE SURVIVAL</h1>
     
     <div class="menu-container" id="main-menu">
         <div class="box" id="profile-box">
             <h3>Tvoje postava</h3>
             <input type="text" id="my-name" value="Hráč" placeholder="Přezdívka" oninput="updateMyProfile()">
+            
+            <label style="display:block; margin-top:10px; font-size:14px; color:#aaa;">Třída:</label>
+            <select id="my-class" onchange="updateMyProfile()">
+                <option value="engineer">Engineer (Turreta)</option>
+                <option value="medic">Medic (Léčivá zóna)</option>
+                <option value="shotgunner">Shotgunner (Brokovnice)</option>
+                <option value="supplier">Supplier (Bedna s Municí)</option>
+            </select>
+
             <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px;">
                 <label>Barva:</label>
                 <input type="color" id="my-color" value="#00aaff" style="width: 50px; padding: 0; height: 40px; cursor: pointer;" oninput="updateMyProfile()">
@@ -68,15 +81,30 @@
             <button onclick="joinGame()">Připojit do hry</button>
             <p id="join-status" style="margin-top: 10px;"></p>
         </div>
+
+        <div class="box" id="perks-box" style="text-align: left;">
+            <h3 style="text-align: center;">Perky (Bonusy)</h3>
+            <div style="font-size: 14px; line-height: 1.6;">
+                <span style="color:#00ff00">█</span> <b>Speed Cola:</b> Rychlé přebíjení<br>
+                <span style="color:#0000ff">█</span> <b>Inf Ammo:</b> Nekonečné náboje<br>
+                <span style="color:#ff0000">█</span> <b>Insta Kill:</b> Zabití na 1 ránu<br>
+                <span style="color:#ff8800">█</span> <b>Gold Kill:</b> Peníze za každý kill<br>
+                <span style="color:#00ffff">█</span> <b>Max Ammo:</b> Plné náboje všem<br>
+                <span style="color:#4488ff">█</span> <b>Supply Box:</b> Doplní náboje tobě<br>
+                <span style="color:#ffd700">█</span> <b>Peníze:</b> +$10 ihned
+            </div>
+        </div>
     </div>
 
     <div id="lobby-section">
         <h3 style="color: #aaa; margin-bottom: 15px;">Hráči v čekárně:</h3>
         <ul id="player-list"></ul>
-        <button id="start-btn" onclick="startGame()" style="display:none; background: #4caf50; font-size: 24px; padding: 15px 40px; border-radius: 10px; cursor: pointer;">Spustit hru všem</button>
+        <button id="start-btn" onclick="startGame()" style="display:none; background: #4caf50; font-size: 24px; padding: 15px 40px; border-radius: 10px; cursor: pointer; margin-top: 20px;">Spustit hru všem</button>
         <p id="waiting-text" style="display:none; color: #aaa; font-size: 18px;">Čeká se, až hostitel spustí hru...</p>
     </div>
 </div>
+
+<div id="announcement"></div>
 
 <div id="top-ui" style="display:none;">
     VLNA <span id="top-wave" style="color: #d32f2f;">1</span><br>
@@ -110,6 +138,7 @@
         <div id="ui-wep2">[2] ---</div>
     </div>
     <div style="font-size: 32px; font-weight: bold; margin-top: 5px;" id="ui-ammo">8 / ∞</div>
+    <div style="font-size: 18px; font-weight: bold; margin-top: 10px; color: #aaa;" id="ui-ability">[Q] SCHOPNOST PŘIPRAVENA</div>
 </div>
 
 <div id="controls-ui" style="display:none;">
@@ -118,7 +147,8 @@
     [Myš] - Míření a střelba<br>
     [R] - Přebít<br>
     [1] / [2] - Změna zbraně<br>
-    [E] - Upgradovat Zbraň ($200)<br>
+    [Q] - Použít schopnost třídy<br>
+    [E] - Akce (Koupit / Upgrade / Oživit)<br>
     [B] - Mystery Box ($100)
 </div>
 
@@ -126,11 +156,13 @@
     <div id="box-label" class="world-label" style="color: #ffd700;">Mystery Box<br>$100 [B]</div>
     <div id="pap-label" class="world-label" style="color: #ff00ff;">Upgrader<br>$200 [E]</div>
     <div id="box-text" class="world-label"></div>
+    <div id="zombie-ind-1" class="zombie-indicator">➤</div>
+    <div id="zombie-ind-2" class="zombie-indicator">➤</div>
 </div>
 
 <script>
-    const PREFIX = "zmbsimple-v5-";
-    const MAP_SIZE = 3000;
+    const PREFIX = "zmbsimple-v12-";
+    const MAX_MAP_SIZE = 5000;
     
     let peer, conn, isHost = false, gameStarted = false;
     let connections = [];
@@ -146,66 +178,130 @@
         { name: "Sniper Kar98k", fireRate: 60, speed: 50, dmg: 150, mag: 5, max: 25, reload: 120, spread: 0, color: 0xffffff, shots: 1 },
         { name: "Gatling Gun", fireRate: 3, speed: 35, dmg: 25, mag: 100, max: 400, reload: 150, spread: 0.1, color: 0x555555, shots: 1 },
         { name: "Ray Gun", fireRate: 15, speed: 18, dmg: 200, mag: 20, max: 160, reload: 100, spread: 0, color: 0x00ff00, shots: 1 },
-        { name: "Plasma Rifle", fireRate: 5, speed: 40, dmg: 45, mag: 40, max: 240, reload: 90, spread: 0.02, color: 0x00ffff, shots: 1 }
+        { name: "Plasma Rifle", fireRate: 5, speed: 40, dmg: 45, mag: 40, max: 240, reload: 90, spread: 0.02, color: 0x00ffff, shots: 1 },
+        { name: "P90", fireRate: 4, speed: 30, dmg: 18, mag: 50, max: 300, reload: 80, spread: 0.06, color: 0x8888aa, shots: 1 },
+        { name: "Desert Eagle", fireRate: 35, speed: 35, dmg: 120, mag: 7, max: 70, reload: 60, spread: 0.01, color: 0xcccccc, shots: 1 },
+        { name: "Minigun", fireRate: 2, speed: 40, dmg: 22, mag: 200, max: 800, reload: 200, spread: 0.12, color: 0x333333, shots: 1 },
+        { name: "Laser Cannon", fireRate: 2, speed: 60, dmg: 50, mag: 100, max: 500, reload: 100, spread: 0.01, color: 0xff00ff, shots: 1 },
+        { name: "Auto Shotgun", fireRate: 15, speed: 25, dmg: 15, mag: 12, max: 72, reload: 110, spread: 0.2, color: 0xaa4400, shots: 6 }
     ];
+
+    const BUILDINGS = [
+        {x: 0, z: -350, w: 200, d: 150, r: 0.15},
+        {x: 350, z: 200, w: 150, d: 200, r: -0.2},
+        {x: -300, z: 250, w: 200, d: 150, r: 0.4},
+        {x: -1100, z: -1100, w: 300, d: 300, r: 0.1},
+        {x: 1100, z: 1100, w: 400, d: 200, r: -0.15},
+        {x: 1050, z: -1050, w: 200, d: 400, r: 0.5},
+        {x: -1150, z: 1000, w: 250, d: 350, r: -0.3},
+        {x: 1700, z: -1700, w: 300, d: 400, r: 0.2},
+        {x: -1700, z: -1700, w: 400, d: 400, r: -0.1},
+        {x: 1650, z: 1650, w: 400, d: 300, r: 0.4},
+        {x: -1600, z: 1600, w: 350, d: 350, r: -0.25}
+    ];
+
+    const WALLS = [];
+    const THICK = 40;
+    const DOOR = 140;
+
+    BUILDINGS.forEach(b => {
+        let rot = b.r || 0;
+        function addWall(lx, lz, lw, ld) {
+            let rx = lx * Math.cos(rot) - lz * Math.sin(rot);
+            let rz = lx * Math.sin(rot) + lz * Math.cos(rot);
+            WALLS.push({x: b.x + rx, z: b.z + rz, w: lw, d: ld, r: rot});
+        }
+        
+        let sW = (b.w - DOOR) / 2;
+        addWall(-b.w/2 + sW/2, -b.d/2 + THICK/2, sW, THICK); 
+        addWall(b.w/2 - sW/2, -b.d/2 + THICK/2, sW, THICK); 
+        addWall(-b.w/2 + sW/2, b.d/2 - THICK/2, sW, THICK); 
+        addWall(b.w/2 - sW/2, b.d/2 - THICK/2, sW, THICK); 
+        addWall(b.w/2 - THICK/2, 0, THICK, b.d); 
+        addWall(-b.w/2 + THICK/2, 0, THICK, b.d); 
+    });
 
     let state = {
         wave: 1, zombiesToSpawn: 5,
-        players: {}, zombies: {}, bullets: {}, drops: {}, 
+        players: {}, zombies: {}, bullets: {}, drops: {}, turrets: {}, healZones: {},
         nextId: 0,
-        buildings: [
-            {x: 0, z: -500, w: 400, d: 150},
-            {x: 800, z: 200, w: 200, d: 400},
-            {x: -600, z: 400, w: 300, d: 200},
-            {x: -700, z: -400, w: 200, d: 300}
-        ],
-        mysteryBox: {x: 0, z: -300, size: 50, cost: 100},
-        packAPunch: {x: -400, z: 0, size: 40, cost: 200},
-        boxActive: false, boxTimer: 0, boxWeapon: 0, boxBuyer: null, boxRollIndex: 0
+        mysteryBox: {x: 0, z: -200, size: 50, cost: 100},
+        packAPunch: {x: -250, z: 0, size: 40, cost: 200},
+        mapExpander: {cost: 50, level: 1, maxLevel: 5},
+        currentLimit: 800, 
+        boxActive: false, boxTimer: 0, boxWeapon: 0, boxBuyer: null, boxRollIndex: 0,
+        announcement: {text: "", color: "#ffffff", timer: 0}
     };
 
-    let inputs = { up: false, down: false, left: false, right: false, shoot: false, reload: false, interact: false, aimX: 0, aimZ: 0, buy: false, swap1: false, swap2: false };
+    let inputs = { up: false, down: false, left: false, right: false, shoot: false, reload: false, interact: false, ability: false, aimX: 0, aimZ: 0, buy: false, swap1: false, swap2: false };
     function getId() { return state.nextId++; }
 
     // --- 3D ENGINE ---
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x151515);
-    scene.fog = new THREE.Fog(0x151515, 800, 1800); 
+    scene.background = new THREE.Color(0x0a0f1a);
+    scene.fog = new THREE.Fog(0x0a0f1a, 800, 2500); 
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 3000);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 4000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+    const ambientLight = new THREE.AmbientLight(0x202530, 1.2);
     scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    
+    const dirLight = new THREE.DirectionalLight(0x406080, 1.5);
     dirLight.position.set(500, 1000, 500);
     dirLight.castShadow = true;
-    dirLight.shadow.camera.left = -1500; dirLight.shadow.camera.right = 1500;
-    dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500;
+    dirLight.shadow.camera.left = -2000; dirLight.shadow.camera.right = 2000;
+    dirLight.shadow.camera.top = 2000; dirLight.shadow.camera.bottom = -2000;
     scene.add(dirLight);
 
-    const planeGeo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
-    const planeMat = new THREE.MeshLambertMaterial({ color: 0x242a18 });
+    const planeGeo = new THREE.PlaneGeometry(MAX_MAP_SIZE, MAX_MAP_SIZE);
+    const planeMat = new THREE.MeshLambertMaterial({ color: 0x1a1c18 });
     const plane = new THREE.Mesh(planeGeo, planeMat);
     plane.rotation.x = -Math.PI / 2;
     plane.receiveShadow = true;
     scene.add(plane);
 
-    const gridHelper = new THREE.GridHelper(MAP_SIZE, 50, 0x000000, 0x000000);
-    gridHelper.material.opacity = 0.15;
+    const gridHelper = new THREE.GridHelper(MAX_MAP_SIZE, 100, 0x000000, 0x000000);
+    gridHelper.material.opacity = 0.25;
     gridHelper.material.transparent = true;
     scene.add(gridHelper);
 
+    const barrierGeo = new THREE.BoxGeometry(1, 200, 1);
+    const barrierMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.15 });
+    const barriers = {
+        n: new THREE.Mesh(barrierGeo, barrierMat),
+        s: new THREE.Mesh(barrierGeo, barrierMat),
+        e: new THREE.Mesh(barrierGeo, barrierMat),
+        w: new THREE.Mesh(barrierGeo, barrierMat)
+    };
+    scene.add(barriers.n); scene.add(barriers.s); scene.add(barriers.e); scene.add(barriers.w);
+
     const buildingGeo = new THREE.BoxGeometry(1, 1, 1);
-    const buildingMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    state.buildings.forEach(b => {
+    const buildingMat = new THREE.MeshLambertMaterial({ color: 0x22262a });
+    const floorMat = new THREE.MeshLambertMaterial({ color: 0x141618 });
+
+    BUILDINGS.forEach(b => {
+        let floorMesh = new THREE.Mesh(buildingGeo, floorMat);
+        floorMesh.scale.set(b.w, 2, b.d);
+        floorMesh.position.set(b.x, 1, b.z);
+        floorMesh.rotation.y = -(b.r || 0);
+        floorMesh.receiveShadow = true;
+        scene.add(floorMesh);
+
+        let light = new THREE.PointLight(0xff8800, 0.8, 600);
+        light.position.set(b.x, 60, b.z);
+        scene.add(light);
+    });
+
+    WALLS.forEach(w => {
         let mesh = new THREE.Mesh(buildingGeo, buildingMat);
-        mesh.scale.set(b.w, 200, b.d);
-        mesh.position.set(b.x, 100, b.z);
+        mesh.scale.set(w.w, 100, w.d);
+        mesh.position.set(w.x, 50, w.z);
+        mesh.rotation.y = -(w.r || 0);
         mesh.castShadow = true; mesh.receiveShadow = true;
         scene.add(mesh);
     });
@@ -223,6 +319,17 @@
     papMesh.position.set(state.packAPunch.x, state.packAPunch.size, state.packAPunch.z);
     papMesh.castShadow = true;
     scene.add(papMesh);
+    
+    const expanderGeo = new THREE.CylinderGeometry(30, 30, 50, 8);
+    const expanderMat = new THREE.MeshLambertMaterial({ color: 0x00ffff });
+    const expanderMeshes = [
+        new THREE.Mesh(expanderGeo, expanderMat),
+        new THREE.Mesh(expanderGeo, expanderMat),
+        new THREE.Mesh(expanderGeo, expanderMat),
+        new THREE.Mesh(expanderGeo, expanderMat)
+    ];
+    expanderMeshes.forEach(m => { m.castShadow = true; scene.add(m); });
+
     const papLight = new THREE.PointLight(0xff00ff, 1, 200);
     papLight.position.set(state.packAPunch.x, 50, state.packAPunch.z);
     scene.add(papLight);
@@ -233,14 +340,20 @@
     floatWeaponMesh.visible = false;
     scene.add(floatWeaponMesh);
 
-    const meshes = { players: {}, zombies: {}, bullets: {}, drops: {} };
+    const meshes = { players: {}, zombies: {}, bullets: {}, drops: {}, turrets: {}, healZones: {} };
     
     const playerGeo = new THREE.BoxGeometry(30, 45, 30);
     const zombieGeo = new THREE.BoxGeometry(25, 40, 25);
     const bulletGeo = new THREE.SphereGeometry(3, 8, 8);
     const dropGeo = new THREE.OctahedronGeometry(12);
+    const supplyGeo = new THREE.BoxGeometry(20, 20, 20); 
+    const turretGeo = new THREE.BoxGeometry(15, 30, 15);
+    const healZoneGeo = new THREE.CylinderGeometry(80, 80, 2, 16);
 
-    const zombieMat = new THREE.MeshLambertMaterial({ color: 0x2e5c26 });
+    const matNormal = new THREE.MeshLambertMaterial({ color: 0x2e5c26 });
+    const matFast = new THREE.MeshLambertMaterial({ color: 0x88aa00 });
+    const matTank = new THREE.MeshLambertMaterial({ color: 0x5c2e26 });
+
     const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
     const bulletPapMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
     
@@ -249,13 +362,26 @@
     const ammoMat = new THREE.MeshLambertMaterial({ color: 0x0000ff }); 
     const instakillMat = new THREE.MeshLambertMaterial({ color: 0xff0000 }); 
     const goldkillMat = new THREE.MeshLambertMaterial({ color: 0xff8800 }); 
+    const maxammoMat = new THREE.MeshLambertMaterial({ color: 0x00ffff });
+    const supplyMat = new THREE.MeshLambertMaterial({ color: 0x4488ff });
+    
+    const turretMat = new THREE.MeshLambertMaterial({ color: 0x777777 });
+    const healZoneMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3 });
 
     function getDropMat(d) {
         if (d.type === 1) return speedMat;
         if (d.type === 2) return ammoMat;
         if (d.type === 3) return instakillMat;
         if (d.type === 4) return goldkillMat;
+        if (d.type === 5) return maxammoMat;
+        if (d.type === 6) return supplyMat;
         return moneyMat;
+    }
+
+    function getZombieMat(z) {
+        if (z.type === 1) return matFast;
+        if (z.type === 2) return matTank;
+        return matNormal;
     }
 
     const playerMats = {};
@@ -269,7 +395,12 @@
         let ul = document.getElementById('player-list');
         ul.innerHTML = '';
         Object.values(playersObj).forEach(p => {
-            ul.innerHTML += `<li><span class="color-dot" style="background:${p.color}"></span> ${p.name}</li>`;
+            let className = 'Inženýr';
+            if(p.playerClass === 'medic') className = 'Medik';
+            if(p.playerClass === 'shotgunner') className = 'Shotgunner';
+            if(p.playerClass === 'supplier') className = 'Zásobovač';
+            
+            ul.innerHTML += `<li><span class="color-dot" style="background:${p.color}"></span> ${p.name} [${className}]</li>`;
         });
         document.getElementById('lobby-section').style.display = 'block';
     }
@@ -283,8 +414,18 @@
         if (!myId || !state.players[myId]) return;
         state.players[myId].name = document.getElementById('my-name').value || "Hráč";
         state.players[myId].color = document.getElementById('my-color').value;
+        state.players[myId].playerClass = document.getElementById('my-class').value;
+        
+        if (state.players[myId].playerClass === 'shotgunner') {
+            state.players[myId].weapons = [0, 4];
+        } else {
+            state.players[myId].weapons = [0, -1];
+        }
+        state.players[myId].ammos = [WEAPONS[state.players[myId].weapons[0]].mag, state.players[myId].weapons[1] !== -1 ? WEAPONS[state.players[myId].weapons[1]].mag : 0];
+        state.players[myId].totalAmmos = [WEAPONS[state.players[myId].weapons[0]].max, state.players[myId].weapons[1] !== -1 ? WEAPONS[state.players[myId].weapons[1]].max : 0];
+
         if (isHost) broadcastLobby();
-        else if (conn && conn.open) conn.send({ type: 'profile', profile: { name: state.players[myId].name, color: state.players[myId].color } });
+        else if (conn && conn.open) conn.send({ type: 'profile', profile: { name: state.players[myId].name, color: state.players[myId].color, playerClass: state.players[myId].playerClass } });
     }
 
     function hostGame() {
@@ -300,7 +441,7 @@
         peer.on('open', (id) => {
             document.getElementById('host-pin').innerText = pin;
             myId = id;
-            addPlayer(myId, {name: document.getElementById('my-name').value, color: document.getElementById('my-color').value});
+            addPlayer(myId, {name: document.getElementById('my-name').value, color: document.getElementById('my-color').value, playerClass: document.getElementById('my-class').value});
             document.getElementById('start-btn').style.display = 'inline-block';
             broadcastLobby();
         });
@@ -315,7 +456,19 @@
             c.on('data', (data) => {
                 if (data.type === 'profile') { 
                     if (!state.players[c.peer]) addPlayer(c.peer, data.profile); 
-                    else { state.players[c.peer].name = data.profile.name; state.players[c.peer].color = data.profile.color; }
+                    else { 
+                        state.players[c.peer].name = data.profile.name; 
+                        state.players[c.peer].color = data.profile.color; 
+                        state.players[c.peer].playerClass = data.profile.playerClass;
+                        
+                        if (state.players[c.peer].playerClass === 'shotgunner') {
+                            state.players[c.peer].weapons = [0, 4];
+                        } else {
+                            state.players[c.peer].weapons = [0, -1];
+                        }
+                        state.players[c.peer].ammos = [WEAPONS[state.players[c.peer].weapons[0]].mag, state.players[c.peer].weapons[1] !== -1 ? WEAPONS[state.players[c.peer].weapons[1]].mag : 0];
+                        state.players[c.peer].totalAmmos = [WEAPONS[state.players[c.peer].weapons[0]].max, state.players[c.peer].weapons[1] !== -1 ? WEAPONS[state.players[c.peer].weapons[1]].max : 0];
+                    }
                     broadcastLobby(); 
                 }
                 if (data.type === 'input' && state.players[c.peer]) state.players[c.peer].inputs = data.inputs;
@@ -337,7 +490,7 @@
                 document.getElementById('host-box').style.display = 'none';
                 document.getElementById('join-box').style.display = 'none';
                 document.getElementById('waiting-text').style.display = 'block'; 
-                let prof = {name: document.getElementById('my-name').value, color: document.getElementById('my-color').value};
+                let prof = {name: document.getElementById('my-name').value, color: document.getElementById('my-color').value, playerClass: document.getElementById('my-class').value};
                 addPlayer(myId, prof);
                 conn.send({ type: 'profile', profile: prof });
             });
@@ -364,22 +517,27 @@
     }
 
     function addPlayer(id, profile) {
+        let w0 = 0, w1 = -1;
+        if(profile.playerClass === 'shotgunner') { w0 = 0; w1 = 4; }
+
         state.players[id] = { 
-            name: profile.name, color: profile.color,
+            name: profile.name, color: profile.color, playerClass: profile.playerClass || 'engineer',
             x: 0, z: 0, hp: 100, lives: 3, money: 0, kills: 0,
-            weapons: [0, -1], activeWep: 0,
+            isDowned: false, downTimer: 0,
+            weapons: [w0, w1], activeWep: 0,
             upgraded: [false, false],
-            ammos: [WEAPONS[0].mag, 0], totalAmmos: [WEAPONS[0].max, 0], 
-            cooldown: 0, reloadTimer: 0, 
+            ammos: [WEAPONS[w0].mag, w1 !== -1 ? WEAPONS[w1].mag : 0], totalAmmos: [WEAPONS[w0].max, w1 !== -1 ? WEAPONS[w1].max : 0], 
+            cooldown: 0, reloadTimer: 0, abilityCooldown: 0,
             perks: { speed: 0, ammo: 0, instakill: 0, goldkill: 0 },
-            inputs: {up: false, down: false, left: false, right: false, shoot: false, reload: false, interact: false, aimX: 0, aimZ: 0, buy: false, swap1: false, swap2: false} 
+            inputs: {up: false, down: false, left: false, right: false, shoot: false, reload: false, interact: false, ability: false, aimX: 0, aimZ: 0, buy: false, swap1: false, swap2: false} 
         };
     }
 
     function startGame() {
         if (!myId) return;
         gameStarted = true;
-        state.zombiesToSpawn = state.wave * 6;
+        let playerCount = Object.keys(state.players).length;
+        state.zombiesToSpawn = state.wave * 12 * playerCount; 
         connections.forEach(c => c.send({type: 'start'}));
         document.getElementById('menu').style.display = 'none';
         document.getElementById('ui').style.display = 'block';
@@ -391,12 +549,28 @@
     }
 
     function checkBuildingCollision(px, pz, radius) {
-        for(let b of state.buildings) {
-            let hW = b.w/2, hD = b.d/2;
-            if(px + radius > b.x - hW && px - radius < b.x + hW && pz + radius > b.z - hD && pz - radius < b.z + hD) return true;
+        for(let w of WALLS) {
+            let dx = px - w.x;
+            let dz = pz - w.z;
+            let cos = Math.cos(-w.r);
+            let sin = Math.sin(-w.r);
+            let localX = dx * cos - dz * sin;
+            let localZ = dx * sin + dz * cos;
+            if(Math.abs(localX) < w.w/2 + radius && Math.abs(localZ) < w.d/2 + radius) return true;
         }
+        
         let pw = state.packAPunch.size/2;
         if(px + radius > state.packAPunch.x - pw && px - radius < state.packAPunch.x + pw && pz + radius > state.packAPunch.z - pw && pz - radius < state.packAPunch.z + pw) return true;
+        
+        if (state.mapExpander.level <= state.mapExpander.maxLevel) {
+            let L = state.currentLimit;
+            let expPos = [{x: 0, z: -L + 50}, {x: 0, z: L - 50}, {x: L - 50, z: 0}, {x: -L + 50, z: 0}];
+            let ew = 30; 
+            for(let i=0; i<4; i++) {
+                if(px + radius > expPos[i].x - ew && px - radius < expPos[i].x + ew && pz + radius > expPos[i].z - ew && pz - radius < expPos[i].z + ew) return true;
+            }
+        }
+        
         return false;
     }
 
@@ -406,6 +580,10 @@
         if (!isHost) return;
         if (state.players[myId]) state.players[myId].inputs = inputs;
 
+        let playerCount = Object.keys(state.players).length;
+        
+        if (state.announcement.timer > 0) state.announcement.timer--;
+
         if (state.boxActive) {
             state.boxTimer--;
             if (state.boxTimer % 5 === 0) {
@@ -413,7 +591,7 @@
             }
             if (state.boxTimer <= 0) {
                 let p = state.players[state.boxBuyer];
-                if (p && p.lives > 0) {
+                if (p && p.lives > 0 && !p.isDowned) {
                     let tSlot = p.activeWep;
                     if (p.weapons[1] === -1) { tSlot = 1; p.activeWep = 1; }
                     
@@ -426,17 +604,82 @@
             }
         }
 
+        // Heal Zones Logic
+        for(let hId in state.healZones) {
+            let h = state.healZones[hId];
+            h.life--;
+            if(h.life <= 0) { delete state.healZones[hId]; continue; }
+            
+            if(h.life % 30 === 0) { 
+                Object.values(state.players).forEach(pl => {
+                    if(pl.hp > 0 && !pl.isDowned && Math.hypot(pl.x - h.x, pl.z - h.z) < 80) {
+                        pl.hp = Math.min(100, pl.hp + 5);
+                    }
+                });
+            }
+        }
+
+        // Turrets Logic
+        for(let tId in state.turrets) {
+            let t = state.turrets[tId];
+            t.life--;
+            if(t.life <= 0) { delete state.turrets[tId]; continue; }
+            
+            if(t.cooldown > 0) t.cooldown--;
+            
+            let target = null, minDist = 400;
+            for(let zId in state.zombies) {
+                let z = state.zombies[zId];
+                let dist = Math.hypot(z.x - t.x, z.z - t.z);
+                if(dist < minDist) { minDist = dist; target = z; }
+            }
+            
+            if(target) {
+                t.aimX = target.x; t.aimZ = target.z;
+                if(t.cooldown <= 0) {
+                    let wInfo = WEAPONS[t.weapon];
+                    let isUpg = t.upgraded;
+                    let fRate = isUpg ? Math.max(2, Math.floor(wInfo.fireRate * 0.7)) : wInfo.fireRate;
+                    let dmgVal = isUpg ? wInfo.dmg * 2 : wInfo.dmg;
+                    t.cooldown = fRate;
+                    
+                    let angle = Math.atan2(target.z - t.z, target.x - t.x);
+                    for(let i=0; i<wInfo.shots; i++) {
+                        let a = angle + (Math.random() - 0.5) * wInfo.spread;
+                        state.bullets[getId()] = { x: t.x, z: t.z, vx: Math.cos(a)*wInfo.speed, vz: Math.sin(a)*wInfo.speed, dmg: dmgVal, instakill: false, isPaP: isUpg, owner: t.owner };
+                    }
+                }
+            }
+        }
+
         Object.keys(state.players).forEach(id => {
             let p = state.players[id];
-            if(p.lives <= 0 && p.hp <= 0) return;
+            if(p.lives <= 0 && p.hp <= 0 && !p.isDowned) return;
             
-            if (p.perks.speed > 0) p.perks.speed--;
-            if (p.perks.ammo > 0) p.perks.ammo--;
-            if (p.perks.instakill > 0) p.perks.instakill--;
-            if (p.perks.goldkill > 0) p.perks.goldkill--;
+            if (p.isDowned) {
+                p.downTimer--;
+                if (p.downTimer <= 0) {
+                    if (p.lives > 0) {
+                        p.lives--;
+                        p.isDowned = false;
+                        p.hp = 100;
+                        p.x = 0; p.z = 0;
+                    } else {
+                        p.hp = 0;
+                    }
+                }
+            }
+
+            if (!p.isDowned) {
+                if (p.perks.speed > 0) p.perks.speed--;
+                if (p.perks.ammo > 0) p.perks.ammo--;
+                if (p.perks.instakill > 0) p.perks.instakill--;
+                if (p.perks.goldkill > 0) p.perks.goldkill--;
+                if (p.abilityCooldown > 0) p.abilityCooldown--;
+            }
 
             let ins = p.inputs;
-            let speed = 7;
+            let speed = p.isDowned ? 1.5 : 7;
             let oldX = p.x, oldZ = p.z;
             
             if(ins.up) p.z -= speed;
@@ -444,11 +687,10 @@
             if(ins.left) p.x -= speed;
             if(ins.right) p.x += speed;
 
-            let limit = MAP_SIZE / 2 - 15;
+            let limit = state.currentLimit - 15;
             p.x = Math.max(-limit, Math.min(limit, p.x));
             p.z = Math.max(-limit, Math.min(limit, p.z));
 
-            // Anti-Stuck Collision Logic
             let collX = checkBuildingCollision(p.x, oldZ, 18);
             let collZ = checkBuildingCollision(oldX, p.z, 18);
             
@@ -457,76 +699,156 @@
             
             if (checkBuildingCollision(p.x, p.z, 18)) { p.x = oldX; p.z = oldZ; }
 
-            // Weapon swapping
-            if (ins.swap1 && p.activeWep !== 0) { p.activeWep = 0; p.reloadTimer = 0; p.cooldown = 0; }
-            if (ins.swap2 && p.weapons[1] !== -1 && p.activeWep !== 1) { p.activeWep = 1; p.reloadTimer = 0; p.cooldown = 0; }
+            if (!p.isDowned) {
+                if (ins.swap1 && p.activeWep !== 0) { p.activeWep = 0; p.reloadTimer = 0; p.cooldown = 0; }
+                if (ins.swap2 && p.weapons[1] !== -1 && p.activeWep !== 1) { p.activeWep = 1; p.reloadTimer = 0; p.cooldown = 0; }
 
-            let wInfo = WEAPONS[p.weapons[p.activeWep]];
-            let isUpg = p.upgraded[p.activeWep];
-            
-            let magCap = isUpg ? wInfo.mag * 2 : wInfo.mag;
-            let fRate = isUpg ? Math.max(2, Math.floor(wInfo.fireRate * 0.7)) : wInfo.fireRate;
-            let dmgVal = isUpg ? wInfo.dmg * 2 : wInfo.dmg;
-            
-            let hasSpeedCola = p.perks.speed > 0;
-            let hasInfAmmo = p.perks.ammo > 0;
-            let hasInstaKill = p.perks.instakill > 0;
-            
-            let reloadTime = hasSpeedCola ? wInfo.reload / 2 : wInfo.reload;
-
-            if(p.reloadTimer > 0) {
-                p.reloadTimer--;
-                if(p.reloadTimer === 0) {
-                    let needed = magCap - p.ammos[p.activeWep];
-                    let avail = Math.min(needed, p.totalAmmos[p.activeWep]);
-                    p.ammos[p.activeWep] += avail; 
-                    if (!hasInfAmmo) p.totalAmmos[p.activeWep] -= avail;
-                }
-            } else if ((ins.reload && p.ammos[p.activeWep] < magCap && p.totalAmmos[p.activeWep] > 0) || (ins.shoot && p.ammos[p.activeWep] <= 0 && p.totalAmmos[p.activeWep] > 0 && p.cooldown <= 0)) {
-                p.reloadTimer = reloadTime;
-            }
-
-            if(p.cooldown > 0) p.cooldown--;
-            if(ins.shoot && p.cooldown <= 0 && p.ammos[p.activeWep] > 0 && p.reloadTimer <= 0) {
-                p.cooldown = fRate;
-                if (!hasInfAmmo) p.ammos[p.activeWep]--; 
-                let angle = Math.atan2(ins.aimZ - p.z, ins.aimX - p.x);
+                let wInfo = WEAPONS[p.weapons[p.activeWep]];
+                let isUpg = p.upgraded[p.activeWep];
                 
-                for(let i=0; i<wInfo.shots; i++) {
-                    let a = angle + (Math.random() - 0.5) * wInfo.spread;
-                    state.bullets[getId()] = { x: p.x, z: p.z, vx: Math.cos(a)*wInfo.speed, vz: Math.sin(a)*wInfo.speed, dmg: dmgVal, instakill: hasInstaKill, isPaP: isUpg, owner: id };
-                }
-            }
+                let magCap = isUpg ? wInfo.mag * 2 : wInfo.mag;
+                let fRate = isUpg ? Math.max(2, Math.floor(wInfo.fireRate * 0.7)) : wInfo.fireRate;
+                let dmgVal = isUpg ? wInfo.dmg * 2 : wInfo.dmg;
+                
+                let hasSpeedCola = p.perks.speed > 0;
+                let hasInfAmmo = p.perks.ammo > 0;
+                let hasInstaKill = p.perks.instakill > 0;
+                
+                let reloadTime = hasSpeedCola ? wInfo.reload / 2 : wInfo.reload;
 
-            if(ins.buy && p.money >= state.mysteryBox.cost && !state.boxActive) {
-                if(Math.hypot(p.x - state.mysteryBox.x, p.z - state.mysteryBox.z) < 80) {
-                    p.money -= state.mysteryBox.cost;
-                    state.boxActive = true;
-                    state.boxTimer = 180;
-                    state.boxBuyer = id;
-                    state.boxWeapon = Math.floor(Math.random() * WEAPONS.length);
-                    p.inputs.buy = false;
+                if(p.reloadTimer > 0) {
+                    p.reloadTimer--;
+                    if(p.reloadTimer === 0) {
+                        let needed = magCap - p.ammos[p.activeWep];
+                        let avail = Math.min(needed, p.totalAmmos[p.activeWep]);
+                        p.ammos[p.activeWep] += avail; 
+                        if (!hasInfAmmo) p.totalAmmos[p.activeWep] -= avail;
+                    }
+                } else if ((ins.reload && p.ammos[p.activeWep] < magCap && p.totalAmmos[p.activeWep] > 0) || (ins.shoot && p.ammos[p.activeWep] <= 0 && p.totalAmmos[p.activeWep] > 0 && p.cooldown <= 0)) {
+                    p.reloadTimer = reloadTime;
                 }
-            }
 
-            if(ins.interact && p.money >= state.packAPunch.cost && !p.upgraded[p.activeWep]) {
-                if(Math.hypot(p.x - state.packAPunch.x, p.z - state.packAPunch.z) < 80) {
-                    p.money -= state.packAPunch.cost;
-                    p.upgraded[p.activeWep] = true;
-                    p.ammos[p.activeWep] = WEAPONS[p.weapons[p.activeWep]].mag * 2;
-                    p.totalAmmos[p.activeWep] = WEAPONS[p.weapons[p.activeWep]].max * 2;
-                    p.inputs.interact = false;
+                if(p.cooldown > 0) p.cooldown--;
+                if(ins.shoot && p.cooldown <= 0 && p.ammos[p.activeWep] > 0 && p.reloadTimer <= 0) {
+                    p.cooldown = fRate;
+                    if (!hasInfAmmo) p.ammos[p.activeWep]--; 
+                    
+                    let angle = Math.atan2(ins.aimZ - p.z, ins.aimX - p.x);
+                    for(let i=0; i<wInfo.shots; i++) {
+                        let a = angle + (Math.random() - 0.5) * wInfo.spread;
+                        state.bullets[getId()] = { x: p.x, z: p.z, vx: Math.cos(a)*wInfo.speed, vz: Math.sin(a)*wInfo.speed, dmg: dmgVal, instakill: hasInstaKill, isPaP: isUpg, owner: id };
+                    }
+                }
+
+                if(ins.ability && p.abilityCooldown <= 0) {
+                    if(p.playerClass === 'engineer') {
+                        state.turrets[getId()] = { x: p.x, z: p.z, aimX: p.x, aimZ: p.z + 10, owner: id, weapon: p.weapons[p.activeWep], upgraded: p.upgraded[p.activeWep], life: 1800, cooldown: 0 };
+                        p.abilityCooldown = 2400; 
+                    } else if(p.playerClass === 'medic') {
+                        state.healZones[getId()] = { x: p.x, z: p.z, life: 600 }; 
+                        p.abilityCooldown = 2400;
+                    } else if(p.playerClass === 'supplier') {
+                        let angle = Math.atan2(ins.aimZ - p.z, ins.aimX - p.x);
+                        let spawnX = p.x + Math.cos(angle) * 40;
+                        let spawnZ = p.z + Math.sin(angle) * 40;
+                        state.drops[getId()] = { x: spawnX, z: spawnZ, type: 6 }; 
+                        p.abilityCooldown = 1800; 
+                    }
+                    p.inputs.ability = false;
+                }
+
+                if(ins.buy && p.money >= state.mysteryBox.cost && !state.boxActive) {
+                    if(Math.hypot(p.x - state.mysteryBox.x, p.z - state.mysteryBox.z) < 80) {
+                        p.money -= state.mysteryBox.cost;
+                        state.boxActive = true;
+                        state.boxTimer = 180;
+                        state.boxBuyer = id;
+                        state.boxWeapon = Math.floor(Math.random() * WEAPONS.length);
+                        p.inputs.buy = false;
+                    }
+                }
+
+                if(ins.interact) {
+                    let revivedSomeone = false;
+                    Object.values(state.players).forEach(otherP => {
+                        if(otherP !== p && otherP.isDowned && Math.hypot(p.x - otherP.x, p.z - otherP.z) < 60) {
+                            otherP.isDowned = false;
+                            otherP.hp = 100;
+                            revivedSomeone = true;
+                            state.announcement = { text: `${p.name} oživil hráče ${otherP.name}!`, color: "#00ff00", timer: 120 };
+                        }
+                    });
+
+                    if(revivedSomeone) {
+                        p.inputs.interact = false;
+                    }
+                    else if(p.money >= state.packAPunch.cost && !p.upgraded[p.activeWep] && Math.hypot(p.x - state.packAPunch.x, p.z - state.packAPunch.z) < 80) {
+                        p.money -= state.packAPunch.cost;
+                        p.upgraded[p.activeWep] = true;
+                        p.ammos[p.activeWep] = WEAPONS[p.weapons[p.activeWep]].mag * 2;
+                        p.totalAmmos[p.activeWep] = WEAPONS[p.weapons[p.activeWep]].max * 2;
+                        p.inputs.interact = false;
+                    }
+                    else if(state.mapExpander.level <= state.mapExpander.maxLevel && p.money >= state.mapExpander.cost) {
+                        let L = state.currentLimit;
+                        let expPos = [{x: 0, z: -L + 50}, {x: 0, z: L - 50}, {x: L - 50, z: 0}, {x: -L + 50, z: 0}];
+                        for(let i=0; i<4; i++) {
+                            if(Math.hypot(p.x - expPos[i].x, p.z - expPos[i].z) < 80) {
+                                p.money -= state.mapExpander.cost;
+                                state.currentLimit += 600;
+                                state.mapExpander.level++;
+                                state.mapExpander.cost *= 3;
+                                p.inputs.interact = false;
+                                state.announcement = { text: `${p.name} ROZŠÍŘIL MAPU!`, color: "#00ffff", timer: 180 };
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
             for(let dId in state.drops) {
                 let d = state.drops[dId];
-                if(Math.hypot(p.x - d.x, p.z - d.z) < 35) {
-                    if (d.type === 1) p.perks.speed = 1800;
-                    else if (d.type === 2) p.perks.ammo = 1800;
-                    else if (d.type === 3) p.perks.instakill = 1800;
-                    else if (d.type === 4) p.perks.goldkill = 1800;
-                    else p.money += 10; 
+                if(Math.hypot(p.x - d.x, p.z - d.z) < 35 && !p.isDowned) {
+                    let perkName = "";
+                    let perkColor = "#ffffff";
+
+                    if (d.type === 1) { p.perks.speed = 1800; perkName = "SPEED COLA"; perkColor = "#00ff00"; }
+                    else if (d.type === 2) { p.perks.ammo = 1800; perkName = "INF AMMO"; perkColor = "#0000ff"; }
+                    else if (d.type === 3) { p.perks.instakill = 1800; perkName = "INSTA KILL"; perkColor = "#ff0000"; }
+                    else if (d.type === 4) { p.perks.goldkill = 1800; perkName = "GOLD KILL"; perkColor = "#ff8800"; }
+                    else if (d.type === 5) {
+                        Object.values(state.players).forEach(tp => {
+                            if (tp.hp > 0 || tp.lives > 0) {
+                                for(let i=0; i<2; i++) {
+                                    if(tp.weapons[i] !== -1) {
+                                        let wIn = WEAPONS[tp.weapons[i]];
+                                        let isU = tp.upgraded[i];
+                                        tp.ammos[i] = isU ? wIn.mag * 2 : wIn.mag;
+                                        tp.totalAmmos[i] = isU ? wIn.max * 2 : wIn.max;
+                                    }
+                                }
+                            }
+                        });
+                        perkName = "MAX AMMO"; perkColor = "#00ffff";
+                    }
+                    else if (d.type === 6) { 
+                        for(let i=0; i<2; i++) {
+                            if(p.weapons[i] !== -1) {
+                                let wIn = WEAPONS[p.weapons[i]];
+                                let isU = p.upgraded[i];
+                                p.ammos[i] = isU ? wIn.mag * 2 : wIn.mag;
+                                p.totalAmmos[i] = isU ? wIn.max * 2 : wIn.max;
+                            }
+                        }
+                        perkName = "AMMO SUPPLY"; perkColor = "#4488ff";
+                    }
+                    else { p.money += 10; }
+                    
+                    if (perkName) {
+                        state.announcement = { text: `${p.name} sebral ${perkName}!`, color: perkColor, timer: 180 };
+                    }
+                    
                     delete state.drops[dId];
                 }
             }
@@ -537,7 +859,7 @@
             b.x += b.vx; b.z += b.vz;
             let hit = false;
 
-            if(Math.abs(b.x) > MAP_SIZE/2 || Math.abs(b.z) > MAP_SIZE/2 || checkBuildingCollision(b.x, b.z, 2)) hit = true;
+            if(Math.abs(b.x) > state.currentLimit || Math.abs(b.z) > state.currentLimit || checkBuildingCollision(b.x, b.z, 2)) hit = true;
 
             for(let zId in state.zombies) {
                 let z = state.zombies[zId];
@@ -559,23 +881,50 @@
             if(hit) delete state.bullets[id];
         }
 
-        if(Math.random() < 0.05 + (state.wave*0.01) && state.zombiesToSpawn > 0) {
-            let zx = (Math.random() - 0.5) * MAP_SIZE;
-            let zz = (Math.random() > 0.5 ? -MAP_SIZE/2 : MAP_SIZE/2);
-            state.zombies[getId()] = { x: zx, z: zz, hp: 50 + (state.wave * 20), speed: 2.5 + (state.wave * 0.2), isDead: false };
+        let baseSpawnChance = 0.05 + (state.wave*0.015);
+        let spawnChance = baseSpawnChance * (1 + (playerCount - 1) * 0.5);
+
+        if(Math.random() < spawnChance && state.zombiesToSpawn > 0) {
+            let spawnLimit = state.currentLimit - 20;
+            let zx = (Math.random() - 0.5) * spawnLimit * 2;
+            let zz = (Math.random() > 0.5 ? -spawnLimit : spawnLimit);
+            
+            let r = Math.random();
+            let zType = 0;
+            let zHp = 50 + (state.wave * 20);
+            let zSpeed = 2.5 + (state.wave * 0.2);
+
+            if (r > 0.9) { zType = 2; zHp *= 3; zSpeed *= 0.6; } 
+            else if (r > 0.7) { zType = 1; zHp *= 0.5; zSpeed *= 1.5; }
+
+            state.zombies[getId()] = { x: zx, z: zz, hp: zHp, speed: zSpeed, type: zType, isDead: false };
             state.zombiesToSpawn--;
         }
 
         for(let id in state.zombies) {
             let z = state.zombies[id];
+            
+            if (checkBuildingCollision(z.x, z.z, 20)) {
+                let moved = false;
+                for (let step = 10; step <= 50; step += 10) {
+                    if (!checkBuildingCollision(z.x + step, z.z, 20)) { z.x += step; moved = true; break; }
+                    if (!checkBuildingCollision(z.x - step, z.z, 20)) { z.x -= step; moved = true; break; }
+                    if (!checkBuildingCollision(z.x, z.z + step, 20)) { z.z += step; moved = true; break; }
+                    if (!checkBuildingCollision(z.x, z.z - step, 20)) { z.z -= step; moved = true; break; }
+                }
+                if (!moved) { z.x = 0; z.z = 0; }
+            }
+
             if(z.hp <= 0) {
                 if(Math.random() < 0.45) { 
                     let r = Math.random();
                     let dType = 0; 
                     if (r < 0.05) dType = 1;
                     else if (r < 0.10) dType = 2;
-                    else if (r < 0.15) dType = 3;
-                    else if (r < 0.20) dType = 4;
+                    else if (r < 0.11) dType = 3; 
+                    else if (r < 0.16) dType = 4;
+                    else if (r < 0.21) dType = 5;
+                    else if (r < 0.26) dType = 6;
                     state.drops[getId()] = {x: z.x, z: z.z, type: dType};
                 }
                 delete state.zombies[id];
@@ -584,11 +933,20 @@
 
             let target = null, minDist = Infinity;
             Object.values(state.players).forEach(p => {
-                if(p.hp > 0 || p.lives > 0) {
+                if(p.hp > 0 && !p.isDowned) {
                     let d = Math.hypot(p.x - z.x, p.z - z.z);
                     if(d < minDist) { minDist = d; target = p; }
                 }
             });
+            
+            if(!target) {
+                Object.values(state.players).forEach(p => {
+                    if(p.isDowned) {
+                        let d = Math.hypot(p.x - z.x, p.z - z.z);
+                        if(d < minDist) { minDist = d; target = p; }
+                    }
+                });
+            }
 
             if(target) {
                 let dx = target.x - z.x;
@@ -605,7 +963,6 @@
                     if(!collX) z.x = nx;
                     if(!collZ) z.z = nz;
                     
-                    // Anti-Stuck pro zombíky (klouzání podél zdi)
                     if (!collX && collZ) z.x += (dx > 0 ? 1 : -1) * z.speed;
                     if (collX && !collZ) z.z += (dz > 0 ? 1 : -1) * z.speed;
                     if (collX && collZ) {
@@ -615,11 +972,13 @@
                 }
                 
                 if(Math.hypot(target.x - z.x, target.z - z.z) < 35) {
-                    target.hp -= 1.5;
-                    if (target.hp <= 0 && target.lives > 0) {
-                        target.lives--;
-                        target.perks = {speed: 0, ammo: 0, instakill: 0, goldkill: 0};
-                        if (target.lives > 0) { target.hp = 100; target.x = 0; target.z = 0; }
+                    if (!target.isDowned) {
+                        target.hp -= (z.type === 2 ? 3 : 1.5);
+                        if (target.hp <= 0) {
+                            target.isDowned = true;
+                            target.downTimer = 1800; // 30s
+                            target.perks = {speed: 0, ammo: 0, instakill: 0, goldkill: 0};
+                        }
                     }
                 }
             }
@@ -636,9 +995,11 @@
             }
         }
 
-        if(Object.keys(state.zombies).length === 0 && state.zombiesToSpawn === 0) {
+        let remainingZombiesCount = Object.keys(state.zombies).length + state.zombiesToSpawn;
+
+        if(remainingZombiesCount === 0) {
             state.wave++;
-            state.zombiesToSpawn = state.wave * 10;
+            state.zombiesToSpawn = state.wave * 12 * playerCount; 
         }
 
         networkTick++;
@@ -646,7 +1007,10 @@
             let optimizedState = {
                 wave: state.wave, zombiesToSpawn: state.zombiesToSpawn,
                 players: state.players, zombies: state.zombies, bullets: state.bullets, drops: state.drops,
-                boxActive: state.boxActive, boxTimer: state.boxTimer, boxRollIndex: state.boxRollIndex, boxWeapon: state.boxWeapon
+                turrets: state.turrets, healZones: state.healZones,
+                currentLimit: state.currentLimit, mapExpander: state.mapExpander,
+                boxActive: state.boxActive, boxTimer: state.boxTimer, boxRollIndex: state.boxRollIndex, boxWeapon: state.boxWeapon,
+                announcement: state.announcement
             };
             connections.forEach(c => c.send({type: 'state', state: optimizedState}));
         }
@@ -669,9 +1033,9 @@
                     if (meshDict[id].material !== newMat) meshDict[id].material = newMat;
                 }
             }
-            meshDict[id].position.set(data.x, yOffset, data.z);
+            meshDict[id].position.set(data.x, data.y !== undefined ? data.y : yOffset, data.z);
             if(data.aimX !== undefined && data.aimZ !== undefined) {
-                meshDict[id].lookAt(data.aimX, yOffset, data.aimZ);
+                meshDict[id].lookAt(data.aimX, data.y !== undefined ? data.y : yOffset, data.aimZ);
             }
         });
         Object.keys(meshDict).forEach(id => {
@@ -705,15 +1069,69 @@
         if (!myPlayer) { requestAnimationFrame(render); return; }
 
         updateMeshes(state.players, meshes.players, playerGeo, getPlayerMat, 22.5);
-        updateMeshes(state.zombies, meshes.zombies, zombieGeo, () => zombieMat, 20);
+        updateMeshes(state.zombies, meshes.zombies, zombieGeo, getZombieMat, 20);
         updateMeshes(state.bullets, meshes.bullets, bulletGeo, (b) => b.isPaP ? bulletPapMat : bulletMat, 22);
-        updateMeshes(state.drops, meshes.drops, dropGeo, getDropMat, 10);
+        updateMeshes(state.drops, meshes.drops, (d) => d.type === 6 ? supplyGeo : dropGeo, getDropMat, 10);
+        updateMeshes(state.turrets, meshes.turrets, turretGeo, () => turretMat, 15);
+        updateMeshes(state.healZones, meshes.healZones, healZoneGeo, () => healZoneMat, 2);
 
         Object.keys(state.players).forEach(id => {
-            if(meshes.players[id]) meshes.players[id].visible = (state.players[id].lives > 0 || state.players[id].hp > 0);
+            if(meshes.players[id]) {
+                let pState = state.players[id];
+                meshes.players[id].visible = (pState.lives > 0 || pState.hp > 0);
+                
+                if (pState.isDowned) {
+                    meshes.players[id].rotation.x = -Math.PI / 2;
+                    meshes.players[id].position.y = 15;
+                    if (id !== myId) {
+                        renderLabel('revive-label-'+id, "OŽIVIT [E]", "#00ff00", pState.x, 30, pState.z, true);
+                    }
+                } else {
+                    meshes.players[id].rotation.x = 0;
+                    meshes.players[id].position.y = 22.5;
+                    renderLabel('revive-label-'+id, "", "#000", 0, 0, 0, false);
+                }
+                
+                let pYaw = pState.yaw;
+                if (pYaw !== undefined && id !== myId && !pState.isDowned) {
+                    meshes.players[id].rotation.y = -pYaw - Math.PI/2;
+                }
+            }
         });
 
-        // Tabulka Skóre
+        // Global Announcement
+        let annEl = document.getElementById('announcement');
+        if (state.announcement && state.announcement.timer > 0) {
+            annEl.innerText = state.announcement.text;
+            annEl.style.color = state.announcement.color;
+            annEl.style.display = 'block';
+        } else {
+            annEl.style.display = 'none';
+        }
+
+        // Update Map Barriers Visually
+        let L = state.currentLimit;
+        barriers.n.scale.set(L * 2, 200, 1); barriers.n.position.set(0, 100, -L);
+        barriers.s.scale.set(L * 2, 200, 1); barriers.s.position.set(0, 100, L);
+        barriers.e.scale.set(1, 200, L * 2); barriers.e.position.set(L, 100, 0);
+        barriers.w.scale.set(1, 200, L * 2); barriers.w.position.set(-L, 100, 0);
+
+        // Update 4 Expanders Visually
+        if (state.mapExpander.level <= state.mapExpander.maxLevel) {
+            let expPos = [{x: 0, z: -L + 50}, {x: 0, z: L - 50}, {x: L - 50, z: 0}, {x: -L + 50, z: 0}];
+            for(let i=0; i<4; i++) {
+                expanderMeshes[i].position.set(expPos[i].x, 25, expPos[i].z);
+                expanderMeshes[i].visible = true;
+                let expandText = `Rozšířit Mapu<br>$${state.mapExpander.cost} [E]`;
+                renderLabel('expander-label-'+i, expandText, "#00ffff", expPos[i].x, 60, expPos[i].z, true);
+            }
+        } else {
+            for(let i=0; i<4; i++) {
+                expanderMeshes[i].visible = false;
+                renderLabel('expander-label-'+i, "", "#000", 0, 0, 0, false);
+            }
+        }
+
         let scoreHTML = '';
         let sortedPlayers = Object.values(state.players).sort((a, b) => b.kills - a.kills);
         sortedPlayers.forEach(p => {
@@ -740,6 +1158,42 @@
 
         renderLabel('box-label', "Mystery Box<br>$100 [B]", "#ffd700", state.mysteryBox.x, state.mysteryBox.size + 10, state.mysteryBox.z, !state.boxActive);
         renderLabel('pap-label', "Upgrader<br>$200 [E]", "#ff00ff", state.packAPunch.x, state.packAPunch.size + 30, state.packAPunch.z, true);
+        
+        let activeZombies = Object.values(state.zombies);
+        let liveZombiesCount = activeZombies.length;
+        
+        let showInds = (liveZombiesCount > 0 && liveZombiesCount <= 2 && state.zombiesToSpawn === 0);
+        
+        let ind1 = document.getElementById('zombie-ind-1');
+        let ind2 = document.getElementById('zombie-ind-2');
+        
+        if (showInds && myPlayer) {
+            let pPos = new THREE.Vector3(myPlayer.x, 22.5, myPlayer.z).project(camera);
+            let pScreenX = (pPos.x * 0.5 + 0.5) * window.innerWidth;
+            let pScreenY = (pPos.y * -0.5 + 0.5) * window.innerHeight;
+            let radius = 70;
+
+            if (activeZombies[0]) {
+                let z1 = activeZombies[0];
+                let angle = Math.atan2(z1.z - myPlayer.z, z1.x - myPlayer.x);
+                ind1.style.left = (pScreenX + Math.cos(angle) * radius) + 'px';
+                ind1.style.top = (pScreenY + Math.sin(angle) * radius) + 'px';
+                ind1.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+                ind1.style.display = 'block';
+            } else ind1.style.display = 'none';
+
+            if (activeZombies[1]) {
+                let z2 = activeZombies[1];
+                let angle = Math.atan2(z2.z - myPlayer.z, z2.x - myPlayer.x);
+                ind2.style.left = (pScreenX + Math.cos(angle) * radius) + 'px';
+                ind2.style.top = (pScreenY + Math.sin(angle) * radius) + 'px';
+                ind2.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+                ind2.style.display = 'block';
+            } else ind2.style.display = 'none';
+        } else {
+            ind1.style.display = 'none';
+            ind2.style.display = 'none';
+        }
 
         Object.values(meshes.drops).forEach(m => { m.rotation.y += 0.05; m.rotation.z += 0.05; });
 
@@ -753,13 +1207,29 @@
         }
 
         document.getElementById('top-wave').innerText = state.wave;
-        document.getElementById('top-zombies').innerText = Object.keys(state.zombies).length + state.zombiesToSpawn;
+        document.getElementById('top-zombies').innerText = liveZombiesCount + state.zombiesToSpawn;
 
         document.getElementById('ui-lives').innerText = myPlayer.lives;
         document.getElementById('ui-money').innerText = myPlayer.money;
-        document.getElementById('ui-hp').innerText = Math.max(0, Math.floor(myPlayer.hp));
+        
+        if (myPlayer.isDowned) {
+            document.getElementById('ui-hp').innerText = `DOWN (${Math.ceil(myPlayer.downTimer/60)}s)`;
+            document.getElementById('ui-hp').style.color = "#f44336";
+        } else {
+            document.getElementById('ui-hp').innerText = Math.max(0, Math.floor(myPlayer.hp));
+            document.getElementById('ui-hp').style.color = "white";
+        }
+        
         document.getElementById('hp-bar').style.width = Math.max(0, myPlayer.hp) + '%';
         
+        let abilityText = myPlayer.abilityCooldown > 0 ? `CD: ${Math.ceil(myPlayer.abilityCooldown / 60)}s` : "[Q] PŘIVOLAT ZÁSOBY";
+        if(myPlayer.playerClass === 'engineer') abilityText = myPlayer.abilityCooldown > 0 ? `CD: ${Math.ceil(myPlayer.abilityCooldown / 60)}s` : "[Q] POSTAVIT TURRETU";
+        if(myPlayer.playerClass === 'medic') abilityText = myPlayer.abilityCooldown > 0 ? `CD: ${Math.ceil(myPlayer.abilityCooldown / 60)}s` : "[Q] LÉČIVÁ ZÓNA";
+        if(myPlayer.playerClass === 'shotgunner') abilityText = "BROKOVNICE ZDARMA";
+        
+        document.getElementById('ui-ability').innerText = abilityText;
+        document.getElementById('ui-ability').style.color = myPlayer.abilityCooldown > 0 ? "#f44336" : "#4caf50";
+
         if (myPlayer.perks.speed > 0) { document.getElementById('wrap-speed').style.display = 'block'; document.getElementById('bar-speed').style.width = (myPlayer.perks.speed / 1800 * 100) + '%'; } else document.getElementById('wrap-speed').style.display = 'none';
         if (myPlayer.perks.ammo > 0) { document.getElementById('wrap-ammo').style.display = 'block'; document.getElementById('bar-ammo').style.width = (myPlayer.perks.ammo / 1800 * 100) + '%'; } else document.getElementById('wrap-ammo').style.display = 'none';
         if (myPlayer.perks.instakill > 0) { document.getElementById('wrap-instakill').style.display = 'block'; document.getElementById('bar-instakill').style.width = (myPlayer.perks.instakill / 1800 * 100) + '%'; } else document.getElementById('wrap-instakill').style.display = 'none';
@@ -811,6 +1281,7 @@
         if(e.code === 'KeyR') inputs.reload = true;
         if(e.code === 'KeyB') inputs.buy = true;
         if(e.code === 'KeyE') inputs.interact = true;
+        if(e.code === 'KeyQ') inputs.ability = true;
         if(e.code === 'Digit1') inputs.swap1 = true;
         if(e.code === 'Digit2') inputs.swap2 = true;
     });
@@ -822,6 +1293,7 @@
         if(e.code === 'KeyR') inputs.reload = false;
         if(e.code === 'KeyB') inputs.buy = false;
         if(e.code === 'KeyE') inputs.interact = false;
+        if(e.code === 'KeyQ') inputs.ability = false;
         if(e.code === 'Digit1') inputs.swap1 = false;
         if(e.code === 'Digit2') inputs.swap2 = false;
     });
