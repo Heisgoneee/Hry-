@@ -19,7 +19,29 @@
         #game-container { 
             display: flex; 
             gap: 30px; 
-            align-items: flex-start;
+            align-items: stretch;
+            justify-content: center;
+        }
+        .center-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .top-stats {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            justify-content: center;
+        }
+        .right-column {
+            width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .right-column .panel {
+            flex: 1;
         }
         .game-area { 
             position: relative; 
@@ -43,18 +65,24 @@
             margin: 0 auto;
             display: block;
         }
-        .sidebar { 
-            width: 220px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 15px; 
-        }
         .panel {
             background: #1e1e1e;
             padding: 15px;
             border-radius: 10px;
             border: 1px solid #333;
             text-align: center;
+            box-sizing: border-box;
+        }
+        .top-stats .panel {
+            flex: 1;
+            min-width: 120px;
+        }
+        .controls-panel {
+            width: 100%;
+            max-width: 248px;
+            font-size: 0.8em;
+            color: #666;
+            text-align: left;
         }
         h2 { margin: 0 0 10px 0; font-size: 1em; color: #0dc2ff; text-transform: uppercase; }
         #score { font-size: 2em; font-weight: bold; }
@@ -178,17 +206,14 @@
                 flex-direction: column;
                 gap: 10px;
                 padding: 10px;
+                align-items: center;
             }
-            .sidebar {
-                flex-direction: row;
-                flex-wrap: wrap;
+            .right-column {
                 width: 100%;
-                justify-content: center;
+                max-width: 300px;
             }
-            .panel {
-                flex: 1;
-                min-width: 120px;
-                padding: 10px;
+            .top-stats {
+                max-width: 300px;
             }
             #leaderboard-list {
                 display: none;
@@ -196,35 +221,55 @@
             .mobile-controls {
                 display: flex;
             }
+            .controls-panel {
+                display: none;
+            }
+            .right-column .panel {
+                flex: none;
+            }
         }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div class="game-area">
-        <div id="menu-overlay">
-            <h1 id="status-text">TETRIS</h1>
-            
-            <div id="game-over-controls">
-                <div id="final-score"></div>
-                <input type="text" id="player-name" placeholder="Tvé jméno" maxlength="10">
-                <div class="checkbox-container">
-                    <input type="checkbox" id="save-score-cb" checked>
-                    <label for="save-score-cb">Uložit skóre do žebříčku</label>
+    <div class="center-column">
+        <div class="top-stats">
+            <div class="panel">
+                <h2>DALŠÍ BLOK</h2>
+                <canvas id="next-piece" width="80" height="80"></canvas>
+            </div>
+            <div class="panel">
+                <h2>SKÓRE</h2>
+                <div id="score">0</div>
+                <div id="level">Úroveň: 1</div>
+            </div>
+        </div>
+
+        <div class="game-area">
+            <div id="menu-overlay">
+                <h1 id="status-text">TETRIS</h1>
+                
+                <div id="game-over-controls">
+                    <div id="final-score"></div>
+                    <input type="text" id="player-name" placeholder="Tvé jméno" maxlength="10">
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="save-score-cb" checked>
+                        <label for="save-score-cb">Uložit skóre do žebříčku</label>
+                    </div>
                 </div>
+
+                <button id="start-btn">SPUSTIT HRU</button>
             </div>
 
-            <button id="start-btn">SPUSTIT HRU</button>
-        </div>
+            <div id="pause-overlay">
+                <h1 style="color: #FF8E0D;">POZASTAVENO</h1>
+                <button id="resume-btn">POKRAČOVAT</button>
+                <button id="restart-btn" style="background: #FF0D72;">RESTARTOVAT</button>
+            </div>
 
-        <div id="pause-overlay">
-            <h1 style="color: #FF8E0D;">POZASTAVENO</h1>
-            <button id="resume-btn">POKRAČOVAT</button>
-            <button id="restart-btn" style="background: #FF0D72;">RESTARTOVAT</button>
+            <canvas id="tetris" width="240" height="400"></canvas>
         </div>
-
-        <canvas id="tetris" width="240" height="400"></canvas>
 
         <div class="mobile-controls">
             <div class="control-row">
@@ -241,33 +286,22 @@
                 <button id="btn-mobile-pause" style="padding: 10px 20px; background: #FF8E0D; border-radius: 8px;">⏸ PAUZA</button>
             </div>
         </div>
-    </div>
 
-    <div class="sidebar">
-        <div class="panel">
-            <h2>DALŠÍ BLOK</h2>
-            <canvas id="next-piece" width="80" height="80"></canvas>
-        </div>
-
-        <div class="panel">
-            <h2>SKÓRE</h2>
-            <div id="score">0</div>
-            <div id="level">Úroveň: 1</div>
-        </div>
-
-        <div class="panel">
-            <h2>TOP HRÁČI</h2>
-            <ul id="leaderboard-list">
-                <li class="loading-text">Načítání...</li>
-            </ul>
-        </div>
-
-        <div class="panel" style="font-size: 0.8em; color: #666; text-align: left;">
+        <div class="panel controls-panel">
             <strong>Ovládání PC:</strong><br>
             Šipky: Pohyb a pád<br>
             Nahoru: Rotace vpravo<br>
             Q / W: Rotace<br>
             ESC / P: Pauza
+        </div>
+    </div>
+
+    <div class="right-column">
+        <div class="panel">
+            <h2>TOP HRÁČI</h2>
+            <ul id="leaderboard-list">
+                <li class="loading-text">Načítání...</li>
+            </ul>
         </div>
     </div>
 </div>
@@ -318,7 +352,7 @@
     let floatingTexts = [];
     let isPaused = false;
     let shakeTime = 0;
-    let currentCombo = 0; // Proměnná pro udržení aktuálního komba
+    let currentCombo = 0;
 
     function createMatrix(w, h) {
         const matrix = [];
@@ -562,7 +596,6 @@
 
             player.score += points * currentLevel;
 
-            // COMBO Logika
             if (currentCombo > 0) {
                 let comboPoints = 50 * currentCombo * currentLevel;
                 player.score += comboPoints;
@@ -574,7 +607,7 @@
                     life: 2,
                     color: "#0DFF72"
                 });
-                shakeTime += 5; // Přidat extra otřes pro kombo
+                shakeTime += 5;
             }
 
             if (comboText !== "") {
@@ -587,9 +620,9 @@
                 });
             }
 
-            currentCombo++; // Zvýšení komba pro další kolo
+            currentCombo++;
         } else {
-            currentCombo = 0; // Vynulování komba, pokud se nic nesmazalo
+            currentCombo = 0;
         }
 
         updateScore();
@@ -667,7 +700,7 @@
         scoreElement.innerText = player.score;
         currentLevel = Math.floor(player.score / 1000) + 1;
         levelElement.innerText = "Úroveň: " + currentLevel;
-        dropInterval = Math.max(150, 800 - (currentLevel - 1) * 40);
+        dropInterval = Math.max(250, 800 - (currentLevel - 1) * 25);
     }
 
     function gameOver() {
@@ -708,7 +741,7 @@
 
     async function displayLeaderboard() {
         try {
-            const q = query(collection(db, "tetris_leaderboard"), orderBy("score", "desc"), limit(10));
+            const q = query(collection(db, "tetris_leaderboard"), orderBy("score", "desc"), limit(18));
             const querySnapshot = await getDocs(q);
             let html = "";
             querySnapshot.forEach((doc) => {
