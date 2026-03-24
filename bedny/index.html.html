@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
@@ -61,6 +61,7 @@
         .case-card.active { border-color: #5cb85c; background: #223322; box-shadow: 0 0 15px rgba(92, 184, 92, 0.3); }
         .case-name { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
         .case-price { color: #ffd700; font-size: 14px; }
+        .case-knife-chance { font-size: 12px; color: #caab05; margin-top: 8px; font-weight: bold; text-shadow: 0 0 5px rgba(202, 171, 5, 0.3); }
 
         .case-viewport {
             width: 100%;
@@ -179,12 +180,23 @@
         .stats {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             background: #2a2a2a;
             padding: 15px 20px;
             border-radius: 5px;
             margin-bottom: 20px;
             font-size: 16px;
         }
+
+        .sell-all-btn {
+            padding: 8px 15px;
+            font-size: 14px;
+            background: #d9534f;
+            margin-left: 15px;
+            text-transform: none;
+        }
+
+        .sell-all-btn:hover { background: #c9302c; }
 
         .inventory-grid {
             display: grid;
@@ -214,6 +226,13 @@
 
         .inv-item .price-tag { color: #ffd700; font-size: 14px; margin-top: 5px; margin-bottom: 8px;}
         
+        .inv-actions {
+            display: flex;
+            width: 100%;
+            gap: 5px;
+            margin-top: auto;
+        }
+
         .sell-btn {
             background: #d9534f;
             color: white;
@@ -222,11 +241,25 @@
             font-size: 12px;
             border-radius: 3px;
             cursor: pointer;
-            width: 100%;
+            flex: 1;
             text-transform: none;
-            margin-top: auto;
         }
-        .sell-btn:hover { background: #c9302c; }
+        .sell-btn:hover:not(:disabled) { background: #c9302c; }
+        .sell-btn:disabled { background: #555; cursor: not-allowed; }
+
+        .lock-btn {
+            background: #444;
+            color: white;
+            border: none;
+            padding: 8px;
+            font-size: 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            width: 35px;
+            text-transform: none;
+        }
+        .lock-btn:hover { background: #555; }
+        .lock-btn.locked { background: #f0ad4e; }
 
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1a1a1a; }
@@ -258,7 +291,7 @@
 
 <div class="inventory-section">
     <div class="stats">
-        <div>Inventář: <span id="itemCount">0</span> ks</div>
+        <div>Inventář: <span id="itemCount">0</span> ks <button class="sell-all-btn" onclick="sellAllUnlocked()">💰 Prodat vše odemčené</button></div>
         <div>Utraceno: <span id="totalSpent" style="color: #eb4b4b;">$0.00</span></div>
         <div>Hodnota skinů: <span id="totalValue" style="color: #5cb85c;">$0.00</span></div>
     </div>
@@ -275,16 +308,23 @@
     const weapons = [
         "AK-47", "M4A4", "M4A1-S", "AWP", "Glock-18", "USP-S", "Desert Eagle", 
         "MAC-10", "MP7", "P90", "FAMAS", "Galil AR", "SG 553", "SSG 08", "Nova", 
-        "Negev", "P250", "Five-SeveN", "CZ75-Auto", "Tec-9", "UMP-45", "MP9"
+        "Negev", "P250", "Five-SeveN", "CZ75-Auto", "Tec-9", "UMP-45", "MP9",
+        "XM1014", "MAG-7", "Sawed-Off", "Dual Berettas", "G3SG1", "SCAR-20", "PP-Bizon"
     ];
-    const knives = ["★ Karambit", "★ Butterfly Knife", "★ M9 Bayonet", "★ Talon Knife", "★ Skeleton Knife", "★ Bayonet", "★ Huntsman Knife", "★ Flip Knife"];
+    
+    const knives = [
+        "★ Karambit", "★ Butterfly Knife", "★ M9 Bayonet", "★ Talon Knife", 
+        "★ Skeleton Knife", "★ Bayonet", "★ Huntsman Knife", "★ Flip Knife", 
+        "★ Shadow Daggers", "★ Bowie Knife", "★ Navaja Knife", "★ Stiletto Knife", 
+        "★ Ursus Knife", "★ Paracord Knife", "★ Survival Knife", "★ Nomad Knife"
+    ];
     
     const finishes = {
-        blue: ["Sand Dune", "Safari Mesh", "Boreal Forest", "Scorched", "Urban DDPAT", "Night Ops", "Tornado", "Mudder", "Polar Camo", "Contractor", "Army Mesh", "Facility Sketch", "Mainframe", "Capillary", "Oxide Blaze"],
-        purple: ["Candy Apple", "Fade", "Night", "Ultraviolet", "Blizzard Marbleized", "Copper Galaxy", "Acid Fade", "Nitro", "Dark Water", "Bright Water", "Evil Daimyo", "Phobos", "Worm God", "Elite Build", "Zirka"],
-        pink: ["Redline", "Printstream", "Neo-Noir", "Hyper Beast", "Bloodsport", "Mecha Industries", "Cyrex", "Asiimov", "Vulcan", "Water Elemental", "Decimator", "Empress", "Fever Dream", "Desolate Space", "Frontside Misty"],
-        red: ["Dragon Lore", "Howl", "Medusa", "Gungnir", "Wild Lotus", "Fire Serpent", "Poseidon", "Atheris", "Emperor", "Kill Confirmed", "Oni Taiji", "The Traitor", "Head Shot", "Temukau", "Eye of Athena"],
-        gold: ["Doppler", "Marble Fade", "Tiger Tooth", "Crimson Web", "Lore", "Case Hardened", "Fade", "Slaughter", "Blue Steel", "Vanilla", "Gamma Doppler", "Autotronic", "Freehand", "Black Laminate", "Rust Coat"]
+        blue: ["Sand Dune", "Safari Mesh", "Boreal Forest", "Scorched", "Urban DDPAT", "Night Ops", "Tornado", "Mudder", "Polar Camo", "Contractor", "Army Mesh", "Facility Sketch", "Mainframe", "Capillary", "Oxide Blaze", "Army Sheen", "Groundwater", "Colony", "Sand Scale"],
+        purple: ["Candy Apple", "Fade", "Night", "Ultraviolet", "Blizzard Marbleized", "Copper Galaxy", "Acid Fade", "Nitro", "Dark Water", "Bright Water", "Evil Daimyo", "Phobos", "Worm God", "Elite Build", "Zirka", "Metallic DDPAT", "Jungle Slipstream", "Crimson Blossom", "Macabre", "Valence", "Supernova"],
+        pink: ["Redline", "Printstream", "Neo-Noir", "Hyper Beast", "Bloodsport", "Mecha Industries", "Cyrex", "Asiimov", "Vulcan", "Water Elemental", "Decimator", "Empress", "Fever Dream", "Desolate Space", "Frontside Misty", "Neon Rider", "Chantico's Fire", "Nightwish", "Wasteland Rebel", "Aquamarine Revenge"],
+        red: ["Dragon Lore", "Howl", "Medusa", "Gungnir", "Wild Lotus", "Fire Serpent", "Poseidon", "Atheris", "Emperor", "Kill Confirmed", "Oni Taiji", "The Traitor", "Head Shot", "Temukau", "Eye of Athena", "Golden Coil", "Player Two", "Neon Revolution", "Infiltrator", "Bloodsport"],
+        gold: ["Doppler", "Marble Fade", "Tiger Tooth", "Crimson Web", "Lore", "Case Hardened", "Fade", "Slaughter", "Blue Steel", "Vanilla", "Gamma Doppler", "Autotronic", "Freehand", "Black Laminate", "Rust Coat", "Night", "Ultraviolet", "Boreal Forest", "Forest DDPAT", "Safari Mesh"]
     };
 
     const exteriors = [
@@ -337,22 +377,44 @@
         {
             name: "Free Case",
             price: 0.00,
-            items: generateItems(100, {blue: 85, purple: 12, pink: 2.9, red: 0.1, gold: 0}, {blue: 0.10, purple: 0.8, pink: 4, red: 15, gold: 0})
+            knifeChance: 0.1,
+            items: generateItems(100, {blue: 85, purple: 12, pink: 2.8, red: 0.1, gold: 0.1}, {blue: 0.10, purple: 0.8, pink: 4, red: 15, gold: 50})
         },
         {
             name: "Mil-Spec Case",
             price: 2.50,
+            knifeChance: 0.5,
             items: generateItems(120, {blue: 75, purple: 18, pink: 5, red: 1.5, gold: 0.5}, {blue: 0.2, purple: 2, pink: 8, red: 35, gold: 180})
         },
         {
             name: "Covert Case",
             price: 15.00,
-            items: generateItems(120, {blue: 30, purple: 40, pink: 20, red: 8, gold: 2}, {blue: 1.5, purple: 6, pink: 20, red: 90, gold: 400})
+            knifeChance: 2.0,
+            items: generateItems(120, {blue: 30, purple: 40, pink: 20, red: 8, gold: 2}, {blue: 1.5, purple: 6, pink: 20, red: 150, gold: 800})
         },
         {
             name: "High Roller",
             price: 50.00,
-            items: generateItems(150, {blue: 0, purple: 20, pink: 50, red: 25, gold: 5}, {blue: 0, purple: 12, pink: 45, red: 180, gold: 600})
+            knifeChance: 5.0,
+            items: generateItems(150, {blue: 0, purple: 20, pink: 50, red: 25, gold: 5}, {blue: 0, purple: 12, pink: 60, red: 300, gold: 1500})
+        },
+        {
+            name: "Chroma Case",
+            price: 5.00,
+            knifeChance: 0.5,
+            items: generateItems(120, {blue: 70, purple: 20, pink: 8, red: 1.5, gold: 0.5}, {blue: 0.5, purple: 3, pink: 15, red: 50, gold: 200})
+        },
+        {
+            name: "Gamma Case",
+            price: 8.00,
+            knifeChance: 1.0,
+            items: generateItems(120, {blue: 60, purple: 25, pink: 10, red: 4, gold: 1}, {blue: 0.8, purple: 4, pink: 18, red: 60, gold: 250})
+        },
+        {
+            name: "Legendary Case",
+            price: 100.00,
+            knifeChance: 20.0,
+            items: generateItems(150, {blue: 0, purple: 0, pink: 40, red: 40, gold: 20}, {blue: 0, purple: 0, pink: 100, red: 500, gold: 2500})
         }
     ];
 
@@ -360,6 +422,35 @@
     const inventoryContainer = document.getElementById('inventory');
     const balanceDisplay = document.getElementById('balanceDisplay');
     const openBtn = document.getElementById('openBtn');
+
+    function saveGame() {
+        const saveState = {
+            balance: userBalance,
+            spent: totalSpent,
+            inv: inventory
+        };
+        localStorage.setItem('csgoSimSaveData', JSON.stringify(saveState));
+    }
+
+    function loadGame() {
+        const saved = localStorage.getItem('csgoSimSaveData');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                userBalance = parsed.balance || 0;
+                totalSpent = parsed.spent || 0;
+                inventory = parsed.inv || [];
+                
+                inventoryContainer.innerHTML = '';
+                [...inventory].reverse().forEach(item => {
+                    renderInventoryItem(item, true);
+                });
+                updateStats();
+            } catch (e) {
+                console.error("Chyba při načítání uložené hry:", e);
+            }
+        }
+    }
 
     function renderCases() {
         const selector = document.getElementById('caseSelector');
@@ -371,6 +462,7 @@
             div.innerHTML = `
                 <div class="case-name">${c.name}</div>
                 <div class="case-price">${c.price === 0 ? 'ZDARMA' : '$' + c.price.toFixed(2)}</div>
+                <div class="case-knife-chance">★ Nůž: ${c.knifeChance}%</div>
             `;
             selector.appendChild(div);
         });
@@ -426,14 +518,71 @@
         }
     }
 
+    function toggleLock(id, btnElement) {
+        if(isSpinning) return;
+        const item = inventory.find(i => i.id === id);
+        if (item) {
+            item.locked = !item.locked;
+            btnElement.innerText = item.locked ? '🔒' : '🔓';
+            btnElement.classList.toggle('locked', item.locked);
+            const sellBtn = btnElement.nextElementSibling;
+            sellBtn.disabled = item.locked;
+            saveGame();
+        }
+    }
+
     function sellItem(id, price, element) {
         if(isSpinning) return;
         const index = inventory.findIndex(item => item.id === id);
-        if (index > -1) {
+        if (index > -1 && !inventory[index].locked) {
             inventory.splice(index, 1);
             userBalance += price;
             element.remove();
             updateStats();
+            saveGame();
+        }
+    }
+
+    function sellAllUnlocked() {
+        if(isSpinning) return;
+        
+        let moneyEarned = 0;
+        const itemsToSell = inventory.filter(item => !item.locked);
+        
+        if (itemsToSell.length === 0) return;
+
+        itemsToSell.forEach(item => {
+            moneyEarned += item.finalPrice;
+            const domElement = document.getElementById(`inv-item-${item.id}`);
+            if (domElement) domElement.remove();
+        });
+
+        inventory = inventory.filter(item => item.locked);
+        userBalance += moneyEarned;
+        updateStats();
+        saveGame();
+    }
+
+    function renderInventoryItem(itemData, append = false) {
+        const invDiv = document.createElement('div');
+        invDiv.id = `inv-item-${itemData.id}`;
+        invDiv.className = `inv-item ${itemData.color}`;
+        
+        invDiv.innerHTML = `
+            <img src="${itemData.image}" alt="skin" class="skin-img">
+            <span>${itemData.name}</span>
+            <div class="item-exterior">${itemData.exterior.name}</div>
+            <div class="price-tag">$${itemData.finalPrice.toFixed(2)}</div>
+            <div class="inv-actions">
+                <button class="lock-btn ${itemData.locked ? 'locked' : ''}" onclick="toggleLock(${itemData.id}, this)">${itemData.locked ? '🔒' : '🔓'}</button>
+                <button class="sell-btn" onclick="sellItem(${itemData.id}, ${itemData.finalPrice}, this.parentElement.parentElement)" ${itemData.locked ? 'disabled' : ''}>Prodat +$${itemData.finalPrice.toFixed(2)}</button>
+            </div>
+        `;
+        
+        if (append) {
+            inventoryContainer.appendChild(invDiv);
+        } else {
+            inventoryContainer.insertBefore(invDiv, inventoryContainer.firstChild);
         }
     }
 
@@ -442,22 +591,13 @@
         const finalPrice = parseFloat((itemData.basePrice * exterior.priceMult).toFixed(2));
         
         const uniqueId = Date.now() + Math.random();
-        const itemWithId = { ...itemData, id: uniqueId, exterior: exterior, finalPrice: finalPrice };
+        const itemWithId = { ...itemData, id: uniqueId, exterior: exterior, finalPrice: finalPrice, locked: false };
         inventory.push(itemWithId);
         
-        const invDiv = document.createElement('div');
-        invDiv.className = `inv-item ${itemData.color}`;
-        
-        invDiv.innerHTML = `
-            <img src="${itemData.image}" alt="skin" class="skin-img">
-            <span>${itemData.name}</span>
-            <div class="item-exterior">${exterior.name}</div>
-            <div class="price-tag">$${finalPrice.toFixed(2)}</div>
-            <button class="sell-btn" onclick="sellItem(${uniqueId}, ${finalPrice}, this.parentElement)">Prodat +$${finalPrice.toFixed(2)}</button>
-        `;
-        
-        inventoryContainer.insertBefore(invDiv, inventoryContainer.firstChild);
+        renderInventoryItem(itemWithId, false);
         updateStats();
+        saveGame();
+        
         return itemWithId;
     }
 
@@ -473,6 +613,7 @@
         userBalance -= currentCase.price;
         totalSpent += currentCase.price;
         updateStats();
+        saveGame();
         
         document.getElementById('result').innerText = "Otevírám...";
         
@@ -503,6 +644,7 @@
     }
 
     renderCases();
+    loadGame();
     updateStats();
 </script>
 
