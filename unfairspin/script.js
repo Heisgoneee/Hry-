@@ -14,6 +14,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// --- Cenzura ---
+function censorName(name) {
+    if (!name) return "Anonym"; 
+    const strName = String(name);
+
+    const isCensorshipEnabled = localStorage.getItem('globalCensorship') !== 'false'; 
+    
+    if (!isCensorshipEnabled) {
+        return strName;
+    }
+
+    const badWordsRegex = /negr|nigga|niga|cigan|cikán|kokot|buzerant|kurv|mrd|píč|pič|píc|pic|jeb|zmrd|debil|idiot|čurák|curak|hovn|kund/gi;
+
+    return strName.replace(badWordsRegex, (match) => {
+        const len = match.length;
+        if (len <= 2) return match[0] + '*';
+        return match[0] + '***' + match[len - 1]; 
+    });
+}
+// ---------------
+
 let money = 0;
 let jackpotChance = 0.05;
 let combo = 0;
@@ -47,7 +68,8 @@ async function loadLeaderboard() {
         tbody.innerHTML = "";
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            tbody.innerHTML += `<tr><td>${data.name}</td><td>${data.time}s</td></tr>`;
+            const cleanName = censorName(data.name);
+            tbody.innerHTML += `<tr><td>${cleanName}</td><td>${data.time}s</td></tr>`;
         });
     } catch (e) {
         console.error("DB Error:", e);
@@ -186,11 +208,12 @@ function winGame() {
 }
 
 document.getElementById('save-btn').addEventListener('click', async () => {
-    const name = document.getElementById('player-name').value || "Anonym";
+    const rawName = document.getElementById('player-name').value;
+    const name = rawName.trim() || "Anonym";
     const time = parseFloat(document.getElementById('timer').innerText);
     
     try {
-        await addDoc(collection(db, "scores_spin"), { name, time, date: Date.now() });
+        await addDoc(collection(db, "scores_spin"), { name: name, time: time, date: Date.now() });
         location.reload();
     } catch (e) {
         console.error("Chyba při ukládání:", e);

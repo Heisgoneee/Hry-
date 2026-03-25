@@ -460,12 +460,6 @@
         </div>
     </div>
 
-    <footer>
-        <div class="vibe-badge">
-            🚀 Vytvořeno čistě přes <span>vibe coding</span>
-        </div>
-    </footer>
-
     <script src="censor.js"></script>
     <script>
         const tabs = document.querySelectorAll('.tab-btn');
@@ -504,6 +498,22 @@
         const settingsBtn = document.getElementById('settings-button');
         const settingsModal = document.getElementById('settings-modal');
         const settingsClose = document.getElementById('settings-close');
+        const censorshipToggle = document.getElementById('censorship-toggle');
+
+        // Load setting
+        const censorSetting = localStorage.getItem('globalCensorship');
+        if (censorSetting !== null) {
+            censorshipToggle.checked = censorSetting === 'true';
+        } else {
+            // Default to true if not set
+            censorshipToggle.checked = true;
+            localStorage.setItem('globalCensorship', 'true');
+        }
+
+        // Save setting
+        censorshipToggle.addEventListener('change', (e) => {
+            localStorage.setItem('globalCensorship', e.target.checked);
+        });
 
         settingsBtn.onclick = () => settingsModal.style.display = 'flex';
         settingsClose.onclick = () => settingsModal.style.display = 'none';

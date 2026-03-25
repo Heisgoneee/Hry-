@@ -140,6 +140,24 @@ let currentPlayerName = "Anonym";
 let startTime = 0;
 let elapsedTime = 0;
 
+function censorName(name) {
+    const badWordsRegex = /negr|cigan|cikán|kokot|buzerant|kurv|mrd|píč|pič|píc|pic|jeb|zmrd|debil|idiot|čurák|curak|hovn/gi;
+
+    // Internal helper for partial censorship of a single word
+    function partialCensorWord(word) {
+        const len = word.length;
+        if (len <= 1) return word;
+        const first = word.charAt(0);
+        if (len === 2) return first + '*';
+        const last = word.charAt(len - 1);
+        // Use constant 3 stars to hide the middle, keeping first and last letters.
+        return first + '***' + last; 
+    }
+
+    // Apply partial censorship to each vulgar root found
+    return name.replace(badWordsRegex, partialCensorWord);
+}
+
 const player = {
     x: 380, y: 640, width: 28, height: 38,
     vx: 0, vy: 0,
@@ -176,7 +194,8 @@ async function loadLeaderboard() {
             const data = doc.data();
             let min = Math.floor(data.time / 60000);
             let sec = ((data.time % 60000) / 1000).toFixed(2);
-            lbList.innerHTML += `<div class="lb-entry"><span>${i}. ${data.name}</span><span>${min}:${sec < 10 ? '0' : ''}${sec}</span></div>`;
+            let cleanName = censorName(data.name);
+            lbList.innerHTML += `<div class="lb-entry"><span>${i}. ${cleanName}</span><span>${min}:${sec < 10 ? '0' : ''}${sec}</span></div>`;
             i++;
         });
     } catch (e) {
@@ -188,7 +207,7 @@ async function loadLeaderboard() {
 async function saveScore(name, timeMs) {
     try {
         await addDoc(collection(db, "jumpking_leaderboard"), {
-            name: name,
+            name: censorName(name),
             time: timeMs,
             timestamp: Date.now()
         });
@@ -544,7 +563,7 @@ function loop() {
 
 document.getElementById('startBtn').addEventListener('click', () => {
     let name = document.getElementById('playerName').value.trim();
-    if(name) currentPlayerName = name;
+    if(name) currentPlayerName = censorName(name);
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     

@@ -157,7 +157,6 @@
         const finalScoreElement = document.getElementById('final-score');
         const leaderboardBody = document.getElementById('leaderboard-body');
 
-        // Audio Context Setup
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
         let chompToggle = false;
@@ -177,7 +176,6 @@
             const gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
             const now = audioCtx.currentTime;
 
             if (type === 'chomp') {
@@ -232,6 +230,25 @@
                 osc.start(now);
                 osc.stop(now + 0.6);
             }
+        }
+
+        function censorName(name) {
+            if (!name) return "Anonym"; 
+            const strName = String(name);
+
+            const isCensorshipEnabled = localStorage.getItem('globalCensorship') !== 'false'; 
+            
+            if (!isCensorshipEnabled) {
+                return strName;
+            }
+
+            const badWordsRegex = /negr|nigga|niga|cigan|cikán|kokot|buzerant|kurv|mrd|píč|pič|píc|pic|jeb|zmrd|debil|idiot|čurák|curak|hovn|kund/gi;
+
+            return strName.replace(badWordsRegex, (match) => {
+                const len = match.length;
+                if (len <= 2) return match[0] + '*';
+                return match[0] + '***' + match[len - 1]; 
+            });
         }
 
         const tileSize = 20;
@@ -309,8 +326,9 @@
                 leaderboardBody.innerHTML = '';
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
+                    const cleanName = censorName(data.name); 
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td>${data.name}</td><td>${data.score}</td>`;
+                    tr.innerHTML = `<td>${cleanName}</td><td>${data.score}</td>`;
                     leaderboardBody.appendChild(tr);
                 });
             } catch (e) {
