@@ -349,31 +349,6 @@
 
     let nextPieceMatrix = null;
     let particles = [];
-    let floatingTexts = [];
-    let isPaused = false;
-    let shakeTime = 0;
-    let currentCombo = 0;
-
-    // --- Cenzura ---
-    function censorName(name) {
-        if (!name) return "Anonym"; 
-        const strName = String(name);
-
-        const isCensorshipEnabled = localStorage.getItem('globalCensorship') !== 'false'; 
-        
-        if (!isCensorshipEnabled) {
-            return strName;
-        }
-
-        const badWordsRegex = /negr|nigga|niga|cigan|cikán|kokot|buzerant|kurv|mrd|píč|pič|píc|pic|jeb|zmrd|debil|idiot|čurák|curak|hovn|kund/gi;
-
-        return strName.replace(badWordsRegex, (match) => {
-            const len = match.length;
-            if (len <= 2) return match[0] + '*';
-            return match[0] + '***' + match[len - 1]; 
-        });
-    }
-    // ---------------
 
     function createMatrix(w, h) {
         const matrix = [];

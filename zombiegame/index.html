@@ -161,7 +161,7 @@
 </div>
 
 <script>
-    const PREFIX = "zmbsimple-v12-";
+    const PREFIX = "zmbsimple-v13-";
     const MAX_MAP_SIZE = 5000;
     
     let peer, conn, isHost = false, gameStarted = false;
@@ -529,7 +529,8 @@
             ammos: [WEAPONS[w0].mag, w1 !== -1 ? WEAPONS[w1].mag : 0], totalAmmos: [WEAPONS[w0].max, w1 !== -1 ? WEAPONS[w1].max : 0], 
             cooldown: 0, reloadTimer: 0, abilityCooldown: 0,
             perks: { speed: 0, ammo: 0, instakill: 0, goldkill: 0 },
-            inputs: {up: false, down: false, left: false, right: false, shoot: false, reload: false, interact: false, ability: false, aimX: 0, aimZ: 0, buy: false, swap1: false, swap2: false} 
+            yaw: 0, 
+            inputs: {up: false, down: false, left: false, right: false, shoot: false, reload: false, interact: false, ability: false, aimX: 0, aimZ: 0, buy: false, swap1: false, swap2: false, yaw: 0} 
         };
     }
 
@@ -604,7 +605,6 @@
             }
         }
 
-        // Heal Zones Logic
         for(let hId in state.healZones) {
             let h = state.healZones[hId];
             h.life--;
@@ -619,7 +619,6 @@
             }
         }
 
-        // Turrets Logic
         for(let tId in state.turrets) {
             let t = state.turrets[tId];
             t.life--;
@@ -894,8 +893,8 @@
             let zHp = 50 + (state.wave * 20);
             let zSpeed = 2.5 + (state.wave * 0.2);
 
-            if (r > 0.9) { zType = 2; zHp *= 3; zSpeed *= 0.6; } 
-            else if (r > 0.7) { zType = 1; zHp *= 0.5; zSpeed *= 1.5; }
+            if (r > 0.95) { zType = 2; zHp *= 3; zSpeed *= 0.6; } 
+            else if (r > 0.75) { zType = 1; zHp *= 0.5; zSpeed *= 1.5; }
 
             state.zombies[getId()] = { x: zx, z: zz, hp: zHp, speed: zSpeed, type: zType, isDead: false };
             state.zombiesToSpawn--;
@@ -976,7 +975,7 @@
                         target.hp -= (z.type === 2 ? 3 : 1.5);
                         if (target.hp <= 0) {
                             target.isDowned = true;
-                            target.downTimer = 1800; // 30s
+                            target.downTimer = 1800;
                             target.perks = {speed: 0, ammo: 0, instakill: 0, goldkill: 0};
                         }
                     }
@@ -1003,16 +1002,57 @@
         }
 
         networkTick++;
-        if (networkTick % 3 === 0) {
+        if (networkTick % 6 === 0) {
+            let sendPlayers = {};
+            for(let id in state.players) {
+                let p = state.players[id];
+                sendPlayers[id] = {
+                    name: p.name, color: p.color, playerClass: p.playerClass,
+                    x: Math.round(p.x), z: Math.round(p.z), hp: Math.round(p.hp),
+                    lives: p.lives, money: p.money, kills: p.kills,
+                    isDowned: p.isDowned, downTimer: p.downTimer,
+                    weapons: p.weapons, activeWep: p.activeWep, upgraded: p.upgraded,
+                    ammos: p.ammos, totalAmmos: p.totalAmmos,
+                    yaw: p.inputs && p.inputs.yaw ? Math.round(p.inputs.yaw*100)/100 : 0
+                };
+            }
+            let sendZombies = {};
+            for(let id in state.zombies) {
+                let z = state.zombies[id];
+                sendZombies[id] = { x: Math.round(z.x), z: Math.round(z.z), type: z.type, isDead: z.isDead };
+            }
+            let sendBullets = {};
+            for(let id in state.bullets) {
+                let b = state.bullets[id];
+                sendBullets[id] = { x: Math.round(b.x), y: Math.round(b.y||22), z: Math.round(b.z), isPaP: b.isPaP };
+            }
+            let sendDrops = {};
+            for(let id in state.drops) {
+                let d = state.drops[id];
+                sendDrops[id] = { x: Math.round(d.x), z: Math.round(d.z), type: d.type };
+            }
+            let sendTurrets = {};
+            for(let id in state.turrets) {
+                let t = state.turrets[id];
+                sendTurrets[id] = { x: Math.round(t.x), z: Math.round(t.z), aimX: Math.round(t.aimX), aimZ: Math.round(t.aimZ) };
+            }
+            let sendHealZones = {};
+            for(let id in state.healZones) {
+                let h = state.healZones[id];
+                sendHealZones[id] = { x: Math.round(h.x), z: Math.round(h.z) };
+            }
+
             let optimizedState = {
                 wave: state.wave, zombiesToSpawn: state.zombiesToSpawn,
-                players: state.players, zombies: state.zombies, bullets: state.bullets, drops: state.drops,
-                turrets: state.turrets, healZones: state.healZones,
+                players: sendPlayers, zombies: sendZombies, bullets: sendBullets, drops: sendDrops,
+                turrets: sendTurrets, healZones: sendHealZones,
                 currentLimit: state.currentLimit, mapExpander: state.mapExpander,
                 boxActive: state.boxActive, boxTimer: state.boxTimer, boxRollIndex: state.boxRollIndex, boxWeapon: state.boxWeapon,
                 announcement: state.announcement
             };
-            connections.forEach(c => c.send({type: 'state', state: optimizedState}));
+            
+            let dataPacket = {type: 'state', state: optimizedState};
+            connections.forEach(c => c.send(dataPacket));
         }
     }
 
@@ -1068,6 +1108,24 @@
         let myPlayer = state.players[myId];
         if (!myPlayer) { requestAnimationFrame(render); return; }
 
+        if (!isHost) {
+            let speed = myPlayer.isDowned ? 1.5 : 7;
+            let fX = Math.cos(inputs.yaw); let fZ = Math.sin(inputs.yaw);
+            let rX = Math.cos(inputs.yaw + Math.PI/2); let rZ = Math.sin(inputs.yaw + Math.PI/2);
+            let moveX = 0, moveZ = 0;
+            if(inputs.up) { moveX += fX; moveZ += fZ; }
+            if(inputs.down) { moveX -= fX; moveZ -= fZ; }
+            if(inputs.left) { moveX -= rX; moveZ -= rZ; }
+            if(inputs.right) { moveX += rX; moveZ += rZ; }
+            let len = Math.hypot(moveX, moveZ);
+            if(len > 0) {
+                let nx = myPlayer.x + (moveX/len) * speed;
+                let nz = myPlayer.z + (moveZ/len) * speed;
+                if(!checkBuildingCollision(nx, myPlayer.z, 18)) myPlayer.x = nx;
+                if(!checkBuildingCollision(myPlayer.x, nz, 18)) myPlayer.z = nz;
+            }
+        }
+
         updateMeshes(state.players, meshes.players, playerGeo, getPlayerMat, 22.5);
         updateMeshes(state.zombies, meshes.zombies, zombieGeo, getZombieMat, 20);
         updateMeshes(state.bullets, meshes.bullets, bulletGeo, (b) => b.isPaP ? bulletPapMat : bulletMat, 22);
@@ -1099,7 +1157,6 @@
             }
         });
 
-        // Global Announcement
         let annEl = document.getElementById('announcement');
         if (state.announcement && state.announcement.timer > 0) {
             annEl.innerText = state.announcement.text;
@@ -1109,15 +1166,13 @@
             annEl.style.display = 'none';
         }
 
-        // Update Map Barriers Visually
         let L = state.currentLimit;
         barriers.n.scale.set(L * 2, 200, 1); barriers.n.position.set(0, 100, -L);
         barriers.s.scale.set(L * 2, 200, 1); barriers.s.position.set(0, 100, L);
         barriers.e.scale.set(1, 200, L * 2); barriers.e.position.set(L, 100, 0);
         barriers.w.scale.set(1, 200, L * 2); barriers.w.position.set(-L, 100, 0);
 
-        // Update 4 Expanders Visually
-        if (state.mapExpander.level <= state.mapExpander.maxLevel) {
+        if (state.mapExpander && state.mapExpander.level <= state.mapExpander.maxLevel) {
             let expPos = [{x: 0, z: -L + 50}, {x: 0, z: L - 50}, {x: L - 50, z: 0}, {x: -L + 50, z: 0}];
             for(let i=0; i<4; i++) {
                 expanderMeshes[i].position.set(expPos[i].x, 25, expPos[i].z);
@@ -1230,10 +1285,10 @@
         document.getElementById('ui-ability').innerText = abilityText;
         document.getElementById('ui-ability').style.color = myPlayer.abilityCooldown > 0 ? "#f44336" : "#4caf50";
 
-        if (myPlayer.perks.speed > 0) { document.getElementById('wrap-speed').style.display = 'block'; document.getElementById('bar-speed').style.width = (myPlayer.perks.speed / 1800 * 100) + '%'; } else document.getElementById('wrap-speed').style.display = 'none';
-        if (myPlayer.perks.ammo > 0) { document.getElementById('wrap-ammo').style.display = 'block'; document.getElementById('bar-ammo').style.width = (myPlayer.perks.ammo / 1800 * 100) + '%'; } else document.getElementById('wrap-ammo').style.display = 'none';
-        if (myPlayer.perks.instakill > 0) { document.getElementById('wrap-instakill').style.display = 'block'; document.getElementById('bar-instakill').style.width = (myPlayer.perks.instakill / 1800 * 100) + '%'; } else document.getElementById('wrap-instakill').style.display = 'none';
-        if (myPlayer.perks.goldkill > 0) { document.getElementById('wrap-goldkill').style.display = 'block'; document.getElementById('bar-goldkill').style.width = (myPlayer.perks.goldkill / 1800 * 100) + '%'; } else document.getElementById('wrap-goldkill').style.display = 'none';
+        if (myPlayer.perks && myPlayer.perks.speed > 0) { document.getElementById('wrap-speed').style.display = 'block'; document.getElementById('bar-speed').style.width = (myPlayer.perks.speed / 1800 * 100) + '%'; } else document.getElementById('wrap-speed').style.display = 'none';
+        if (myPlayer.perks && myPlayer.perks.ammo > 0) { document.getElementById('wrap-ammo').style.display = 'block'; document.getElementById('bar-ammo').style.width = (myPlayer.perks.ammo / 1800 * 100) + '%'; } else document.getElementById('wrap-ammo').style.display = 'none';
+        if (myPlayer.perks && myPlayer.perks.instakill > 0) { document.getElementById('wrap-instakill').style.display = 'block'; document.getElementById('bar-instakill').style.width = (myPlayer.perks.instakill / 1800 * 100) + '%'; } else document.getElementById('wrap-instakill').style.display = 'none';
+        if (myPlayer.perks && myPlayer.perks.goldkill > 0) { document.getElementById('wrap-goldkill').style.display = 'block'; document.getElementById('bar-goldkill').style.width = (myPlayer.perks.goldkill / 1800 * 100) + '%'; } else document.getElementById('wrap-goldkill').style.display = 'none';
         
         let w1Idx = myPlayer.weapons[0];
         let w2Idx = myPlayer.weapons[1];
@@ -1263,7 +1318,7 @@
         }
 
         if(!isHost && conn && conn.open) {
-            if (Date.now() - lastClientInputTime > 30) {
+            if (Date.now() - lastClientInputTime > 50) {
                 conn.send({type: 'input', inputs: inputs});
                 lastClientInputTime = Date.now();
             }
@@ -1303,7 +1358,11 @@
         mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObject(plane);
-        if(intersects.length > 0) { inputs.aimX = intersects[0].point.x; inputs.aimZ = intersects[0].point.z; }
+        if(intersects.length > 0) { 
+            inputs.aimX = intersects[0].point.x; 
+            inputs.aimZ = intersects[0].point.z;
+            inputs.yaw = Math.atan2(inputs.aimZ - (state.players[myId] ? state.players[myId].z : 0), inputs.aimX - (state.players[myId] ? state.players[myId].x : 0));
+        }
     });
     window.addEventListener('mousedown', () => inputs.shoot = true);
     window.addEventListener('mouseup', () => inputs.shoot = false);
