@@ -347,8 +347,14 @@
 
     const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
 
+    // --- DEKLARACE CHYBĚJÍCÍCH PROMĚNNÝCH ---
     let nextPieceMatrix = null;
     let particles = [];
+    let floatingTexts = [];
+    let isPaused = false;
+    let shakeTime = 0;
+    let currentCombo = 0;
+    // ----------------------------------------
 
     function createMatrix(w, h) {
         const matrix = [];
@@ -722,6 +728,12 @@
         }
     }
 
+    // Pomocná funkce pro cenzuru jmen
+    function censorName(name) {
+        if (!name) return "Anonym";
+        return name.replace(/[<>{}]/g, ""); // Základní ochrana proti HTML tagům
+    }
+
     async function saveScore(name, score) {
         try {
             await addDoc(collection(db, "tetris_leaderboard"), {
@@ -742,7 +754,7 @@
             let html = "";
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                const cleanName = censorName(data.name); // Použití cenzury při výpisu
+                const cleanName = censorName(data.name);
                 html += `<li><span class="name-tag">${cleanName}</span> <span class="score-tag">${data.score}</span></li>`;
             });
             leaderboardList.innerHTML = html || "<li class='loading-text'>Zatím žádné skóre</li>";
