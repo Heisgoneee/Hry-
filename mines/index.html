@@ -194,9 +194,43 @@
             }
 
             if (e.button === 0) {
-                reveal(r, c);
+                if (board[r][c].revealed) {
+                    chord(r, c);
+                } else {
+                    reveal(r, c);
+                }
             } else if (e.button === 2) {
                 toggleFlag(r, c);
+            }
+        }
+
+        function chord(r, c) {
+            let cell = board[r][c];
+            if (!cell.revealed || cell.count === 0) return;
+
+            let flagCount = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    let nr = r + dr;
+                    let nc = c + dc;
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                        if (board[nr][nc].flag) flagCount++;
+                    }
+                }
+            }
+
+            if (flagCount === cell.count) {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        let nr = r + dr;
+                        let nc = c + dc;
+                        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                            if (!board[nr][nc].revealed && !board[nr][nc].flag) {
+                                reveal(nr, nc);
+                            }
+                        }
+                    }
+                }
             }
         }
 
