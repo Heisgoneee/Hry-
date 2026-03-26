@@ -347,14 +347,12 @@
 
     const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
 
-    // --- DEKLARACE CHYBĚJÍCÍCH PROMĚNNÝCH ---
     let nextPieceMatrix = null;
     let particles = [];
     let floatingTexts = [];
     let isPaused = false;
     let shakeTime = 0;
     let currentCombo = 0;
-    // ----------------------------------------
 
     function createMatrix(w, h) {
         const matrix = [];
@@ -728,16 +726,40 @@
         }
     }
 
-    // Pomocná funkce pro cenzuru jmen
     function censorName(name) {
         if (!name) return "Anonym";
-        return name.replace(/[<>{}]/g, ""); // Základní ochrana proti HTML tagům
+        let cleanName = name.trim().replace(/[<>{}]/g, "");
+
+        const badWords = [
+            'niga', 'nigga', 'negr', 'nigger', 'cigan', 'cikán', 
+            'kokot', 'pica', 'píča', 'curak', 'čurák', 'debil', 
+            'mrd', 'fuck', 'shit', 'buzna', 'gay', 'hitler',
+            'kurva', 'kurev', 'zmrd', 'prdel', 'hovno', 'sráč',
+            'srac', 'mrdka', 'picus', 'píčus', 'čubka', 'cubka',
+            'mrcha', 'kretén', 'kreten', 'jeba', 'jebat', 'bitch',
+            'whore', 'slut', 'cunt', 'dick', 'cock', 'pussy', 'asshole'
+        ];
+
+        badWords.forEach(word => {
+            const regex = new RegExp(word, "gi");
+            cleanName = cleanName.replace(regex, match => {
+                if (match.length <= 2) return match[0] + '*';
+                return match[0] + '*'.repeat(match.length - 2) + match[match.length - 1];
+            });
+        });
+
+        if (cleanName.replace(/\*/g, "").length === 0 && name.length > 0) {
+            return "Anonym";
+        }
+
+        return cleanName || "Anonym";
     }
 
     async function saveScore(name, score) {
+        const censoredName = censorName(name);
         try {
             await addDoc(collection(db, "tetris_leaderboard"), {
-                name: name,
+                name: censoredName,
                 score: score,
                 timestamp: new Date()
             });
