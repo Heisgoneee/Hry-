@@ -43,6 +43,9 @@
             cursor: pointer;
             font-size: 16px;
             transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .nav-btn:hover { background: #333; border-color: #5cb85c; }
@@ -179,6 +182,8 @@
 
         .action-btn:hover:not(:disabled) { background: #4cae4c; transform: scale(1.02); }
         .action-btn:disabled { background: #444; cursor: not-allowed; color: #888; transform: none; }
+        .cancel-btn { background: #d9534f; color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 15px; transition: 0.2s; }
+        .cancel-btn:hover { background: #c9302c; }
         #result { font-size: 20px; font-weight: bold; min-height: 30px; text-shadow: 0 0 5px rgba(255,255,255,0.2); }
         
         /* --- INVENTORY --- */
@@ -261,8 +266,6 @@
         .lobby-val { color: #ffd700; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
         .join-btn { background: #f0ad4e; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s; width: 100%; }
         .join-btn:hover { background: #ec971f; }
-        .cancel-btn { background: #d9534f; color: #fff; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s; width: 100%; margin-top: 10px; }
-        .cancel-btn:hover { background: #c9302c; }
 
         /* --- MODALS --- */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); justify-content: center; align-items: center; }
@@ -290,6 +293,10 @@
         .coin-t { background: #b5985a; transform: rotateY(180deg); }
         .spinner { animation: spin 1.5s linear infinite; display: inline-block; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Indicator Animation */
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+        .status-dot { font-size: 14px; animation: pulse 1.5s infinite; }
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #1a1a1a; }
@@ -380,7 +387,9 @@
 <div class="header">
     <div class="nav-tabs">
         <button class="nav-btn active" onclick="switchView('cases')">📦 Bedny</button>
-        <button class="nav-btn" onclick="switchView('casino')">🎰 Kasino</button>
+        <button class="nav-btn" onclick="switchView('casino')">
+            🎰 Kasino <span id="globalLobbyIndicator" class="status-dot hidden">🟢 Aktivní lobby</span>
+        </button>
     </div>
     <div>Zůstatek: <span id="balanceDisplay" class="balance-display">$0.00</span></div>
 </div>
@@ -422,7 +431,7 @@
         <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2 style="margin: 0; color: #5cb85c;">Online hry (LAN / API)</h2>
             <div>
-                <button class="action-btn" style="padding: 10px 20px; font-size: 14px; background: #f0ad4e; color: black; margin-right: 10px;" onclick="openCreateLobbyModal()">➕ Vytvořit hru</button>
+                <button class="action-btn" style="padding: 10px 20px; font-size: 14px; background: #f0ad4e; color: black; margin-right: 10px;" onclick="openCreateLobbyModal()" id="hostInitBtn">➕ Vytvořit hru</button>
                 <button class="action-btn" style="padding: 10px 20px; font-size: 14px;" onclick="fetchOnlineLobbies()">🔄 Obnovit</button>
             </div>
         </div>
@@ -562,12 +571,24 @@
         }
     }
 
+    function toggleLobbyIndicator(show) {
+        const ind = document.getElementById('globalLobbyIndicator');
+        const hostBtn = document.getElementById('hostInitBtn');
+        if (show) {
+            ind.classList.remove('hidden');
+            if(hostBtn) hostBtn.classList.add('hidden');
+        } else {
+            ind.classList.add('hidden');
+            if(hostBtn) hostBtn.classList.remove('hidden');
+        }
+    }
+
     function switchView(viewName) {
         if(isSpinning || isFlipping) return;
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`view-${viewName}`).classList.add('active');
-        event.target.classList.add('active');
+        event.currentTarget.classList.add('active');
         if(viewName === 'casino') fetchOnlineLobbies();
     }
 
@@ -659,7 +680,6 @@
     }
 
     function renderInventoryItem(itemData, append = false) {
-        // Prevent duplicate rendering
         if(document.getElementById(`inv-item-${itemData.id}`)) document.getElementById(`inv-item-${itemData.id}`).remove();
         
         const invDiv = document.createElement('div'); invDiv.id = `inv-item-${itemData.id}`; invDiv.className = `inv-item ${itemData.color}`;
@@ -726,7 +746,6 @@
         fetch('api.php?action=get')
             .then(res => res.json())
             .then(data => {
-                // Ignore our own lobby in the list
                 activePlayerLobbies = data.filter(l => l.id !== myLobbyId);
                 renderLobbiesToContainer(activePlayerLobbies, 'playerLobbiesContainer', false);
             }).catch(e => {
@@ -750,11 +769,9 @@
                     lobbyPollInterval = null;
                     document.getElementById('userCustomLobby').classList.add('hidden');
                     
-                    // The opponent is the joiner
                     const opponentData = { name: data.joiner.name, items: data.joiner.items, totalValue: data.joiner.totalValue };
                     myLobbyId = null; 
-                    
-                    // We are the creator, selectedBetItems holds our stakes
+                    toggleLobbyIndicator(false);
                     startFlipMechanic(opponentData, true);
                 }
             }).catch(e => console.error(e));
@@ -768,7 +785,7 @@
         fetch(`api.php?action=cancel&id=${myLobbyId}`).then(() => {
             myLobbyId = null;
             document.getElementById('userCustomLobby').classList.add('hidden');
-            // Unlock our items
+            toggleLobbyIndicator(false);
             selectedBetItems.forEach(item => { 
                 const invItem = inventory.find(i => i.id === item.id);
                 if(invItem) invItem.locked = false;
@@ -821,13 +838,11 @@
     function executeJoinFlip() { 
         closeModals(); 
         
-        // Jdeme hrát proti botovi
         if(botNames.includes(currentLobbyOpponent.name)) {
             startFlipMechanic(currentLobbyOpponent, false);
             return;
         }
 
-        // Jdeme hrát online
         const myName = prompt("Zadej svou přezdívku pro hru:") || "Soupeř";
         const myJoinData = { 
             id: currentLobbyOpponent.id, 
@@ -881,7 +896,6 @@
         
         const newLobby = { id: myLobbyId, name: myName, items: selectedBetItems, totalValue: total, status: 'waiting', joiner: null };
 
-        // Dočasně zamkneme itemy, aby se nedaly prodat během čekání
         selectedBetItems.forEach(item => { 
             const invItem = inventory.find(i => i.id === item.id);
             if(invItem) invItem.locked = true;
@@ -893,11 +907,13 @@
             body: JSON.stringify(newLobby)
         }).then(() => {
             const waitingUI = document.getElementById('userCustomLobby'); waitingUI.classList.remove('hidden'); document.getElementById('customLobbyValue').innerText = `$${total.toFixed(2)}`;
+            toggleLobbyIndicator(true);
             lobbyPollInterval = setInterval(checkMyLobbyStatus, 2000);
             fetchOnlineLobbies();
         }).catch(err => {
             alert('Nepodařilo se připojit k online serveru.');
             myLobbyId = null;
+            toggleLobbyIndicator(false);
             selectedBetItems.forEach(item => { const invItem = inventory.find(i => i.id === item.id); if(invItem) invItem.locked = false; });
             updateInventoryDOM(); saveGame();
         });
@@ -915,13 +931,10 @@
             const resText = document.getElementById('flipResultText');
             if (isWin) {
                 resText.innerHTML = `<span style="color: #5cb85c;">Vítězství! Vyhrál jsi skiny soupeře.</span>`;
-                // Odstraníme zámek z našich itemů
                 selectedBetItems.forEach(item => { const invItem = inventory.find(i => i.id === item.id); if(invItem) invItem.locked = false; });
-                // Přidáme itemy soupeře
                 opponentData.items.forEach(item => { const newItem = { ...item, id: Date.now() + Math.random(), locked: false }; inventory.push(newItem); });
             } else {
                 resText.innerHTML = `<span style="color: #d9534f;">Prohra! Tvé vsazené skiny propadly.</span>`;
-                // Odstraníme naše itemy z inventáře
                 selectedBetItems.forEach(item => { inventory = inventory.filter(i => i.id !== item.id); });
             }
             
