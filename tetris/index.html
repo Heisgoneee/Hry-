@@ -308,7 +308,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBnFQf-YQODWhZN-3scSbWIQIgr3poDIos",
@@ -588,7 +588,7 @@
                 comboColor = "#FFE138";
                 shakeTime = 15;
             } else if (linesCleared >= 4) {
-                points = 800;
+                points = 1200;
                 comboText = "TETRIS!";
                 comboColor = "#FF0D72";
                 shakeTime = 25;
@@ -597,8 +597,8 @@
             player.score += points * currentLevel;
 
             if (currentCombo > 0) {
-                let comboPoints = 50 * currentCombo * currentLevel;
-                player.score += comboPoints;
+                let comboPoints = 50 * Math.pow(1.5, currentCombo) * currentLevel;
+                player.score += Math.floor(comboPoints);
                 
                 floatingTexts.push({
                     text: currentCombo + "x COMBO!",
@@ -758,11 +758,26 @@
     async function saveScore(name, score) {
         const censoredName = censorName(name);
         try {
-            await addDoc(collection(db, "tetris_leaderboard"), {
-                name: censoredName,
-                score: score,
-                timestamp: new Date()
-            });
+            const q = query(collection(db, "tetris_leaderboard"), where("name", "==", censoredName));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                const docRef = querySnapshot.docs[0].ref;
+                const existingScore = querySnapshot.docs[0].data().score;
+                
+                if (score > existingScore) {
+                    await updateDoc(docRef, {
+                        score: score,
+                        timestamp: new Date()
+                    });
+                }
+            } else {
+                await addDoc(collection(db, "tetris_leaderboard"), {
+                    name: censoredName,
+                    score: score,
+                    timestamp: new Date()
+                });
+            }
             await displayLeaderboard();
         } catch (e) {
             console.error("Chyba při ukládání skóre: ", e);
