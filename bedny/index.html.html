@@ -1,97 +1,955 @@
-<?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-
-$file = 'lobbies.json';
-if (!file_exists($file)) {
-    file_put_contents($file, json_encode([]));
-    chmod($file, 0666);
-}
-
-$action = $_GET['action'] ?? '';
-
-if ($action === 'create') {
-    $data = json_decode(file_get_contents('php://input'), true);
-    if ($data) {
-        $list = json_decode(file_get_contents($file), true);
-        if(!is_array($list)) $list = [];
-        
-        $list[] = $data;
-        
-        if(count($list) > 30) {
-            array_shift($list);
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>CS:GO Simulator - Bulletproof Offline & LAN Mode</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        
-        file_put_contents($file, json_encode($list));
-        echo json_encode(['success' => true]);
-    }
-    exit;
-}
 
-if ($action === 'status') {
-    $id = $_GET['id'] ?? '';
-    $list = json_decode(file_get_contents($file), true);
-    if(is_array($list)) {
-        foreach($list as $l) {
-            if($l['id'] == $id) {
-                echo json_encode($l);
-                exit;
-            }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 1100px;
+            background: #1e1e1e;
+            padding: 15px 30px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            border-bottom: 3px solid #5cb85c;
+            margin-bottom: 20px;
         }
-    }
-    echo json_encode(['status' => 'not_found']);
-    exit;
-}
 
-if ($action === 'join') {
-    $data = json_decode(file_get_contents('php://input'), true);
-    $list = json_decode(file_get_contents($file), true);
-    $success = false;
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            background: #2a2a2a;
+            color: #fff;
+            border: 2px solid #444;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover { background: #333; border-color: #5cb85c; }
+        .nav-btn.active { background: #223322; border-color: #5cb85c; color: #5cb85c; }
+
+        .balance-display { font-size: 24px; font-weight: bold; color: #5cb85c; }
+
+        .view { display: none; width: 1100px; flex-direction: column; align-items: center; }
+        .view.active { display: flex; }
+
+        /* --- CASES --- */
+        .case-selector-wrapper { width: 100%; overflow-x: auto; margin-bottom: 30px; padding-bottom: 10px; }
+        .case-selector { display: inline-flex; gap: 15px; }
+
+        .case-card {
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            width: 160px;
+            cursor: pointer;
+            transition: 0.2s;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        .case-card img, .case-card .emoji-img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            margin: 0 auto 10px auto;
+            filter: drop-shadow(0px 5px 5px rgba(0,0,0,0.5));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+        }
+
+        .case-card:hover { border-color: #5cb85c; background: #333; }
+        .case-card.active { border-color: #5cb85c; background: #223322; box-shadow: 0 0 15px rgba(92, 184, 92, 0.3); }
+        .case-name { font-weight: bold; font-size: 13px; margin-bottom: 5px; height: 32px; overflow: hidden; }
+        .case-price { color: #ffd700; font-size: 14px; font-weight: bold;}
+
+        .case-viewport {
+            width: 100%;
+            height: 220px;
+            border: 2px solid #444;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a1b;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: inset 0 0 20px #000;
+        }
+
+        .selector {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: #ff0000;
+            z-index: 10;
+            transform: translateX(-50%);
+            box-shadow: 0 0 15px rgba(255,0,0,1);
+        }
+
+        .items-strip {
+            display: flex;
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            will-change: transform;
+        }
+
+        .item {
+            min-width: 200px;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 2px solid #111;
+            flex-direction: column;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            box-sizing: border-box;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .skin-img, .emoji-img {
+            width: 140px;
+            height: 100px;
+            object-fit: contain;
+            margin-bottom: 10px;
+            filter: drop-shadow(0px 5px 5px rgba(0,0,0,0.7));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+        }
+
+        .item-name {
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 3px;
+            font-size: 11px;
+        }
+
+        .blue { background: radial-gradient(circle, #2b3a8c 0%, #111 100%); border-bottom: 4px solid #4b69ff;}
+        .purple { background: radial-gradient(circle, #4d2891 0%, #111 100%); border-bottom: 4px solid #8847ff;}
+        .pink { background: radial-gradient(circle, #7a1885 0%, #111 100%); border-bottom: 4px solid #d32ce6;}
+        .red { background: radial-gradient(circle, #8a2a2a 0%, #111 100%); border-bottom: 4px solid #eb4b4b;}
+        .gold { background: radial-gradient(circle, #7a6703 0%, #111 100%); border-bottom: 4px solid #e4ae39;}
+
+        .controls { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; }
+
+        .action-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #5cb85c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+
+        .action-btn:hover:not(:disabled) { background: #4cae4c; transform: scale(1.02); }
+        .action-btn:disabled { background: #444; cursor: not-allowed; color: #888; transform: none; }
+        #result { font-size: 20px; font-weight: bold; min-height: 30px; text-shadow: 0 0 5px rgba(255,255,255,0.2); }
+        
+        /* --- INVENTORY --- */
+        .inventory-section { width: 1100px; margin-top: 30px; background: #1e1e1e; padding: 20px; border-radius: 8px; box-sizing: border-box; }
+        .stats { display: flex; justify-content: space-between; align-items: center; background: #2a2a2a; padding: 15px 20px; border-radius: 5px; margin-bottom: 20px; font-size: 16px; }
+        .sell-all-btn { padding: 8px 15px; font-size: 14px; background: #d9534f; color: white; border: none; border-radius: 4px; margin-left: 15px; cursor: pointer; }
+        .sell-all-btn:hover { background: #c9302c; }
+
+        .inventory-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-height: 600px; overflow-y: auto; padding-right: 10px; }
+        .inv-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 200px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            box-sizing: border-box;
+            background: #222;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 2px solid transparent;
+            transition: 0.2s;
+        }
+
+        .inv-item.selectable { cursor: pointer; }
+        .inv-item.selectable:hover { border-color: #f0ad4e; }
+        .inv-item.selected { border-color: #5cb85c; background: #223322; }
+
+        .inv-item img, .inv-item .emoji-img {
+            width: 100px;
+            height: 70px;
+            object-fit: contain;
+            filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.5));
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .inv-item .emoji-img { font-size: 40px; }
+
+        .inv-item .price-tag { color: #ffd700; font-size: 13px; margin-top: 5px; margin-bottom: 8px; }
+        .inv-actions { display: flex; width: 100%; gap: 5px; margin-top: auto; }
+        .sell-btn { background: #d9534f; color: white; border: none; padding: 6px; font-size: 11px; border-radius: 3px; cursor: pointer; flex: 1; }
+        .sell-btn:hover:not(:disabled) { background: #c9302c; }
+        .sell-btn:disabled { background: #555; cursor: not-allowed; }
+        .lock-btn { background: #444; color: white; border: none; padding: 6px; font-size: 11px; border-radius: 3px; cursor: pointer; width: 30px; }
+        .lock-btn:hover { background: #555; }
+        .lock-btn.locked { background: #f0ad4e; }
+
+        /* --- CASINO MENU --- */
+        .casino-nav { display: flex; gap: 15px; width: 100%; margin-bottom: 10px; }
+        .casino-nav-btn { flex: 1; padding: 15px; background: #2a2a2a; border: 2px solid #444; border-radius: 8px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .casino-nav-btn:hover { background: #333; border-color: #f0ad4e; }
+        .casino-nav-btn.disabled { opacity: 0.5; pointer-events: none; }
+        .casino-sub-nav { display: flex; gap: 10px; width: 100%; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+        .sub-nav-btn { background: transparent; color: #aaa; border: 2px solid transparent; padding: 8px 16px; font-weight: bold; border-radius: 20px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .sub-nav-btn:hover { color: #fff; background: #2a2a2a; }
+        .sub-nav-btn.active { background: #2a2a2a; border-color: #f0ad4e; color: #f0ad4e; }
+
+        .coinflip-section { display: none; width: 100%; }
+        .coinflip-section.active { display: block; }
+
+        /* --- COINFLIP LOBBIES --- */
+        .lobbies-container { width: 100%; display: flex; flex-direction: column; gap: 15px; }
+        .lobby-card {
+            background: #2a2a2a; border: 2px solid #444; border-radius: 8px; padding: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .lobby-user { display: flex; align-items: center; gap: 15px; width: 200px; }
+        .lobby-avatar { width: 50px; height: 50px; background: #444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid #f0ad4e; }
+        
+        .lobby-items { display: flex; gap: 10px; flex: 1; padding: 0 20px; overflow-x: auto; align-items: center; }
+        .lobby-item-img {
+            width: 60px; height: 45px; background: #111; border-radius: 4px; object-fit: contain;
+            border-bottom: 2px solid #444; padding: 2px; display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+        .lobby-action { width: 150px; text-align: right; }
+        .lobby-val { color: #ffd700; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .join-btn { background: #f0ad4e; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s; width: 100%; }
+        .join-btn:hover { background: #ec971f; }
+        .cancel-btn { background: #d9534f; color: #fff; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s; width: 100%; margin-top: 10px; }
+        .cancel-btn:hover { background: #c9302c; }
+
+        /* --- MODALS --- */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); justify-content: center; align-items: center; }
+        .modal-content { background-color: #1e1e1e; padding: 25px; border-radius: 8px; width: 90%; max-width: 1000px; max-height: 85vh; overflow-y: auto; position: relative; border: 2px solid #444; }
+        .close-btn { position: absolute; right: 20px; top: 15px; color: #fff; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover { color: #d9534f; }
+        .modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 20px; }
+        .modal-grid .inv-item { height: 160px; justify-content: flex-start; }
+        
+        .bet-split { display: flex; gap: 20px; margin-top: 20px; }
+        .bet-side { flex: 1; background: #111; border-radius: 8px; padding: 15px; border: 1px solid #333; }
+        .bet-side h3 { margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; display: flex; justify-content: space-between; }
+        .bet-items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; }
+        
+        .bet-controls { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #444; }
+        .bet-status { font-size: 16px; }
+        #confirmBetBtn, #createLobbyBtn { background: #5cb85c; color: white; padding: 12px 30px; font-size: 18px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; }
+        #confirmBetBtn:disabled, #createLobbyBtn:disabled { background: #444; cursor: not-allowed; }
+
+        /* Flip Animation */
+        .flip-container { text-align: center; padding: 40px 0; }
+        .coin { width: 150px; height: 150px; margin: 0 auto 30px auto; transform-style: preserve-3d; transition: transform 3s cubic-bezier(0.1, 0.8, 0.1, 1); position: relative; }
+        .coin-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; border: 5px solid #222; }
+        .coin-ct { background: #5a82b5; }
+        .coin-t { background: #b5985a; transform: rotateY(180deg); }
+        .spinner { animation: spin 1.5s linear infinite; display: inline-block; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212;
+            display: flex; justify-content: center; align-items: center; font-size: 24px; z-index: 3000; color: #5cb85c; flex-direction: column; text-align: center;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+    <div>Startuji hru...</div>
+    <div style="font-size: 14px; color: #888; margin-top: 10px;">Provádím kontrolu připojení k serveru (max 2 vteřiny).</div>
+</div>
+
+<div id="contentModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModals()">&times;</span>
+        <h2 id="modalTitle" style="margin-top: 0;">Obsah bedny</h2>
+        <div class="inventory-grid" id="modalGrid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));"></div>
+    </div>
+</div>
+
+<div id="betModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModals()">&times;</span>
+        <h2 style="margin-top: 0; color: #f0ad4e;">Vyzvat soupeře: <span id="lobbyBotName"></span></h2>
+        <div class="bet-split">
+            <div class="bet-side">
+                <h3>Skiny soupeře <span style="color: #ffd700;" id="botBetTotal">$0.00</span></h3>
+                <div class="bet-items-grid" id="botBetGrid"></div>
+            </div>
+            <div class="bet-side" style="border-color: #5cb85c;">
+                <h3>Tvé skiny <span style="color: #ffd700;" id="playerBetTotal">$0.00</span></h3>
+                <p style="font-size: 12px; color: #aaa; margin-top: -10px;">Hodnota musí být alespoň 90% sázky.</p>
+                <div class="bet-items-grid" id="playerBetGrid"></div>
+            </div>
+        </div>
+        <h3 style="margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 10px;">Tvůj inventář (Klikni pro výběr)</h3>
+        <div class="inventory-grid" id="betInventoryGrid" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); max-height: 250px;"></div>
+        <div class="bet-controls">
+            <div class="bet-status" id="betStatusText" style="color: #d9534f;">Vyber skiny v podobné hodnotě, abys mohl hrát.</div>
+            <button id="confirmBetBtn" disabled onclick="executeJoinFlip()">Zahodit minci!</button>
+        </div>
+    </div>
+</div>
+
+<div id="createLobbyModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModals()">&times;</span>
+        <h2 style="margin-top: 0; color: #5cb85c;">Vytvořit vlastní hru</h2>
+        <p style="color: #aaa;">Vyber ze svého inventáře skiny, o které chceš hrát. Hra se zveřejní pro ostatní hráče.</p>
+        <div class="bet-split">
+            <div class="bet-side" style="border-color: #5cb85c;">
+                <h3>Vsadit skiny <span style="color: #ffd700;" id="createLobbyTotal">$0.00</span></h3>
+                <div class="bet-items-grid" id="createLobbyGrid"></div>
+            </div>
+        </div>
+        <h3 style="margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 10px;">Tvůj inventář</h3>
+        <div class="inventory-grid" id="createInventoryGrid" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); max-height: 250px;"></div>
+        <div class="bet-controls">
+            <div class="bet-status" id="createStatusText" style="color: #d9534f;">Musíš vsadit alespoň jeden skin.</div>
+            <button id="createLobbyBtn" disabled onclick="submitCustomLobby()">Vytvořit Lobbíčko</button>
+        </div>
+    </div>
+</div>
+
+<div id="flipModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <h2 style="margin-top: 0; text-align: center; color: #f0ad4e;">Coinflip 50/50</h2>
+        <div class="flip-container">
+            <div class="coin" id="coinEl">
+                <div class="coin-face coin-ct">Ty</div>
+                <div class="coin-face coin-t" id="coinOpponentText">Soupeř</div>
+            </div>
+            <div id="flipResultText" style="font-size: 24px; font-weight: bold; min-height: 35px;">Mince se točí...</div>
+            <button id="flipCloseBtn" class="action-btn hidden" style="margin-top: 20px; width: 100%;" onclick="closeModals()">Zpět do kasina</button>
+        </div>
+    </div>
+</div>
+
+<div class="header">
+    <div class="nav-tabs">
+        <button class="nav-btn active" onclick="switchView('cases')">📦 Bedny</button>
+        <button class="nav-btn" onclick="switchView('casino')">🎰 Kasino</button>
+    </div>
+    <div>Zůstatek: <span id="balanceDisplay" class="balance-display">$0.00</span></div>
+</div>
+
+<div id="view-cases" class="view active">
+    <div class="case-selector-wrapper">
+        <div class="case-selector" id="caseSelector"></div>
+    </div>
+    <div class="case-viewport">
+        <div class="selector"></div>
+        <div id="strip" class="items-strip"></div>
+    </div>
+    <div class="controls">
+        <button id="openBtn" class="action-btn" onclick="spin()" disabled>Načítání...</button>
+        <button id="showContentBtn" class="action-btn" onclick="showCaseContent()" style="background: #444;" disabled>Obsah bedny</button>
+    </div>
+    <div id="result">Vyber si bednu a zkus štěstí!</div>
+</div>
+
+<div id="view-casino" class="view">
+    <div class="casino-nav">
+        <button class="casino-nav-btn" style="border-color: #f0ad4e;">🪙 Coinflip Lobbies</button>
+        <button class="casino-nav-btn disabled">🎯 Jackpot (Brzy)</button>
+    </div>
+    <div class="casino-sub-nav">
+        <button class="sub-nav-btn active" onclick="switchCoinflipTab('bots', this)">🤖 Boti</button>
+        <button class="sub-nav-btn" onclick="switchCoinflipTab('players', this)">👥 Ostatní hráči</button>
+    </div>
+
+    <div id="coinflip-bots" class="coinflip-section active">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; color: #f0ad4e;">Aktivní hry proti botům</h2>
+            <button class="action-btn" style="padding: 10px 20px; font-size: 14px;" onclick="generateBotLobbies()">🔄 Obnovit soupeře</button>
+        </div>
+        <div class="lobbies-container" id="lobbiesContainer"></div>
+    </div>
+
+    <div id="coinflip-players" class="coinflip-section">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; color: #5cb85c;">Online hry (LAN / API)</h2>
+            <div>
+                <button class="action-btn" style="padding: 10px 20px; font-size: 14px; background: #f0ad4e; color: black; margin-right: 10px;" onclick="openCreateLobbyModal()">➕ Vytvořit hru</button>
+                <button class="action-btn" style="padding: 10px 20px; font-size: 14px;" onclick="fetchOnlineLobbies()">🔄 Obnovit</button>
+            </div>
+        </div>
+        
+        <div id="userCustomLobby" class="hidden" style="background: #223322; border: 2px solid #5cb85c; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+            <h3 style="color: #5cb85c; margin-top: 0;">Tvoje hra je online a čeká na soupeře...</h3>
+            <p>Hodnota sázky: <span id="customLobbyValue" style="color: #ffd700; font-weight: bold;">$0.00</span></p>
+            <div class="spinner" style="font-size: 24px; margin-top: 10px;">⏳</div>
+            <button class="cancel-btn" style="padding: 8px 15px; font-size: 12px; margin-top: 15px; width:auto;" onclick="cancelMyLobby()">Zrušit hru a vrátit skiny</button>
+        </div>
+
+        <div class="lobbies-container" id="playerLobbiesContainer"></div>
+    </div>
+</div>
+
+<div class="inventory-section">
+    <div class="stats">
+        <div>Inventář: <span id="itemCount">0</span> ks <button class="sell-all-btn" onclick="sellAllUnlocked()">💰 Prodat vše</button></div>
+        <div>Utraceno: <span id="totalSpent" style="color: #eb4b4b;">$0.00</span></div>
+        <div>Hodnota skinů: <span id="totalValue" style="color: #5cb85c;">$0.00</span></div>
+    </div>
+    <div class="inventory-grid" id="inventory"></div>
+</div>
+
+<script>
+    let userBalance = 0.00; let inventory = []; let totalSpent = 0; let currentCaseIndex = 0;
+    let isSpinning = false; let cases = []; let allPossibleItems = [];
     
-    if(is_array($list)) {
-        foreach($list as &$l) {
-            if($l['id'] == $data['id'] && $l['status'] == 'waiting') {
-                $l['status'] = 'joined';
-                $l['joiner'] = $data['joiner'];
-                $success = true;
-                break;
-            }
-        }
-        if ($success) {
-            file_put_contents($file, json_encode($list));
-        }
-    }
-    echo json_encode(['success' => $success]);
-    exit;
-}
+    let activeBotLobbies = []; let activePlayerLobbies = []; let currentLobbyOpponent = null;
+    let selectedBetItems = []; let isFlipping = false; let clearStripTimeout = null;
 
-if ($action === 'cancel') {
-    $id = $_GET['id'] ?? '';
-    $list = json_decode(file_get_contents($file), true);
-    $newList = [];
-    if(is_array($list)) {
-        foreach($list as $l) {
-            if($l['id'] != $id) {
-                $newList[] = $l;
-            }
-        }
-        file_put_contents($file, json_encode($newList));
-    }
-    echo json_encode(['success' => true]);
-    exit;
-}
+    // Multiplayer Variables
+    let myLobbyId = null;
+    let lobbyPollInterval = null;
 
-if ($action === 'get') {
-    $list = json_decode(file_get_contents($file), true);
-    $waiting = [];
-    if(is_array($list)) {
-        foreach($list as $l) {
-            if($l['status'] === 'waiting') {
-                $waiting[] = $l;
-            }
+    const botNames = ["s1mple", "ZywOo", "NiKo", "kennyS", "f0rest", "Gaben", "PashaBiceps", "dev1ce"];
+
+    const exteriors = [
+        { name: "Factory New", abbrev: "FN", minFloat: 0.00, maxFloat: 0.07, priceMult: 1.5 },
+        { name: "Minimal Wear", abbrev: "MW", minFloat: 0.07, maxFloat: 0.15, priceMult: 1.2 },
+        { name: "Field-Tested", abbrev: "FT", minFloat: 0.15, maxFloat: 0.38, priceMult: 1.0 },
+        { name: "Well-Worn", abbrev: "WW", minFloat: 0.38, maxFloat: 0.45, priceMult: 0.8 },
+        { name: "Battle-Scarred", abbrev: "BS", minFloat: 0.45, maxFloat: 1.00, priceMult: 0.6 }
+    ];
+
+    function getRandomExterior() {
+        const r = Math.random();
+        if (r < 0.10) return exteriors[0]; if (r < 0.25) return exteriors[1];
+        if (r < 0.65) return exteriors[2]; if (r < 0.85) return exteriors[3]; return exteriors[4];
+    }
+
+    const fallbackCasesData = [
+        {
+            name: "CS:GO Weapon Case", price: 0.00, image: "📦", 
+            items: [
+                { name: "AWP | Lightning Strike", color: "red", weight: 1.5, basePrice: 500, image: "🎯" },
+                { name: "AK-47 | Case Hardened", color: "pink", weight: 8, basePrice: 150, image: "🔫" },
+                { name: "Desert Eagle | Hypnotic", color: "pink", weight: 8, basePrice: 80, image: "🔫" },
+                { name: "Glock-18 | Dragon Tattoo", color: "purple", weight: 20, basePrice: 50, image: "🔫" },
+                { name: "★ Nůž", color: "gold", weight: 0.25, basePrice: 1500, image: "🔪" }
+            ]
+        },
+        {
+            name: "Classic Case", price: 2.50, image: "📦", 
+            items: [
+                { name: "P250 | Sand Dune", color: "blue", weight: 70, basePrice: 0.1, image: "🔫" },
+                { name: "AK-47 | Redline", color: "purple", weight: 20, basePrice: 15, image: "🔫" },
+                { name: "M4A1-S | Printstream", color: "pink", weight: 8, basePrice: 85, image: "🔫" },
+                { name: "AWP | Asiimov", color: "red", weight: 1.5, basePrice: 120, image: "🎯" },
+                { name: "★ Karambit | Fade", color: "gold", weight: 0.5, basePrice: 1500, image: "🔪" }
+            ]
+        }
+    ];
+
+    function createImgHTML(item, extraClass = '', extraStyle = '') {
+        if (!item.image || item.image === "📦" || item.image === "🔫" || item.image === "🎯" || item.image === "🔪") {
+            const emj = item.image && item.image.length < 5 ? item.image : "🔫";
+            return `<div class="emoji-img ${extraClass}" style="${extraStyle}">${emj}</div>`;
+        }
+        
+        const safeUrl = item.image.replace('https://raw.githubusercontent.com/ByMykel/CSGO-API/main/', 'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/');
+        const emjFallback = (item.name.toLowerCase().includes('knife') || item.name.toLowerCase().includes('karambit')) ? '🔪' : (item.name.toLowerCase().includes('awp') ? '🎯' : '🔫');
+        const errStr = `this.onerror=null; this.outerHTML='<div class=\\'emoji-img ${extraClass}\\' style=\\'${extraStyle}\\'>${emjFallback}</div>'`;
+        
+        return `<img src="${safeUrl}" class="${extraClass}" style="${extraStyle}" loading="lazy" onerror="${errStr}">`;
+    }
+
+    async function loadApiData() {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1500); 
+            
+            const response = await fetch('https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/crates.json', { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) throw new Error('API Blocked');
+            
+            const data = await response.json();
+            const validCases = data.filter(c => c.type === "Case" && c.contains && c.contains.length > 0).slice(0, 30);
+            
+            cases = validCases.map((apiCase) => {
+                let mappedItems = apiCase.contains.map(item => {
+                    let rColor = item.rarity ? item.rarity.color.toLowerCase() : '#4b69ff';
+                    let rName = item.rarity ? item.rarity.name : 'Mil-Spec Grade';
+                    let colorCode = 'blue'; let weight = 79.92; let basePrice = 0.5;
+
+                    if (rColor === '#8847ff') { colorCode = 'purple'; weight = 15.98; basePrice = 4; }
+                    else if (rColor === '#d32ce6') { colorCode = 'pink'; weight = 3.2; basePrice = 18; }
+                    else if (rColor === '#eb4b4b') { colorCode = 'red'; weight = 0.64; basePrice = 60; }
+                    else if (rColor === '#e4ae39' || rColor === '#ffd700' || rName.includes('Extraordinary')) { colorCode = 'gold'; weight = 0.26; basePrice = 350; }
+
+                    const iData = { name: item.name, color: colorCode, weight: weight, basePrice: basePrice * (0.8 + Math.random() * 0.4), image: item.image };
+                    allPossibleItems.push(iData); return iData;
+                });
+
+                let tW = mappedItems.reduce((acc, curr) => acc + curr.weight, 0);
+                let ev = mappedItems.reduce((acc, curr) => acc + ((curr.weight / tW) * curr.basePrice), 0);
+                let assignedPrice = apiCase.name === "CS:GO Weapon Case" ? 0.00 : ev / 0.7;
+
+                return { name: apiCase.name, price: assignedPrice, image: apiCase.image, items: mappedItems };
+            });
+            cases.sort((a, b) => a.price - b.price);
+
+        } catch (error) {
+            cases = fallbackCasesData;
+            cases.forEach(c => { c.items.forEach(i => allPossibleItems.push(i)); });
+        } finally {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('openBtn').disabled = false;
+            document.getElementById('showContentBtn').disabled = false;
+            
+            renderCases();
+            loadGame();
+            updateStats();
+            generateBotLobbies();
+            fetchOnlineLobbies();
         }
     }
-    echo json_encode($waiting);
-    exit;
-}
-?>
+
+    function switchView(viewName) {
+        if(isSpinning || isFlipping) return;
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`view-${viewName}`).classList.add('active');
+        event.target.classList.add('active');
+        if(viewName === 'casino') fetchOnlineLobbies();
+    }
+
+    function switchCoinflipTab(tabName, btnElement) {
+        if(isFlipping) return;
+        document.querySelectorAll('.coinflip-section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.sub-nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`coinflip-${tabName}`).classList.add('active');
+        btnElement.classList.add('active');
+        if(tabName === 'players') fetchOnlineLobbies();
+    }
+
+    function saveGame() { localStorage.setItem('csgoSimFinal', JSON.stringify({ balance: userBalance, spent: totalSpent, inv: inventory })); }
+    
+    function loadGame() {
+        const saved = localStorage.getItem('csgoSimFinal');
+        if (saved) {
+            const p = JSON.parse(saved); userBalance = p.balance || 0.00; totalSpent = p.spent || 0; inventory = p.inv || [];
+            document.getElementById('inventory').innerHTML = ''; [...inventory].reverse().forEach(item => renderInventoryItem(item, true)); updateStats();
+        }
+    }
+
+    function renderCases() {
+        const selector = document.getElementById('caseSelector'); selector.innerHTML = '';
+        cases.forEach((c, index) => {
+            const div = document.createElement('div'); div.className = `case-card ${index === currentCaseIndex ? 'active' : ''}`; div.onclick = () => selectCase(index);
+            const imgHtml = createImgHTML(c);
+            const priceText = c.price === 0 ? "ZDARMA" : "$" + c.price.toFixed(2);
+            div.innerHTML = `${imgHtml}<div class="case-name">${c.name}</div><div class="case-price">${priceText}</div>`;
+            selector.appendChild(div);
+        });
+        updateOpenButton();
+    }
+
+    function selectCase(index) { if(isSpinning) return; currentCaseIndex = index; renderCases(); document.getElementById('strip').innerHTML = ''; }
+    function updateOpenButton() {
+        if (!cases[currentCaseIndex]) return; const c = cases[currentCaseIndex];
+        document.getElementById('openBtn').innerText = `OTEVŘÍT ${c.name} (${c.price === 0 ? "ZDARMA" : "$"+c.price.toFixed(2)})`;
+    }
+
+    function updateStats() {
+        const totalVal = inventory.reduce((sum, item) => sum + item.finalPrice, 0);
+        document.getElementById('itemCount').innerText = inventory.length; document.getElementById('totalSpent').innerText = `$${totalSpent.toFixed(2)}`;
+        document.getElementById('totalValue').innerText = `$${totalVal.toFixed(2)}`; document.getElementById('balanceDisplay').innerText = `$${userBalance.toFixed(2)}`;
+    }
+
+    function initStrip() {
+        const strip = document.getElementById('strip'); strip.innerHTML = ''; strip.style.transform = 'translateX(0px)'; strip.style.transition = 'none';
+        if (!cases[currentCaseIndex]) return; const c = cases[currentCaseIndex];
+        
+        for (let i = 0; i < 70; i++) {
+            let rand = Math.random() * 100; let sum = 0; let tW = c.items.reduce((acc, curr) => acc + curr.weight, 0); let nR = (rand / 100) * tW;
+            let itemData = c.items[0]; for (let item of c.items) { sum += item.weight; if (nR <= sum) { itemData = item; break; } }
+            
+            const div = document.createElement('div'); div.className = `item ${itemData.color}`; div.dataset.index = c.items.indexOf(itemData); 
+            div.innerHTML = `${createImgHTML(itemData, 'skin-img')}<div class="item-name">${itemData.name}</div>`;
+            strip.appendChild(div);
+        }
+    }
+
+    function spin() {
+        const cCase = cases[currentCaseIndex];
+        if(userBalance < cCase.price) { alert('Nedostatek peněz! Otevři CS:GO Weapon Case (zdarma).'); return; }
+
+        isSpinning = true; document.getElementById('openBtn').disabled = true; document.getElementById('showContentBtn').disabled = true;
+        userBalance -= cCase.price; totalSpent += cCase.price; updateStats(); saveGame();
+        
+        document.getElementById('result').innerText = "Otevírám..."; 
+        
+        if (clearStripTimeout) clearTimeout(clearStripTimeout);
+        initStrip();
+        const strip = document.getElementById('strip');
+
+        setTimeout(() => {
+            const itemWidth = 200; const winningIndex = 60;
+            const offset = (winningIndex * itemWidth) - (550 - (itemWidth / 2)) + (Math.random() * 160 - 80);
+            strip.style.transition = 'transform 6s cubic-bezier(0.05, 0.85, 0.1, 1)'; strip.style.transform = `translateX(-${offset}px)`;
+
+            setTimeout(() => {
+                const itemDom = Array.from(strip.children)[winningIndex];
+                const finalWonItem = addToInventory(cCase.items[parseInt(itemDom.dataset.index, 10)]);
+                const colorHex = {'blue':'#4b69ff','purple':'#8847ff','pink':'#d32ce6','red':'#eb4b4b','gold':'#e4ae39'}[finalWonItem.color];
+                document.getElementById('result').innerHTML = `Padlo: <span style="color: ${colorHex}">${finalWonItem.name} (${finalWonItem.exterior.abbrev})</span> ($${finalWonItem.finalPrice.toFixed(2)})`;
+                isSpinning = false; document.getElementById('openBtn').disabled = false; document.getElementById('showContentBtn').disabled = false;
+                
+                clearStripTimeout = setTimeout(() => { strip.innerHTML = ''; }, 1500);
+            }, 6200);
+        }, 50);
+    }
+
+    function renderInventoryItem(itemData, append = false) {
+        // Prevent duplicate rendering
+        if(document.getElementById(`inv-item-${itemData.id}`)) document.getElementById(`inv-item-${itemData.id}`).remove();
+        
+        const invDiv = document.createElement('div'); invDiv.id = `inv-item-${itemData.id}`; invDiv.className = `inv-item ${itemData.color}`;
+        invDiv.innerHTML = `
+            ${createImgHTML(itemData)}
+            <span>${itemData.name}</span><div class="item-exterior">${itemData.exterior.name}</div><div class="price-tag">$${itemData.finalPrice.toFixed(2)}</div>
+            <div class="inv-actions">
+                <button class="lock-btn ${itemData.locked ? 'locked' : ''}" onclick="toggleLock(${itemData.id}, this)">${itemData.locked ? '🔒' : '🔓'}</button>
+                <button class="sell-btn" onclick="sellItem(${itemData.id}, ${itemData.finalPrice}, this.parentElement.parentElement)" ${itemData.locked ? 'disabled' : ''}>+$${itemData.finalPrice.toFixed(2)}</button>
+            </div>
+        `;
+        if (append) document.getElementById('inventory').appendChild(invDiv); else document.getElementById('inventory').insertBefore(invDiv, document.getElementById('inventory').firstChild);
+    }
+
+    function updateInventoryDOM() {
+        document.getElementById('inventory').innerHTML = '';
+        [...inventory].reverse().forEach(item => renderInventoryItem(item, true));
+    }
+
+    function toggleLock(id, btnElement) { const item = inventory.find(i => i.id === id); if (item) { item.locked = !item.locked; btnElement.innerText = item.locked ? '🔒' : '🔓'; btnElement.classList.toggle('locked', item.locked); btnElement.nextElementSibling.disabled = item.locked; saveGame(); } }
+    function sellItem(id, price, element) { const index = inventory.findIndex(item => item.id === id); if (index > -1 && !inventory[index].locked) { inventory.splice(index, 1); userBalance += price; element.remove(); updateStats(); saveGame(); } }
+    function sellAllUnlocked() { const items = inventory.filter(item => !item.locked); if (items.length === 0) return; items.forEach(item => { userBalance += item.finalPrice; document.getElementById(`inv-item-${item.id}`).remove(); }); inventory = inventory.filter(item => item.locked); updateStats(); saveGame(); }
+
+    function addToInventory(itemData) {
+        const exterior = getRandomExterior(); const finalPrice = parseFloat((itemData.basePrice * exterior.priceMult).toFixed(2));
+        const itemWithId = { ...itemData, id: Date.now() + Math.random(), exterior: exterior, finalPrice: finalPrice, locked: false };
+        inventory.push(itemWithId); renderInventoryItem(itemWithId, false); updateStats(); saveGame(); return itemWithId;
+    }
+
+    function generateRandomLobbies(namesArray) {
+        const generated = []; if(allPossibleItems.length === 0) return generated;
+        for(let i=0; i<5; i++) {
+            const bName = namesArray[Math.floor(Math.random() * namesArray.length)]; const itemCount = Math.floor(Math.random() * 3) + 1; const bItems = []; let totalVal = 0;
+            for(let j=0; j<itemCount; j++) {
+                let baseItem = allPossibleItems[Math.floor(Math.random() * allPossibleItems.length)]; let ext = getRandomExterior(); let fPrice = parseFloat((baseItem.basePrice * ext.priceMult).toFixed(2));
+                bItems.push({ ...baseItem, exterior: ext, finalPrice: fPrice }); totalVal += fPrice;
+            }
+            generated.push({ id: Date.now() + i, name: bName, items: bItems, totalValue: totalVal });
+        }
+        return generated;
+    }
+
+    function renderLobbiesToContainer(lobbies, containerId, isBot) {
+        const container = document.getElementById(containerId); container.innerHTML = '';
+        if(!lobbies || lobbies.length === 0) {
+            container.innerHTML = '<p style="color:#aaa; text-align:center;">Žádné aktivní hry nebyly nalezeny.</p>';
+            return;
+        }
+        lobbies.forEach(lobby => {
+            const itemHtmls = lobby.items.map(item => {
+                const cHex = {'blue':'#4b69ff','purple':'#8847ff','pink':'#d32ce6','red':'#eb4b4b','gold':'#e4ae39'}[item.color];
+                return createImgHTML(item, 'lobby-item-img', `border-bottom-color: ${cHex};`);
+            }).join('');
+            const borderColor = isBot ? '#f0ad4e' : '#5cb85c'; const div = document.createElement('div'); div.className = 'lobby-card';
+            div.innerHTML = `<div class="lobby-user"><div class="lobby-avatar" style="border-color: ${borderColor};">${lobby.name.charAt(0).toUpperCase()}</div><div style="font-weight: bold; font-size: 16px;">${lobby.name}</div></div>
+                <div class="lobby-items">${itemHtmls}</div><div class="lobby-action"><div class="lobby-val">$${lobby.totalValue.toFixed(2)}</div><button class="join-btn" onclick="openBetSelection('${lobby.id}', ${isBot})">Vyzvat</button></div>`;
+            container.appendChild(div);
+        });
+    }
+
+    function generateBotLobbies() { activeBotLobbies = generateRandomLobbies(botNames); renderLobbiesToContainer(activeBotLobbies, 'lobbiesContainer', true); }
+
+    function fetchOnlineLobbies() {
+        fetch('api.php?action=get')
+            .then(res => res.json())
+            .then(data => {
+                // Ignore our own lobby in the list
+                activePlayerLobbies = data.filter(l => l.id !== myLobbyId);
+                renderLobbiesToContainer(activePlayerLobbies, 'playerLobbiesContainer', false);
+            }).catch(e => {
+                if(activePlayerLobbies.length === 0) activePlayerLobbies = [];
+            });
+    }
+
+    setInterval(() => {
+        if(document.getElementById('coinflip-players').classList.contains('active') && !isFlipping && !myLobbyId) {
+             fetchOnlineLobbies();
+        }
+    }, 3000);
+
+    function checkMyLobbyStatus() {
+        if(!myLobbyId) return;
+        fetch(`api.php?action=status&id=${myLobbyId}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.status === 'joined') {
+                    clearInterval(lobbyPollInterval);
+                    lobbyPollInterval = null;
+                    document.getElementById('userCustomLobby').classList.add('hidden');
+                    
+                    // The opponent is the joiner
+                    const opponentData = { name: data.joiner.name, items: data.joiner.items, totalValue: data.joiner.totalValue };
+                    myLobbyId = null; 
+                    
+                    // We are the creator, selectedBetItems holds our stakes
+                    startFlipMechanic(opponentData, true);
+                }
+            }).catch(e => console.error(e));
+    }
+
+    function cancelMyLobby() {
+        if(!myLobbyId) return;
+        clearInterval(lobbyPollInterval);
+        lobbyPollInterval = null;
+        
+        fetch(`api.php?action=cancel&id=${myLobbyId}`).then(() => {
+            myLobbyId = null;
+            document.getElementById('userCustomLobby').classList.add('hidden');
+            // Unlock our items
+            selectedBetItems.forEach(item => { 
+                const invItem = inventory.find(i => i.id === item.id);
+                if(invItem) invItem.locked = false;
+            });
+            updateInventoryDOM(); saveGame(); fetchOnlineLobbies();
+        });
+    }
+
+    function openBetSelection(lobbyId, isBot) {
+        if (isBot) currentLobbyOpponent = activeBotLobbies.find(l => l.id == lobbyId); else currentLobbyOpponent = activePlayerLobbies.find(l => l.id == lobbyId);
+        if(!currentLobbyOpponent) return;
+        selectedBetItems = []; document.getElementById('lobbyBotName').innerText = currentLobbyOpponent.name; document.getElementById('botBetTotal').innerText = `$${currentLobbyOpponent.totalValue.toFixed(2)}`;
+        
+        const botGrid = document.getElementById('botBetGrid'); botGrid.innerHTML = '';
+        currentLobbyOpponent.items.forEach(item => {
+            const div = document.createElement('div'); div.className = `inv-item ${item.color}`; div.style.height = '120px';
+            div.innerHTML = `${createImgHTML(item, '', 'width:70px; height:40px;')}<span style="font-size:10px;">${item.name}</span><div style="color:#ffd700; font-size:11px;">$${item.finalPrice.toFixed(2)}</div>`; botGrid.appendChild(div);
+        });
+
+        const invGrid = document.getElementById('betInventoryGrid'); invGrid.innerHTML = ''; const availableItems = inventory.filter(i => !i.locked);
+        if (availableItems.length === 0) { invGrid.innerHTML = "<p style='color:#aaa; grid-column: 1/-1; text-align:center;'>Nemáš žádné volné skiny k sázce.</p>"; } 
+        else {
+            availableItems.forEach(item => {
+                const div = document.createElement('div'); div.className = `inv-item selectable ${item.color}`; div.id = `bet-select-${item.id}`; div.style.height = '120px'; div.onclick = () => toggleBetItem(item, div, false);
+                div.innerHTML = `${createImgHTML(item, '', 'width:70px; height:40px;')}<span style="font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">${item.name}</span><div style="color:#ffd700; font-size:11px;">$${item.finalPrice.toFixed(2)}</div>`; invGrid.appendChild(div);
+            });
+        }
+        updateBetUI(false); document.getElementById('betModal').style.display = 'flex';
+    }
+
+    function toggleBetItem(item, divElement, isCreateMode) {
+        const idx = selectedBetItems.findIndex(i => i.id === item.id);
+        if (idx > -1) { selectedBetItems.splice(idx, 1); divElement.classList.remove('selected'); } else { selectedBetItems.push(item); divElement.classList.add('selected'); }
+        if (isCreateMode) updateCreateLobbyUI(); else updateBetUI(false);
+    }
+
+    function updateBetUI(isCreateMode) {
+        const total = selectedBetItems.reduce((s, i) => s + i.finalPrice, 0); document.getElementById('playerBetTotal').innerText = `$${total.toFixed(2)}`; document.getElementById('playerBetGrid').innerHTML = '';
+        selectedBetItems.forEach(item => {
+            const div = document.createElement('div'); div.className = `inv-item ${item.color}`; div.style.height = '120px';
+            div.innerHTML = `${createImgHTML(item, '', 'width:70px; height:40px;')}<span style="font-size:10px;">${item.name}</span>`; document.getElementById('playerBetGrid').appendChild(div);
+        });
+
+        const btn = document.getElementById('confirmBetBtn'); const stat = document.getElementById('betStatusText'); const minReq = currentLobbyOpponent.totalValue * 0.9;
+        if (selectedBetItems.length === 0) { stat.innerText = "Vyber skiny do hry."; stat.style.color = "#aaa"; btn.disabled = true; } 
+        else if (total < minReq) { stat.innerText = `Přidej skiny. Potřebuješ ještě $${(minReq - total).toFixed(2)}`; stat.style.color = "#d9534f"; btn.disabled = true; } 
+        else { stat.innerText = "Sázka je připravena!"; stat.style.color = "#5cb85c"; btn.disabled = false; }
+    }
+
+    function executeJoinFlip() { 
+        closeModals(); 
+        
+        // Jdeme hrát proti botovi
+        if(botNames.includes(currentLobbyOpponent.name)) {
+            startFlipMechanic(currentLobbyOpponent, false);
+            return;
+        }
+
+        // Jdeme hrát online
+        const myName = prompt("Zadej svou přezdívku pro hru:") || "Soupeř";
+        const myJoinData = { 
+            id: currentLobbyOpponent.id, 
+            joiner: { name: myName, items: selectedBetItems, totalValue: selectedBetItems.reduce((s,i)=>s+i.finalPrice,0) } 
+        };
+        
+        fetch('api.php?action=join', {
+            method: 'POST',
+            body: JSON.stringify(myJoinData)
+        }).then(res => res.json()).then(res => {
+            if(res.success) {
+                startFlipMechanic(currentLobbyOpponent, false);
+            } else {
+                alert("Lobby už neexistuje nebo bylo přijato někým jiným!");
+                fetchOnlineLobbies();
+            }
+        }).catch(err => {
+            startFlipMechanic(currentLobbyOpponent, false);
+        });
+    }
+
+    function openCreateLobbyModal() {
+        if(myLobbyId) { alert("Už máš založenou jednu hru!"); return; }
+        selectedBetItems = []; const invGrid = document.getElementById('createInventoryGrid'); invGrid.innerHTML = ''; const availableItems = inventory.filter(i => !i.locked);
+        if (availableItems.length === 0) { invGrid.innerHTML = "<p style='color:#aaa; grid-column: 1/-1; text-align:center;'>Nemáš žádné volné skiny.</p>"; } 
+        else {
+            availableItems.forEach(item => {
+                const div = document.createElement('div'); div.className = `inv-item selectable ${item.color}`; div.id = `create-select-${item.id}`; div.style.height = '120px'; div.onclick = () => toggleBetItem(item, div, true);
+                div.innerHTML = `${createImgHTML(item, '', 'width:70px; height:40px;')}<span style="font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">${item.name}</span><div style="color:#ffd700; font-size:11px;">$${item.finalPrice.toFixed(2)}</div>`; invGrid.appendChild(div);
+            });
+        }
+        updateCreateLobbyUI(); document.getElementById('createLobbyModal').style.display = 'flex';
+    }
+
+    function updateCreateLobbyUI() {
+        const total = selectedBetItems.reduce((s, i) => s + i.finalPrice, 0); document.getElementById('createLobbyTotal').innerText = `$${total.toFixed(2)}`; document.getElementById('createLobbyGrid').innerHTML = '';
+        selectedBetItems.forEach(item => {
+            const div = document.createElement('div'); div.className = `inv-item ${item.color}`; div.style.height = '120px';
+            div.innerHTML = `${createImgHTML(item, '', 'width:70px; height:40px;')}<span style="font-size:10px;">${item.name}</span>`; document.getElementById('createLobbyGrid').appendChild(div);
+        });
+
+        const btn = document.getElementById('createLobbyBtn'); const stat = document.getElementById('createStatusText');
+        if (selectedBetItems.length === 0) { stat.innerText = "Musíš vsadit alespoň jeden skin."; stat.style.color = "#d9534f"; btn.disabled = true; } else { stat.innerText = "Připraveno k vytvoření."; stat.style.color = "#5cb85c"; btn.disabled = false; }
+    }
+
+    function submitCustomLobby() {
+        const total = selectedBetItems.reduce((s, i) => s + i.finalPrice, 0); closeModals();
+        
+        myLobbyId = "lobby_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+        const myName = prompt("Zadej svou přezdívku:") || "Hráč";
+        
+        const newLobby = { id: myLobbyId, name: myName, items: selectedBetItems, totalValue: total, status: 'waiting', joiner: null };
+
+        // Dočasně zamkneme itemy, aby se nedaly prodat během čekání
+        selectedBetItems.forEach(item => { 
+            const invItem = inventory.find(i => i.id === item.id);
+            if(invItem) invItem.locked = true;
+        });
+        updateInventoryDOM(); saveGame();
+
+        fetch('api.php?action=create', {
+            method: 'POST',
+            body: JSON.stringify(newLobby)
+        }).then(() => {
+            const waitingUI = document.getElementById('userCustomLobby'); waitingUI.classList.remove('hidden'); document.getElementById('customLobbyValue').innerText = `$${total.toFixed(2)}`;
+            lobbyPollInterval = setInterval(checkMyLobbyStatus, 2000);
+            fetchOnlineLobbies();
+        }).catch(err => {
+            alert('Nepodařilo se připojit k online serveru.');
+            myLobbyId = null;
+            selectedBetItems.forEach(item => { const invItem = inventory.find(i => i.id === item.id); if(invItem) invItem.locked = false; });
+            updateInventoryDOM(); saveGame();
+        });
+    }
+
+    function startFlipMechanic(opponentData, isCreatorMode) {
+        isFlipping = true; document.getElementById('flipModal').style.display = 'flex'; document.getElementById('flipCloseBtn').classList.add('hidden');
+        document.getElementById('flipResultText').innerText = `Soupeř ${opponentData.name} nalezen! Mince se točí...`; document.getElementById('flipResultText').style.color = "#fff";
+        document.getElementById('coinOpponentText').innerText = opponentData.name.substring(0, 3);
+        
+        const coin = document.getElementById('coinEl'); const isWin = Math.random() >= 0.5; const finalRot = isWin ? 1800 : 1980;
+        coin.style.transition = 'transform 3s cubic-bezier(0.1, 0.8, 0.1, 1)'; coin.style.transform = `rotateY(${finalRot}deg)`;
+
+        setTimeout(() => {
+            const resText = document.getElementById('flipResultText');
+            if (isWin) {
+                resText.innerHTML = `<span style="color: #5cb85c;">Vítězství! Vyhrál jsi skiny soupeře.</span>`;
+                // Odstraníme zámek z našich itemů
+                selectedBetItems.forEach(item => { const invItem = inventory.find(i => i.id === item.id); if(invItem) invItem.locked = false; });
+                // Přidáme itemy soupeře
+                opponentData.items.forEach(item => { const newItem = { ...item, id: Date.now() + Math.random(), locked: false }; inventory.push(newItem); });
+            } else {
+                resText.innerHTML = `<span style="color: #d9534f;">Prohra! Tvé vsazené skiny propadly.</span>`;
+                // Odstraníme naše itemy z inventáře
+                selectedBetItems.forEach(item => { inventory = inventory.filter(i => i.id !== item.id); });
+            }
+            
+            updateStats(); updateInventoryDOM(); saveGame(); 
+            generateBotLobbies(); fetchOnlineLobbies(); 
+            document.getElementById('flipCloseBtn').classList.remove('hidden'); isFlipping = false;
+            
+            setTimeout(() => { coin.style.transition = 'none'; coin.style.transform = 'rotateY(0deg)'; }, 500);
+        }, 3200);
+    }
+
+    function showCaseContent() {
+        if (!cases[currentCaseIndex]) return; const c = cases[currentCaseIndex];
+        document.getElementById('modalTitle').innerText = `Obsah bedny: ${c.name}`;
+        const grid = document.getElementById('modalGrid'); grid.innerHTML = '';
+        [...c.items].sort((a, b) => b.weight - a.weight).forEach(item => {
+            const div = document.createElement('div'); div.className = `inv-item ${item.color}`;
+            div.innerHTML = `${createImgHTML(item)}<span style="font-size: 11px; margin-top: 10px;">${item.name}</span><div style="color: #ffd700; font-size: 12px; margin-top: 5px; font-weight: bold;">$${item.basePrice.toFixed(2)}</div>`;
+            grid.appendChild(div);
+        });
+        document.getElementById('contentModal').style.display = 'flex';
+    }
+
+    function closeModals() { if(isFlipping) return; document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+    window.onclick = function(event) { if (event.target.classList.contains('modal') && !isFlipping) closeModals(); }
+
+    loadApiData();
+</script>
+
+</body>
+</html>
